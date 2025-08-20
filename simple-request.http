@@ -1,4 +1,0 @@
-@baseUrl = https://sumtwonums-cqhfcthfbzedf2fm.canadacentral-01.azurewebsites.net/
-
-GET {{baseUrl}}/
-Content-Type: application/json
