@@ -1,7 +1,8 @@
+import os
 from flask import Flask, request, render_template_string, redirect, url_for, session
 
 app = Flask(__name__)
-app.secret_key = 'replace_with_a_random_secret_key'
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
 HTML_FORM = """
 <!DOCTYPE html>
