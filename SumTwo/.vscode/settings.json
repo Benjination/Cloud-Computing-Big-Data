@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/a13fab19-9c2c-4ad0-a5b1-1e36df055fd4/resourceGroups/fall2025rg/providers/Microsoft.Web/sites/SumTwoNums",
+    "appService.deploySubpath": "."
+}
