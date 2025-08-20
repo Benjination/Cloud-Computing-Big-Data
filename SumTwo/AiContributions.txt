@@ -47,3 +47,11 @@ Ben: "I put this on here because I found a case where if
 the user has already filled out the form once, and then refreshes 
 the page, the user is prompted to resubmit a form. No user 
 wants to soo that message." 
+
+PYTHON VIRTUAL ENVIRONMENT (.venv)
+The .venv environment was set up by AI, but this is a standard Python 
+practice that creates an isolated Python environment (not a virtual 
+machine) that keeps project dependencies separate from the system Python. 
+This allows you to install Flask and other packages locally for the 
+project, test your changes on localhost, and ensures consistent 
+deployment without conflicts between different projects' requirements. 

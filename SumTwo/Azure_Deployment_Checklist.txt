@@ -9,28 +9,28 @@ PREREQUISITES
 
 1. AZURE SETUP & CONFIGURATION
 ------------------------------
-□ Create Azure Account (if not existing)
-□ Log into Azure Portal (portal.azure.com)
-□ Create new Resource Group
+✅ Create Azure Account (if not existing)
+✅ Log into Azure Portal (portal.azure.com)
+✅ Create new Resource Group
    - Choose appropriate region (e.g., East US, West US 2)
-   - Name: "SumTwo-RG" or similar
-□ Create App Service Plan
-   - Choose pricing tier (Free F1 for development, Basic B1+ for production)
-   - Select operating system (Linux recommended for Python)
-□ Create App Service (Web App)
+   - Name: "SumTwoNums" 
+✅ Create App Service Plan
+   - Choose pricing tier (Basic B1+ for production)
+   - Select operating system (Linux recommended for Python)(Linux)
+✅ Create App Service (Web App)
    - Choose runtime stack: Python 3.9 or later
    - Configure deployment settings
-   - Note the generated domain name (e.g., sumtwo-app.azurewebsites.net)
+   - Note the generated domain name (https://sumtwonums-cqhfcthfbzedf2fm.canadacentral-01.azurewebsites.net)
 
 2. LOCAL DEVELOPMENT SETUP
 --------------------------
-□ Create project directory structure
-□ Set up Python virtual environment
+✅ Create project directory structure
+✅ Set up Python virtual environment
    - python -m venv .venv
    - Activate virtual environment
-□ Install required packages
+✅ Install required packages
    - pip install flask
-□ Create requirements.txt file
+✅ Create requirements.txt file
    - List all dependencies (flask==2.3.3)
 □ Create .gitignore file (exclude .venv, __pycache__, etc.)
 
