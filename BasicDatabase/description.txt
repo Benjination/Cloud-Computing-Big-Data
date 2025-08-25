@@ -1,0 +1,46 @@
+Assignment Overview
+Assignment Content: This assignment involves creating a basic 
+    database application using a CSV file instead of a traditional 
+    database. The application will support user searches and data 
+    manipulation operations.
+
+Database Structure: The CSV file will contain the following headers:
+- Name: Employee/person name
+- State: Geographic location 
+- Salary: Compensation amount
+- Grade: Job level or performance rating
+- Room: Office/room number
+- Telnum: Telephone number
+- Picture: Image file reference
+- Keywords: Searchable tags or descriptors
+
+Implementation Notes:
+- Uses CSV file as data storage (no traditional database)
+- Some data fields may be missing/incomplete in the source CSV
+- Web application will be deployed on Azure App Service
+- Application includes search functionality and data display
+- Built with Python Flask and embedded HTML templates
+
+Course Context: This assignment teaches basic data manipulation, 
+    web application development, and cloud deployment fundamentals 
+    for big data/cloud computing courses.
+
+- Enhanced HTML interface with embedded CSS for improved aesthetics 
+    and user experience
+- Added comprehensive CRUD functionality (Create, Read, Update, Delete) 
+    for managing database records
+- Implemented individual field editing capability allowing users to 
+    modify specific data elements
+- Created add/edit/delete operations with proper form handling and 
+    validation
+- Added flash message system for user feedback on successful 
+    operations and errors
+- Integrated JavaScript for interactive editing with click-to-edit 
+    table cells
+- Configured application for production deployment with proper 
+    environment variable handling
+- Added gunicorn to requirements for production web server 
+    deployment
+
+Note: Many features in this program were created with the assistance 
+    of generative Ai. This was approved by Dr Levine. 

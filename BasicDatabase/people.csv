@@ -1,0 +1,11 @@
+Name,State,Salary,Grade,Room,Telnum,Picture,Keywords
+John Smith,CA,75000,Senior,101,555-0123,john_smith.jpg,"developer python senior"
+Sarah Johnson,NY,82000,Manager,205,555-0124,sarah_johnson.jpg,"manager team lead"
+Mike Chen,TX,68000,Junior,303,555-0125,,"developer java junior"
+Lisa Rodriguez,FL,79000,Senior,102,555-0126,lisa_rodriguez.jpg,"analyst data senior"
+David Kim,WA,71000,Mid,404,,david_kim.jpg,"designer ui mid"
+Emma Wilson,CA,,Senior,106,555-0128,,"architect senior cloud"
+James Brown,NY,85000,Manager,,555-0129,james_brown.jpg,"director operations"
+Anna Martinez,TX,64000,Junior,308,555-0130,,"developer frontend junior"
+Robert Taylor,FL,77000,Senior,203,555-0131,,"engineer backend senior"
+Jennifer Lee,WA,72000,Mid,405,555-0132,jennifer_lee.jpg,"analyst business mid"
