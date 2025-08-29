@@ -1,0 +1,12 @@
+{
+  "name": "cloud-picture-storage",
+  "version": "1.0.0",
+  "description": "Cloud Picture Storage System",
+  "main": "index.html",
+  "scripts": {
+    "start": "echo 'Static files served directly'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

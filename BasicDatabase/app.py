@@ -406,28 +406,28 @@ HTML_TEMPLATE = """
             
             switch(field) {
                 case 'Name':
-                    validationHint = '\\n(Letters, spaces, hyphens, apostrophes, periods only - max 50 chars)';
+                    validationHint = '\\n\\nFormat: Letters, spaces, hyphens, apostrophes, periods only (max 50 characters)';
                     break;
                 case 'State':
-                    validationHint = '\\n(2-letter code like CA, NY or full state name)';
+                    validationHint = '\\n\\nFormat: 2-letter code (CA, NY) or full state name';
                     break;
                 case 'Salary':
-                    validationHint = '\\n(Numbers only, 0-10,000,000)';
+                    validationHint = '\\n\\nFormat: Numbers only (0-10,000,000)';
                     break;
                 case 'Grade':
-                    validationHint = '\\n(Entry, Junior, Mid, Senior, Lead, Manager, Director, VP, Executive)';
+                    validationHint = '\\n\\nOptions: Entry, Junior, Mid, Senior, Lead, Manager, Director, VP, Executive';
                     break;
                 case 'Room':
-                    validationHint = '\\n(Letters, numbers, hyphens only - max 10 chars)';
+                    validationHint = '\\n\\nFormat: Letters, numbers, hyphens only (max 10 characters)';
                     break;
                 case 'Telnum':
-                    validationHint = '\\n(10-digit phone number)';
+                    validationHint = '\\n\\nFormat: 10-digit phone number';
                     break;
                 case 'Picture':
-                    validationHint = '\\n(Image filename ending in .jpg, .png, .gif, etc.)';
+                    validationHint = '\\n\\nFormat: Image filename ending in .jpg, .png, .gif, etc.';
                     break;
                 case 'Keywords':
-                    validationHint = '\\n(Letters, numbers, spaces, commas, periods, hyphens - max 200 chars)';
+                    validationHint = '\\n\\nFormat: Letters, numbers, spaces, commas, periods, hyphens (max 200 characters)';
                     break;
             }
             
@@ -441,15 +441,26 @@ HTML_TEMPLATE = """
         }
         
         function showImageModal(imageSrc, altText, personName) {
+            console.log('showImageModal called:', imageSrc, altText, personName);
             const modal = document.getElementById('imageModal');
             const modalImg = document.getElementById('modalImage');
             const modalCaption = document.getElementById('modalCaption');
             const changeBtn = document.getElementById('modalChangeBtn');
             const deleteBtn = document.getElementById('modalDeleteBtn');
             
+            if (!modal) {
+                console.error('Modal not found');
+                return;
+            }
+            
             modal.classList.add('active');
             modalImg.src = imageSrc;
             modalCaption.textContent = personName;
+            
+            // Reset button states
+            changeBtn.style.display = 'inline-block';
+            changeBtn.textContent = 'Change Image';
+            deleteBtn.style.display = 'inline-block';
             
             // Set up button actions
             changeBtn.onclick = function() {
@@ -470,11 +481,17 @@ HTML_TEMPLATE = """
         }
         
         function showNoImageModal(personName) {
+            console.log('showNoImageModal called:', personName);
             const modal = document.getElementById('imageModal');
             const modalImg = document.getElementById('modalImage');
             const modalCaption = document.getElementById('modalCaption');
             const changeBtn = document.getElementById('modalChangeBtn');
             const deleteBtn = document.getElementById('modalDeleteBtn');
+            
+            if (!modal) {
+                console.error('Modal not found');
+                return;
+            }
             
             modal.classList.add('active');
             modalImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjlmYSIvPgogIDx0ZXh0IHg9IjEwMCIgeT0iMTAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjY2IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4=';
@@ -510,10 +527,11 @@ HTML_TEMPLATE = """
         
         function editPictureField(name, currentValue) {
             // Special handling for picture field to show current image
-            let message = 'Edit Picture for ' + name + ':\\n(Image filename ending in .jpg, .png, .gif, etc.)';
+            let message = 'Edit Picture for ' + name + ':';
             if (currentValue) {
-                message += '\\nCurrent: ' + currentValue;
+                message += '\\n\\nCurrent image: ' + currentValue;
             }
+            message += '\\n\\nFormat: Image filename ending in .jpg, .png, .gif, etc.';
             
             var newValue = prompt(message, currentValue || '');
             if (newValue !== null) {
@@ -530,6 +548,33 @@ HTML_TEMPLATE = """
             if (event.target === modal) {
                 closeImageModal();
             }
+        });
+        
+        // Add a test function to verify modal works
+        function testModal() {
+            console.log('Testing modal...');
+            const modal = document.getElementById('imageModal');
+            console.log('Modal element:', modal);
+            if (modal) {
+                modal.classList.add('active');
+                console.log('Modal should be visible now');
+            }
+        }
+        
+        // Test on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, checking modal elements...');
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            const modalCaption = document.getElementById('modalCaption');
+            const changeBtn = document.getElementById('modalChangeBtn');
+            const deleteBtn = document.getElementById('modalDeleteBtn');
+            
+            console.log('Modal:', !!modal);
+            console.log('Modal Image:', !!modalImg);
+            console.log('Modal Caption:', !!modalCaption);
+            console.log('Change Button:', !!changeBtn);
+            console.log('Delete Button:', !!deleteBtn);
         });
     </script>
 </head>
@@ -648,17 +693,24 @@ HTML_TEMPLATE = """
                     <td onclick="editField('{{ row['Name'] }}', 'Telnum', '{{ row['Telnum'] }}')" style="cursor: pointer;" title="Click to edit">
                         {{ row['Telnum'] or '<span class="missing-data">N/A</span>' | safe }}
                     </td>
-                    <td onclick="{% if row['Picture'] %}showImageModal('/images/{{ row['Picture'] }}', '{{ row['Name'] }}'s photo', '{{ row['Name'] }}'){% else %}showNoImageModal('{{ row['Name'] }}'){% endif %}" style="cursor: pointer;" title="Click to view and edit">
+                    <td style="cursor: pointer;" title="Click to view and edit">
                         {% if row['Picture'] %}
                             <img src="/images/{{ row['Picture'] }}" 
                                  alt="{{ row['Name'] }}'s photo" 
                                  class="image-thumbnail" 
+                                 data-person="{{ row['Name'] }}"
+                                 data-image="/images/{{ row['Picture'] }}"
+                                 onclick="showImageModal(this.dataset.image, this.alt, this.dataset.person)"
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            <div class="no-image" style="display: none;">
+                            <div class="no-image" style="display: none;" 
+                                 data-person="{{ row['Name'] }}"
+                                 onclick="showNoImageModal(this.dataset.person)">
                                 Missing
                             </div>
                         {% else %}
-                            <div class="no-image">
+                            <div class="no-image" 
+                                 data-person="{{ row['Name'] }}"
+                                 onclick="showNoImageModal(this.dataset.person)">
                                 No image
                             </div>
                         {% endif %}
