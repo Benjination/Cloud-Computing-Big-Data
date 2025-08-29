@@ -1,0 +1,11 @@
+Name,State,Salary,Grade,Room,Phone,Picture,Keywords
+Tanzima,CT,98765,B,450,860-555-0123,tanzima.jpg,phd machine learning engineer artificial intelligence
+Dave,NY,87654,B,451,917-555-0124,dave.jpg,blockchain cryptocurrency developer senior engineer security
+Tuan,CA,76543,C,452,415-555-0125,tuan.jpg,python automation devops cloud full stack developer
+Drsl,TX,65432,D,453,512-555-0126,drsl.jpg,frontend react javascript ui ux developer designer
+Upset,FL,99876,A,454,305-555-0127,upset.jpg,database oracle sql administrator data scientist
+Chuck,WA,54321,E,455,206-555-0128,chuck.jpg,mobile android ios swift kotlin developer
+Dar,OR,43210,F,456,503-555-0129,dar.jpg,network security engineer cybersecurity analyst
+John,MA,100000,A,457,617-555-0130,,project manager scrum agile business analyst
+Sarah,CO,85000,B,458,303-555-0131,,data scientist python analytics machine learning
+Mike,GA,75000,C,459,404-555-0132,,backend java spring microservices architect
