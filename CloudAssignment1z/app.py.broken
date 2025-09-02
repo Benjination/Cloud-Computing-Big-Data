@@ -8,7 +8,13 @@ from azure.data.tables import TableServiceClient, TableEntity
 from azure.identity import DefaultAzureCredential
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 
-app = Flask(__name__)
+app = Flask(__                return f'''
+                <div style="font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px;">
+                    <h1>🔍 Search Results for: "{search_term}"</h1>
+                    
+                    {f'<div style="padding: 15px; margin: 10px 0; border-radius: 8px; background: #d4edda; color: #155724; border: 1px solid #c3e6cb;">{messages}</div>' if messages else ''}
+                    
+                    <div style="border: 2px solid #4facfe; padding: 20px; border-radius: 10px; background: white;">'__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cloud-picture-storage-secret')
 
 # Azure Storage configuration - Uses Azure Managed Identity (no secrets needed!)
@@ -169,6 +175,7 @@ def index():
         <div class="header">
             <h1>🌩️ Cloud Picture Storage System</h1>
             <p>Upload CSV data and pictures, then search and manage your data with Azure</p>
+            <p style="font-size: 0.9em; opacity: 0.8;">{azure_status}</p>
         </div>
         
         {f'<div class="message">{messages}</div>' if messages else ''}
@@ -226,31 +233,11 @@ def index():
             <form action="/update_person" method="post">
                 <div class="form-group">
                     <input type="text" name="name" placeholder="Person's name" required>
-                    <select name="field" required style="padding: 12px; margin: 5px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
-                        <option value="">Select field to update</option>
-                        <option value="State">State</option>
-                        <option value="Salary">Salary</option>
-                        <option value="Grade">Grade</option>
-                        <option value="Room">Room</option>
-                        <option value="Phone">Phone</option>
-                        <option value="Keywords">Keywords</option>
-                    </select>
+                    <input type="text" name="field" placeholder="Field to update (e.g., Keywords)" required>
                     <input type="text" name="value" placeholder="New value" required>
                 </div>
                 <button type="submit" class="btn-primary">Update</button>
                 <br><small>Update any field for a person (e.g., change Tuan's keywords)</small>
-            </form>
-        </div>
-        
-        <div class="section">
-            <h2><span class="emoji">📸</span> Update Person Image</h2>
-            <form action="/update_person_image" method="post" enctype="multipart/form-data">
-                <div class="form-row">
-                    <input type="text" name="name" placeholder="Person's name" required>
-                    <input type="file" name="image_file" accept="image/*" required>
-                    <button type="submit" class="btn-primary">Upload Image</button>
-                </div>
-                <small>Upload a new profile picture for a person. Supported formats: JPG, PNG, GIF</small>
             </form>
         </div>
         
@@ -272,15 +259,24 @@ def index():
 @app.route('/upload_csv', methods=['POST'])
 def upload_csv():
     if not table_service:
-        return redirect('/?messages=❌ Azure Table Storage not available')
+        return redirect('/?messages=❌ Azure Table Storage not available - Please ensure Azure credentials are configured')
     
     try:
-        file = request.files['csv_file']
-        if file and file.filename.endswith('.csv'):
+        file = request.files.get('csv_file')  # Use .get() instead of direct access
+        if file and file.filename and file.filename.endswith('.csv'):
             csv_content = file.read().decode('utf-8')
             csv_reader = csv.DictReader(io.StringIO(csv_content))
             
             table_client = table_service.get_table_client('people')
+            
+            # Ensure table exists
+            try:
+                table_client.create_table()
+                print("✅ Created 'people' table")
+            except ResourceExistsError:
+                print("✅ 'people' table already exists")
+            except Exception as e:
+                print(f"⚠️ Table access issue: {e}")
             
             count = 0
             for row in csv_reader:
@@ -307,6 +303,7 @@ def upload_csv():
         else:
             return redirect('/?messages=❌ Please select a valid CSV file')
     except Exception as e:
+        print(f"CSV upload error: {e}")  # Add logging
         return redirect(f'/?messages=❌ Error uploading CSV: {str(e)}')
 
 @app.route('/upload_pictures', methods=['POST'])
@@ -339,6 +336,7 @@ def upload_pictures():
 def search_name():
     name = request.args.get('name', '').strip()
     exact_name = request.args.get('exact_name', '').strip()
+    messages = request.args.get('messages', '').strip()
     
     # If exact_name is provided, do exact matching only
     if exact_name:
@@ -408,6 +406,9 @@ def search_name():
                 return f'''
                 <div style="font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px;">
                     <h1>🔍 Search Results for: "{search_term}"</h1>
+                    
+                    {f'<div style="padding: 15px; margin: 10px 0; border-radius: 8px; background: #d4edda; color: #155724; border: 1px solid #c3e6cb;">{messages}</div>' if messages else ''}
+                    
                     <div style="border: 2px solid #4facfe; padding: 20px; border-radius: 10px; background: white;">
                         <h2>👤 {get_display_value(person.get('Name', 'N/A'))}</h2>
                         {f'<img src="{picture_url}" alt="{get_display_value(person.get("Name", ""))}" style="max-width: 200px; margin: 10px 0; border-radius: 8px;">' if picture_url else '<p>📷 No picture available</p>'}
@@ -776,32 +777,6 @@ def update_person():
     except Exception as e:
         return redirect(f'/?messages=❌ Update error: {str(e)}')
 
-@app.route('/remove_person', methods=['POST'])
-def remove_person():
-    name = request.form.get('name', '').strip()
-    if not name:
-        return redirect('/?messages=❌ Please enter a name')
-    
-    if not table_service:
-        return redirect('/?messages=❌ Azure Table Storage not available')
-    
-    try:
-        table_client = table_service.get_table_client('people')
-        entities = table_client.query_entities(f"PartitionKey eq 'person' and Name eq '{name}'")
-        deleted = False
-        for entity in entities:
-            table_client.delete_entity(partition_key='person', row_key=entity['RowKey'])
-            deleted = True
-            break
-        
-        if deleted:
-            return redirect(f'/?messages=✅ Removed {name}!')
-        else:
-            return redirect(f'/?messages=❌ {name} not found')
-    
-    except Exception as e:
-        return redirect(f'/?messages=❌ Error: {str(e)}')
-
 @app.route('/update_person_image', methods=['POST'])
 def update_person_image():
     name = request.form.get('name', '').strip()
@@ -850,7 +825,11 @@ def update_person_image():
             # Update the Picture field with the new filename
             person['Picture'] = new_filename
             table_client.upsert_entity(person)
-            return redirect(f'/?messages=✅ Image updated successfully for {name}!')
+            
+            # Redirect back to the person's detail page
+            import urllib.parse
+            encoded_name = urllib.parse.quote(name)
+            return redirect(f'/search_name?exact_name={encoded_name}&messages=✅ Image updated successfully!')
         else:
             return redirect(f'/?messages=❌ Person "{name}" not found in database')
     
@@ -858,6 +837,43 @@ def update_person_image():
         print(f"Update image error: {e}")
         return redirect(f'/?messages=❌ Error updating image: {str(e)}')
 
+@app.route('/remove_person', methods=['POST'])
+def remove_person():
+    name = request.form.get('name', '').strip()
+    if not name:
+        return redirect('/?messages=❌ Please enter a name')
+    
+    if not table_service:
+        return redirect('/?messages=❌ Azure Table Storage not available')
+    
+    try:
+        table_client = table_service.get_table_client('people')
+        entities = table_client.query_entities(f"PartitionKey eq 'person' and Name eq '{name}'")
+        deleted = False
+        for entity in entities:
+            table_client.delete_entity(partition_key='person', row_key=entity['RowKey'])
+            deleted = True
+            break
+        
+        if deleted:
+            return redirect(f'/?messages=✅ Removed {name}!')
+        else:
+            return redirect(f'/?messages=❌ {name} not found')
+    
+    except Exception as e:
+        return redirect(f'/?messages=❌ Error: {str(e)}')
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return f'''
+    <div style="font-family: Arial; max-width: 600px; margin: 50px auto; padding: 20px; border: 1px solid #ff4444; background: #ffe6e6;">
+        <h1 style="color: #cc0000;">Internal Server Error</h1>
+        <p>An error occurred while processing your request.</p>
+        <p><strong>Error:</strong> {str(error)}</p>
+        <a href="/" style="padding: 10px 20px; background: #4facfe; color: white; text-decoration: none; border-radius: 5px;">← Back to Home</a>
+    </div>
+    ''', 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)
