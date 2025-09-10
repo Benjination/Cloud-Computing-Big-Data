@@ -265,6 +265,15 @@ def index():
             </form>
         </div>
     </div>
+    
+    <!-- Subtle Design Credit -->
+    <div style="text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid #f0f0f0;">
+        <a href="https://BenjaminNiccum.com" target="_blank" 
+           style="color: #999; font-size: 11px; text-decoration: none; opacity: 0.7; transition: opacity 0.3s ease;"
+           onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+            Design by BNiccum
+        </a>
+    </div>
 </body>
 </html>
     '''
@@ -477,6 +486,15 @@ def search_name():
                         <a href="/" style="display: inline-block; padding: 10px 20px; background: #4facfe; color: white; text-decoration: none; border-radius: 5px; margin-right: 10px;">← Back to Home</a>
                         <a href="javascript:history.back()" style="display: inline-block; padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px;">← Back to Search</a>
                     </div>
+                    
+                    <!-- Subtle Design Credit -->
+                    <div style="text-align: center; margin-top: 30px; padding: 15px; border-top: 1px solid #f0f0f0;">
+                        <a href="https://BenjaminNiccum.com" target="_blank" 
+                           style="color: #999; font-size: 11px; text-decoration: none; opacity: 0.7; transition: opacity 0.3s ease;"
+                           onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                            Design by BNiccum
+                        </a>
+                    </div>
                 </div>
                 '''
             
@@ -556,6 +574,15 @@ def search_name():
                 result_html += '''
                     </div>
                     <a href="/" style="margin-top: 20px; display: inline-block; padding: 10px 20px; background: #4facfe; color: white; text-decoration: none; border-radius: 5px;">← Back to Home</a>
+                    
+                    <!-- Subtle Design Credit -->
+                    <div style="text-align: center; margin-top: 30px; padding: 15px; border-top: 1px solid #f0f0f0;">
+                        <a href="https://BenjaminNiccum.com" target="_blank" 
+                           style="color: #999; font-size: 11px; text-decoration: none; opacity: 0.7; transition: opacity 0.3s ease;"
+                           onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                            Design by BNiccum
+                        </a>
+                    </div>
                 </div>
                 '''
                 return result_html
@@ -731,7 +758,18 @@ def search_salary():
                 </a>
                 '''
             
-            result_html += '</div><a href="/" style="padding: 10px 20px; background: #4facfe; color: white; text-decoration: none; border-radius: 5px;">← Back</a></div>'
+            result_html += '''</div>
+            <a href="/" style="padding: 10px 20px; background: #4facfe; color: white; text-decoration: none; border-radius: 5px;">← Back</a>
+            
+            <!-- Subtle Design Credit -->
+            <div style="text-align: center; margin-top: 30px; padding: 15px; border-top: 1px solid #f0f0f0;">
+                <a href="https://BenjaminNiccum.com" target="_blank" 
+                   style="color: #999; font-size: 11px; text-decoration: none; opacity: 0.7; transition: opacity 0.3s ease;"
+                   onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                    Design by BNiccum
+                </a>
+            </div>
+            </div>'''
             return result_html
         else:
             # If no data found, it might be because there's no data in the table
