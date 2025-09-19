@@ -268,6 +268,18 @@ def search_near_location(latitude, longitude, radius_km):
         longitude = float(longitude)
         radius_km = float(radius_km)
         
+        # Validate coordinate ranges based on actual earthquake data
+        # Latitude: -64.9950 to 79.2928 (actual range in database)
+        # Longitude: -179.9600 to 179.9572 (actual range in database)
+        if not (-90 <= latitude <= 90):
+            return jsonify({'status': 'error', 'message': f'Invalid latitude: {latitude}. Must be between -90 and 90.'}), 400
+        
+        if not (-180 <= longitude <= 180):
+            return jsonify({'status': 'error', 'message': f'Invalid longitude: {longitude}. Must be between -180 and 180.'}), 400
+            
+        if not (1 <= radius_km <= 20000):  # Reasonable radius limits
+            return jsonify({'status': 'error', 'message': f'Invalid radius: {radius_km}km. Must be between 1 and 20000 km.'}), 400
+        
         conn = get_db_connection()
         cursor = conn.cursor()
         

@@ -176,14 +176,14 @@
             <h2>📍 Search Near Location</h2>
             <div class="search-form">
                 <label>Latitude:</label>
-                <input type="number" id="searchLat" step="0.0001" placeholder="e.g., 34.0522" value="34.0522">
+                <input type="number" id="searchLat" step="0.0001" placeholder="e.g., 35.6762" value="35.6762" min="-90" max="90">
                 <label>Longitude:</label>
-                <input type="number" id="searchLng" step="0.0001" placeholder="e.g., -118.2437" value="-118.2437">
+                <input type="number" id="searchLng" step="0.0001" placeholder="e.g., 139.6503" value="139.6503" min="-180" max="180">
                 <label>Radius (km):</label>
-                <input type="number" id="searchRadius" min="1" max="1000" value="50">
+                <input type="number" id="searchRadius" min="1" max="1000" value="100">
                 <button onclick="searchNearLocation()">Search</button>
             </div>
-            <p><em>Example above is Los Angeles, CA coordinates</em></p>
+            <p><em>Example above is Tokyo, Japan coordinates (earthquake-active region)</em></p>
         </div>
         
         <!-- Results Area -->
