@@ -120,26 +120,24 @@ def index():
         cursor.execute("SELECT COUNT(*) FROM earthquakes")
         earthquake_count = cursor.fetchone()[0]
         
-        # Get sample data info
-        cursor.execute("SELECT MIN(magnitude) as min_mag, MAX(magnitude) as max_mag, COUNT(*) as total FROM earthquakes")
-        stats = cursor.fetchone()
+        # Get table list
+        cursor.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'")
+        tables = [row[0] for row in cursor.fetchall()]
         
         conn.close()
         
-        db_status = "Connected"
-        db_info = {
-            'total_earthquakes': earthquake_count,
-            'min_magnitude': stats[0] if stats[0] else 0,
-            'max_magnitude': stats[1] if stats[1] else 0
-        }
+        # For the template variables it expects
+        blobs = "N/A - Using SQL Database"  # Not using blob storage
         
     except Exception as e:
-        db_status = f"Error: {e}"
-        db_info = {}
+        earthquake_count = f"Error: {e}"
+        tables = f"Error: {e}"
+        blobs = f"Error: {e}"
     
     return render_template('index.html', 
-                         db_status=db_status,
-                         db_info=db_info)
+                         earthquake_count=earthquake_count,
+                         tables=tables,
+                         blobs=blobs)
 
 @app.route('/search')
 def search():
