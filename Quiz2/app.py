@@ -244,7 +244,8 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     except (ValueError, TypeError):
         return float('inf')
     
-    if not all([lat1, lon1, lat2, lon2]):
+    # Check if any coordinate is None (but 0 is valid!)
+    if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
         return float('inf')
     
     R = 6371  # Radius of earth in kilometers
