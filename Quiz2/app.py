@@ -163,8 +163,16 @@ def search_magnitude_greater(magnitude):
         
         results = []
         for row in cursor.fetchall():
+            # Handle time field - it's stored as string, not datetime
+            time_str = row[0] if row[0] else ''
+            # If it's already a string, use it directly; if it's a datetime, convert it
+            if hasattr(time_str, 'isoformat'):
+                time_formatted = time_str.isoformat()
+            else:
+                time_formatted = str(time_str) if time_str else ''
+            
             results.append({
-                'time': row[0].isoformat() if row[0] else '',
+                'time': time_formatted,
                 'latitude': float(row[1]) if row[1] is not None else 0.0,
                 'longitude': float(row[2]) if row[2] is not None else 0.0,
                 'magnitude': float(row[3]) if row[3] is not None else 0.0,
@@ -200,8 +208,16 @@ def search_magnitude_range(min_mag, max_mag):
         
         results = []
         for row in cursor.fetchall():
+            # Handle time field - it's stored as string, not datetime
+            time_str = row[0] if row[0] else ''
+            # If it's already a string, use it directly; if it's a datetime, convert it
+            if hasattr(time_str, 'isoformat'):
+                time_formatted = time_str.isoformat()
+            else:
+                time_formatted = str(time_str) if time_str else ''
+            
             results.append({
-                'time': row[0].isoformat() if row[0] else '',
+                'time': time_formatted,
                 'latitude': float(row[1]) if row[1] is not None else 0.0,
                 'longitude': float(row[2]) if row[2] is not None else 0.0,
                 'magnitude': float(row[3]) if row[3] is not None else 0.0,
@@ -271,8 +287,15 @@ def search_near_location(latitude, longitude, radius_km):
             distance = haversine_distance(latitude, longitude, eq_lat, eq_lon)
             
             if distance <= radius_km:
+                # Handle time field - it's stored as string, not datetime
+                time_str = row[0] if row[0] else ''
+                if hasattr(time_str, 'isoformat'):
+                    time_formatted = time_str.isoformat()
+                else:
+                    time_formatted = str(time_str) if time_str else ''
+                
                 results.append({
-                    'time': row[0].isoformat() if row[0] else '',
+                    'time': time_formatted,
                     'latitude': eq_lat,
                     'longitude': eq_lon,
                     'magnitude': eq_magnitude,
