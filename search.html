@@ -418,36 +418,61 @@
 
             showLoading();
             try {
+                // Use client-side filtering since Firebase stores magnitudes as strings
+                console.log(`Searching for magnitude ${minMag} - ${maxMag}`);
+                
                 const q = query(
-                    collection(db, 'earthquakes'),
-                    where('magnitude', '>=', minMag),
-                    where('magnitude', '<=', maxMag),
-                    orderBy('magnitude', 'desc')
+                    collection(db, "earthquakes"),
+                    limit(3000)  // Get a good sample for filtering
                 );
+                
                 const snapshot = await getDocs(q);
+                console.log(`Retrieved ${snapshot.size} documents from Firestore`);
                 
                 const results = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    results.push({
-                        time: formatDate(data.time),
-                        latitude: data.latitude || 0,
-                        longitude: data.longitude || 0,
-                        magnitude: data.magnitude || 0,
-                        place: data.place || '',
-                        id: doc.id
-                    });
+                    
+                    // Handle both 'magnitude' and 'mag' field names and string/number types
+                    let mag = data.magnitude || data.mag;
+                    
+                    // Convert to number regardless of storage type
+                    if (typeof mag === 'string') {
+                        mag = parseFloat(mag);
+                    } else if (typeof mag === 'number') {
+                        mag = mag;
+                    } else {
+                        mag = 0;
+                    }
+                    
+                    // Client-side filter with number comparison
+                    if (!isNaN(mag) && mag >= minMag && mag <= maxMag) {
+                        results.push({
+                            time: formatDate(data.time),
+                            latitude: parseFloat(data.latitude) || 0,
+                            longitude: parseFloat(data.longitude) || 0,
+                            magnitude: mag,
+                            place: data.place || "",
+                            id: doc.id
+                        });
+                    }
                 });
+                
+                console.log(`Found ${results.length} earthquakes with magnitude ${minMag} - ${maxMag}`);
+                
+                // Sort by magnitude descending
+                results.sort((a, b) => b.magnitude - a.magnitude);
 
                 hideLoading();
                 displayResults({
                     status: 'success',
                     query: `Magnitude ${minMag} - ${maxMag}`,
                     count: results.length,
-                    earthquakes: results
+                    earthquakes: results.slice(0, 500)  // Limit display for performance
                 });
             } catch (error) {
                 hideLoading();
+                console.error("Magnitude range search error:", error);
                 showError('Search failed: ' + error.message);
             }
         };
@@ -514,9 +539,10 @@
         window.analyzeTimePatterns = async function() {
             showLoading();
             try {
+                // Use client-side filtering since magnitude is stored as string
                 const q = query(
                     collection(db, 'earthquakes'),
-                    where('magnitude', '>', 4.0)
+                    limit(5000)  // Sample for performance
                 );
                 const snapshot = await getDocs(q);
                 
@@ -525,9 +551,18 @@
                 
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    if (data.time) {
+                    
+                    // Only analyze significant earthquakes (magnitude > 4.0)
+                    let mag = data.magnitude || data.mag;
+                    if (typeof mag === 'string') {
+                        mag = parseFloat(mag);
+                    }
+                    
+                    if (!isNaN(mag) && mag > 4.0 && data.time) {
                         let date = data.time;
                         if (date.toDate) date = date.toDate();
+                        else if (typeof date === 'string') date = new Date(date);
+                        
                         const hour = date.getHours();
                         
                         if (hour >= 18 || hour < 6) {
