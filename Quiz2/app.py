@@ -259,11 +259,11 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     
     return R * c
 
-@app.route('/search/near-location/<float:latitude>/<float:longitude>/<float:radius_km>')
+@app.route('/search/near-location/<latitude>/<longitude>/<radius_km>')
 def search_near_location(latitude, longitude, radius_km):
     """Find earthquakes within specified radius of a location"""
     try:
-        # Ensure all numeric values are floats for proper comparison
+        # Convert string parameters to floats
         latitude = float(latitude)
         longitude = float(longitude)
         radius_km = float(radius_km)
@@ -347,26 +347,220 @@ def analyze_large_quakes_at_night():
         for row in cursor.fetchall():
             time_dt = row[0]
             if time_dt:
-                hour = time_dt.hour
-                # Consider 6 PM to 6 AM as "night"
-                if hour >= 18 or hour < 6:
-                    night_count += 1
-                else:
-                    day_count += 1
+                try:
+                    # Handle both string and datetime objects
+                    if isinstance(time_dt, str):
+                        # Parse ISO datetime string
+                        dt = datetime.fromisoformat(time_dt.replace('Z', '+00:00'))
+                        hour = dt.hour
+                    else:
+                        # Already a datetime object
+                        hour = time_dt.hour
+                    
+                    # Consider 6 PM to 6 AM as "night"
+                    if hour >= 18 or hour < 6:
+                        night_count += 1
+                    else:
+                        day_count += 1
+                except (ValueError, AttributeError):
+                    # Skip malformed dates
+                    continue
         
         conn.close()
         
         total = day_count + night_count
         night_percentage = (night_count / total * 100) if total > 0 else 0
+        day_percentage = (day_count / total * 100) if total > 0 else 0
         
         return jsonify({
             'status': 'success',
+            'count': total,  # Add count field for consistent display
             'analysis': 'Large earthquakes (>4.0) - Day vs Night',
             'day_count': day_count,
             'night_count': night_count,
             'total_large_quakes': total,
+            'day_percentage': round(day_percentage, 1),
             'night_percentage': round(night_percentage, 1),
             'conclusion': f'{night_percentage:.1f}% of large earthquakes occur at night (6 PM - 6 AM)'
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/analysis/weekend-earthquakes')
+def analyze_weekend_earthquakes():
+    """Analyze if earthquakes occur less frequently on weekends"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        sql = "SELECT time FROM earthquakes WHERE time IS NOT NULL"
+        cursor.execute(sql)
+        
+        weekday_count = 0
+        weekend_count = 0
+        
+        for row in cursor.fetchall():
+            time_dt = row[0]
+            if time_dt:
+                try:
+                    # Handle both string and datetime objects
+                    if isinstance(time_dt, str):
+                        dt = datetime.fromisoformat(time_dt.replace('Z', '+00:00'))
+                        weekday = dt.weekday()
+                    else:
+                        weekday = time_dt.weekday()
+                    
+                    # weekday() returns 0-6 where Monday=0, Sunday=6
+                    # Weekend is Saturday(5) and Sunday(6)
+                    if weekday >= 5:  # Saturday or Sunday
+                        weekend_count += 1
+                    else:
+                        weekday_count += 1
+                except (ValueError, AttributeError):
+                    continue
+        
+        conn.close()
+        
+        total = weekday_count + weekend_count
+        weekend_percentage = (weekend_count / total * 100) if total > 0 else 0
+        weekday_percentage = (weekday_count / total * 100) if total > 0 else 0
+        
+        return jsonify({
+            'status': 'success',
+            'count': total,
+            'analysis': 'Earthquake frequency - Weekday vs Weekend',
+            'weekday_count': weekday_count,
+            'weekend_count': weekend_count,
+            'total_earthquakes': total,
+            'weekday_percentage': round(weekday_percentage, 1),
+            'weekend_percentage': round(weekend_percentage, 1),
+            'conclusion': f'{weekend_percentage:.1f}% of earthquakes occur on weekends (Sat-Sun)'
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/analysis/early-morning-earthquakes')
+def analyze_early_morning_earthquakes():
+    """Analyze if more earthquakes occur in early morning hours (midnight to 6 AM)"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        sql = "SELECT time FROM earthquakes WHERE time IS NOT NULL"
+        cursor.execute(sql)
+        
+        early_morning_count = 0  # 0-6 AM
+        morning_count = 0        # 6-12 PM  
+        afternoon_count = 0      # 12-6 PM
+        evening_count = 0        # 6 PM-midnight
+        
+        for row in cursor.fetchall():
+            time_dt = row[0]
+            if time_dt:
+                try:
+                    if isinstance(time_dt, str):
+                        dt = datetime.fromisoformat(time_dt.replace('Z', '+00:00'))
+                        hour = dt.hour
+                    else:
+                        hour = time_dt.hour
+                    
+                    if 0 <= hour < 6:
+                        early_morning_count += 1
+                    elif 6 <= hour < 12:
+                        morning_count += 1
+                    elif 12 <= hour < 18:
+                        afternoon_count += 1
+                    else:  # 18-24
+                        evening_count += 1
+                except (ValueError, AttributeError):
+                    continue
+        
+        conn.close()
+        
+        total = early_morning_count + morning_count + afternoon_count + evening_count
+        early_morning_percentage = (early_morning_count / total * 100) if total > 0 else 0
+        
+        return jsonify({
+            'status': 'success',
+            'count': total,
+            'analysis': 'Earthquake distribution by time of day',
+            'early_morning_count': early_morning_count,
+            'morning_count': morning_count,
+            'afternoon_count': afternoon_count,
+            'evening_count': evening_count,
+            'total_earthquakes': total,
+            'early_morning_percentage': round(early_morning_percentage, 1),
+            'conclusion': f'{early_morning_percentage:.1f}% of earthquakes occur in early morning (midnight-6 AM)'
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/analysis/earthquake-clusters')
+def analyze_earthquake_clusters():
+    """Find clusters of earthquakes within 50km of each other"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get all earthquakes with coordinates
+        sql = "SELECT latitude, longitude, magnitude, place FROM earthquakes WHERE latitude IS NOT NULL AND longitude IS NOT NULL"
+        cursor.execute(sql)
+        
+        earthquakes = []
+        for row in cursor.fetchall():
+            earthquakes.append({
+                'lat': float(row[0]),
+                'lon': float(row[1]),
+                'magnitude': float(row[2]) if row[2] else 0,
+                'place': row[3] if row[3] else ''
+            })
+        
+        conn.close()
+        
+        # Find clusters (simplified approach - count earthquakes within 50km)
+        cluster_threshold = 50  # km
+        clusters = []
+        processed = set()
+        
+        for i, eq1 in enumerate(earthquakes):
+            if i in processed:
+                continue
+                
+            cluster = [eq1]
+            processed.add(i)
+            
+            for j, eq2 in enumerate(earthquakes):
+                if j in processed or i == j:
+                    continue
+                    
+                distance = haversine_distance(eq1['lat'], eq1['lon'], eq2['lat'], eq2['lon'])
+                if distance <= cluster_threshold:
+                    cluster.append(eq2)
+                    processed.add(j)
+            
+            if len(cluster) >= 5:  # Only clusters with 5+ earthquakes
+                avg_lat = sum(eq['lat'] for eq in cluster) / len(cluster)
+                avg_lon = sum(eq['lon'] for eq in cluster) / len(cluster)
+                avg_magnitude = sum(eq['magnitude'] for eq in cluster) / len(cluster)
+                
+                clusters.append({
+                    'count': len(cluster),
+                    'center_lat': round(avg_lat, 3),
+                    'center_lon': round(avg_lon, 3),
+                    'avg_magnitude': round(avg_magnitude, 2),
+                    'sample_location': cluster[0]['place']
+                })
+        
+        # Sort by cluster size
+        clusters.sort(key=lambda x: x['count'], reverse=True)
+        
+        return jsonify({
+            'status': 'success',
+            'count': len(clusters),
+            'analysis': f'Earthquake clusters (within {cluster_threshold}km, 5+ earthquakes)',
+            'clusters': clusters[:10],  # Top 10 clusters
+            'total_clustered_earthquakes': sum(c['count'] for c in clusters),
+            'conclusion': f'Found {len(clusters)} clusters containing {sum(c["count"] for c in clusters)} earthquakes'
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

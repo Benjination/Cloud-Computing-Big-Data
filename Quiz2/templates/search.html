@@ -124,6 +124,42 @@
             color: #333;
             margin-bottom: 10px;
         }
+        .pagination {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .pagination button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 0 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .pagination button:hover {
+            background-color: #0056b3;
+        }
+        .pagination button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .pagination button.active {
+            background-color: #28a745;
+        }
+        .pagination .page-info {
+            margin: 0 15px;
+            font-weight: bold;
+        }
+        .results-per-page {
+            margin: 10px 0;
+            text-align: right;
+        }
+        .results-per-page select {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -141,6 +177,15 @@
                 </a>
                 <a href="#" onclick="quickSearch('/analysis/large-quakes-at-night', 'night analysis')" class="quick-link">
                     Large Quakes at Night Analysis
+                </a>
+                <a href="#" onclick="quickSearch('/analysis/weekend-earthquakes', 'weekend analysis')" class="quick-link">
+                    Weekend vs Weekday Analysis
+                </a>
+                <a href="#" onclick="quickSearch('/analysis/early-morning-earthquakes', 'early morning analysis')" class="quick-link">
+                    Early Morning Earthquake Analysis
+                </a>
+                <a href="#" onclick="quickSearch('/analysis/earthquake-clusters', 'cluster analysis')" class="quick-link">
+                    Earthquake Clusters Analysis
                 </a>
             </div>
         </div>
@@ -164,10 +209,10 @@
             
             <p><strong>Common ranges:</strong></p>
             <div class="quick-links">
-                <a href="/search/magnitude-range/2.0/2.5" class="quick-link">2.0 - 2.5</a>
-                <a href="/search/magnitude-range/2.5/3.0" class="quick-link">2.5 - 3.0</a>
-                <a href="/search/magnitude-range/3.0/4.0" class="quick-link">3.0 - 4.0</a>
-                <a href="/search/magnitude-range/4.0/5.0" class="quick-link">4.0 - 5.0</a>
+                <a href="#" onclick="quickMagnitudeRange(2.0, 2.5)" class="quick-link">2.0 - 2.5</a>
+                <a href="#" onclick="quickMagnitudeRange(2.5, 3.0)" class="quick-link">2.5 - 3.0</a>
+                <a href="#" onclick="quickMagnitudeRange(3.0, 4.0)" class="quick-link">3.0 - 4.0</a>
+                <a href="#" onclick="quickMagnitudeRange(4.0, 5.0)" class="quick-link">4.0 - 5.0</a>
             </div>
         </div>
         
@@ -198,12 +243,74 @@
         
         <div id="results" class="results" style="display: none;">
             <h3>Results</h3>
+            <div class="results-per-page">
+                <label>Results per page:</label>
+                <select id="resultsPerPage" onchange="changeResultsPerPage()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
             <div id="resultsContent"></div>
+            <div id="pagination" class="pagination" style="display: none;">
+                <button id="prevPage" onclick="goToPage(currentPage - 1)">Previous</button>
+                <span class="page-info">
+                    Page <span id="currentPageSpan">1</span> of <span id="totalPagesSpan">1</span>
+                </span>
+                <button id="nextPage" onclick="goToPage(currentPage + 1)">Next</button>
+                <div style="margin-top: 10px;">
+                    <span>Go to page:</span>
+                    <input type="number" id="gotoPage" min="1" style="width: 60px; padding: 4px;" onkeypress="handleGotoPage(event)">
+                    <button onclick="goToPageInput()">Go</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         let progressInterval;
+        
+        // Pagination variables
+        let allResults = [];
+        let currentPage = 1;
+        let resultsPerPage = 20;
+        let totalPages = 1;
+        let currentResultsType = null; // 'earthquakes' or 'analysis'
+        
+        // Format number inputs to always show one decimal place
+        function formatNumberInput(inputElement) {
+            const value = parseFloat(inputElement.value);
+            if (!isNaN(value)) {
+                inputElement.value = value.toFixed(1);
+            }
+        }
+        
+        // Add event listeners when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const numberInputs = ['magGreater', 'magMin', 'magMax'];
+            
+            numberInputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    // Format on blur (when user clicks away)
+                    input.addEventListener('blur', function() {
+                        formatNumberInput(this);
+                    });
+                    
+                    // Format on input change (including spinner arrows)
+                    input.addEventListener('input', function() {
+                        // Small delay to allow the browser to update the value first
+                        setTimeout(() => {
+                            formatNumberInput(this);
+                        }, 10);
+                    });
+                    
+                    // Format initial values
+                    formatNumberInput(input);
+                }
+            });
+        });
         
         function showLoading(searchType) {
             const loading = document.getElementById('loading');
@@ -256,7 +363,7 @@
         }
         
         function searchMagnitudeGreater() {
-            const magnitude = document.getElementById('magGreater').value;
+            const magnitude = parseFloat(document.getElementById('magGreater').value).toFixed(1);
             showLoading('magnitude');
             
             fetch(`/search/magnitude-greater-than/${magnitude}`)
@@ -272,11 +379,28 @@
         }
         
         function searchMagnitudeRange() {
-            const minMag = document.getElementById('magMin').value;
-            const maxMag = document.getElementById('magMax').value;
+            const minMag = parseFloat(document.getElementById('magMin').value).toFixed(1);
+            const maxMag = parseFloat(document.getElementById('magMax').value).toFixed(1);
             showLoading('magnitude range');
             
             fetch(`/search/magnitude-range/${minMag}/${maxMag}`)
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    displayResults(data);
+                })
+                .catch(error => {
+                    hideLoading();
+                    displayResults({status: 'error', message: 'Search failed: ' + error.message});
+                });
+        }
+        
+        function quickMagnitudeRange(minMag, maxMag) {
+            const minMagFormatted = parseFloat(minMag).toFixed(1);
+            const maxMagFormatted = parseFloat(maxMag).toFixed(1);
+            showLoading('magnitude range');
+            
+            fetch(`/search/magnitude-range/${minMagFormatted}/${maxMagFormatted}`)
                 .then(response => response.json())
                 .then(data => {
                     hideLoading();
@@ -324,50 +448,166 @@
         function displayResults(data) {
             const resultsDiv = document.getElementById('results');
             const contentDiv = document.getElementById('resultsContent');
+            const paginationDiv = document.getElementById('pagination');
             
             if (data.status === 'success') {
-                let html = `<strong>${data.query || 'Search Results'}</strong><br>`;
-                html += `Found ${data.count} earthquakes<br><br>`;
+                // Store results globally for pagination
+                allResults = data;
+                currentPage = 1;
                 
+                // Determine result type
                 if (data.analysis) {
-                    html += `<strong>Analysis:</strong> ${data.analysis}<br>`;
-                    html += `Total: ${data.total_large_quakes}<br>`;
-                    html += `Day: ${data.day_count} (${data.day_percentage}%)<br>`;
-                    html += `Night: ${data.night_count} (${data.night_percentage}%)<br>`;
-                    html += `<strong>Conclusion:</strong> ${data.conclusion}<br>`;
+                    currentResultsType = 'analysis';
+                    paginationDiv.style.display = 'none'; // No pagination for analysis
                 } else if (data.earthquakes) {
-                    html += '<table border="1" style="width:100%; border-collapse: collapse;">';
-                    html += '<tr><th>Time</th><th>Location</th><th>Magnitude</th><th>Place</th>';
-                    if (data.earthquakes[0] && data.earthquakes[0].distance_km !== undefined) {
-                        html += '<th>Distance (km)</th>';
-                    }
-                    html += '</tr>';
-                    
-                    data.earthquakes.slice(0, 20).forEach(eq => {
-                        html += `<tr>
-                            <td>${eq.time.split('T')[0]}</td>
-                            <td>${eq.latitude.toFixed(3)}, ${eq.longitude.toFixed(3)}</td>
-                            <td><strong>${eq.magnitude}</strong></td>
-                            <td>${eq.place}</td>`;
-                        if (eq.distance_km !== undefined) {
-                            html += `<td>${eq.distance_km}</td>`;
-                        }
-                        html += '</tr>';
-                    });
-                    html += '</table>';
-                    
-                    if (data.earthquakes.length > 20) {
-                        html += `<p><em>Showing first 20 of ${data.earthquakes.length} results</em></p>`;
-                    }
+                    currentResultsType = 'earthquakes';
+                    totalPages = Math.ceil(data.earthquakes.length / resultsPerPage);
+                    paginationDiv.style.display = totalPages > 1 ? 'block' : 'none';
                 }
                 
-                contentDiv.innerHTML = html;
+                renderCurrentPage();
             } else {
                 contentDiv.innerHTML = `<strong>❌ Error:</strong> ${data.message}`;
+                paginationDiv.style.display = 'none';
             }
             
             resultsDiv.style.display = 'block';
             resultsDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function renderCurrentPage() {
+            const contentDiv = document.getElementById('resultsContent');
+            const data = allResults;
+            
+            let html = `<strong>${data.query || 'Search Results'}</strong><br>`;
+            html += `Found ${data.count} earthquakes<br><br>`;
+            
+            if (currentResultsType === 'analysis') {
+                html += `<strong>Analysis:</strong> ${data.analysis}<br>`;
+                
+                // Handle different analysis types
+                if (data.day_count !== undefined && data.night_count !== undefined) {
+                    // Day vs Night analysis
+                    html += `Total: ${data.total_large_quakes}<br>`;
+                    html += `Day: ${data.day_count} (${data.day_percentage}%)<br>`;
+                    html += `Night: ${data.night_count} (${data.night_percentage}%)<br>`;
+                } else if (data.weekday_count !== undefined && data.weekend_count !== undefined) {
+                    // Weekend analysis
+                    html += `Total: ${data.total_earthquakes}<br>`;
+                    html += `Weekdays: ${data.weekday_count} (${data.weekday_percentage}%)<br>`;
+                    html += `Weekends: ${data.weekend_count} (${data.weekend_percentage}%)<br>`;
+                } else if (data.early_morning_count !== undefined) {
+                    // Early morning analysis
+                    html += `Total: ${data.total_earthquakes}<br>`;
+                    html += `Early Morning (0-6 AM): ${data.early_morning_count} (${data.early_morning_percentage}%)<br>`;
+                    html += `Morning (6-12 PM): ${data.morning_count}<br>`;
+                    html += `Afternoon (12-6 PM): ${data.afternoon_count}<br>`;
+                    html += `Evening (6 PM-12 AM): ${data.evening_count}<br>`;
+                } else if (data.clusters !== undefined) {
+                    // Cluster analysis
+                    html += `Total Clusters: ${data.count}<br>`;
+                    html += `Total Clustered Earthquakes: ${data.total_clustered_earthquakes}<br><br>`;
+                    
+                    if (data.clusters.length > 0) {
+                        html += '<table border="1" style="width:100%; border-collapse: collapse;">';
+                        html += '<tr><th>Cluster Size</th><th>Center Location</th><th>Avg Magnitude</th><th>Sample Location</th></tr>';
+                        
+                        data.clusters.forEach(cluster => {
+                            html += `<tr>
+                                <td><strong>${cluster.count}</strong></td>
+                                <td>${cluster.center_lat}, ${cluster.center_lon}</td>
+                                <td>${cluster.avg_magnitude}</td>
+                                <td>${cluster.sample_location}</td>
+                            </tr>`;
+                        });
+                        html += '</table>';
+                    }
+                }
+                
+                html += `<br><strong>Conclusion:</strong> ${data.conclusion}<br>`;
+            } else if (currentResultsType === 'earthquakes' && data.earthquakes) {
+                // Calculate start and end indices for current page
+                const startIndex = (currentPage - 1) * resultsPerPage;
+                const endIndex = Math.min(startIndex + resultsPerPage, data.earthquakes.length);
+                const pageResults = data.earthquakes.slice(startIndex, endIndex);
+                
+                html += `<p><em>Showing ${startIndex + 1}-${endIndex} of ${data.earthquakes.length} results</em></p>`;
+                
+                html += '<table border="1" style="width:100%; border-collapse: collapse;">';
+                html += '<tr><th>Time</th><th>Location</th><th>Magnitude</th><th>Place</th>';
+                if (data.earthquakes[0] && data.earthquakes[0].distance_km !== undefined) {
+                    html += '<th>Distance (km)</th>';
+                }
+                html += '</tr>';
+                
+                pageResults.forEach(eq => {
+                    html += `<tr>
+                        <td>${eq.time.split('T')[0]}</td>
+                        <td>${eq.latitude.toFixed(3)}, ${eq.longitude.toFixed(3)}</td>
+                        <td><strong>${eq.magnitude}</strong></td>
+                        <td>${eq.place}</td>`;
+                    if (eq.distance_km !== undefined) {
+                        html += `<td>${eq.distance_km}</td>`;
+                    }
+                    html += '</tr>';
+                });
+                html += '</table>';
+                
+                updatePaginationControls();
+            }
+            
+            contentDiv.innerHTML = html;
+        }
+        
+        function updatePaginationControls() {
+            const prevBtn = document.getElementById('prevPage');
+            const nextBtn = document.getElementById('nextPage');
+            const currentPageSpan = document.getElementById('currentPageSpan');
+            const totalPagesSpan = document.getElementById('totalPagesSpan');
+            const gotoPageInput = document.getElementById('gotoPage');
+            
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+            currentPageSpan.textContent = currentPage;
+            totalPagesSpan.textContent = totalPages;
+            gotoPageInput.max = totalPages;
+            gotoPageInput.placeholder = `1-${totalPages}`;
+        }
+        
+        function goToPage(page) {
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                renderCurrentPage();
+            }
+        }
+        
+        function goToPageInput() {
+            const gotoPageInput = document.getElementById('gotoPage');
+            const page = parseInt(gotoPageInput.value);
+            if (page && page >= 1 && page <= totalPages) {
+                goToPage(page);
+                gotoPageInput.value = '';
+            }
+        }
+        
+        function handleGotoPage(event) {
+            if (event.key === 'Enter') {
+                goToPageInput();
+            }
+        }
+        
+        function changeResultsPerPage() {
+            const select = document.getElementById('resultsPerPage');
+            resultsPerPage = parseInt(select.value);
+            
+            if (currentResultsType === 'earthquakes' && allResults.earthquakes) {
+                totalPages = Math.ceil(allResults.earthquakes.length / resultsPerPage);
+                currentPage = 1; // Reset to first page
+                renderCurrentPage();
+                
+                const paginationDiv = document.getElementById('pagination');
+                paginationDiv.style.display = totalPages > 1 ? 'block' : 'none';
+            }
         }
     </script>
 </body>
