@@ -337,39 +337,68 @@
 
         // Search Functions
         window.searchMagnitudeGreater = async function() {
-            const magnitude = parseFloat(document.getElementById('magGreater').value);
+            const magnitude = parseFloat(document.getElementById("magGreater").value);
             if (isNaN(magnitude)) {
-                showError('Please enter a valid magnitude value.');
+                showError("Please enter a valid magnitude value.");
                 return;
             }
 
             showLoading();
             try {
-                const q = query(
-                    collection(db, 'earthquakes'),
-                    where('magnitude', '>', magnitude),
-                    orderBy('magnitude', 'desc')
+                // Try primary query with number comparison first
+                let q = query(
+                    collection(db, "earthquakes"),
+                    where("magnitude", ">", magnitude),
+                    orderBy("magnitude", "desc"),
+                    limit(1000)  // Limit results for performance
                 );
-                const snapshot = await getDocs(q);
+                
+                let snapshot = await getDocs(q);
+                
+                // If no results, try fallback approach (load all and filter client-side)
+                if (snapshot.empty) {
+                    console.log("Primary query returned no results, trying fallback...");
+                    q = query(
+                        collection(db, "earthquakes"),
+                        limit(2000)  // Limit to prevent browser crash
+                    );
+                    snapshot = await getDocs(q);
+                }
                 
                 const results = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    results.push({
-                        time: formatDate(data.time),
-                        latitude: data.latitude || 0,
-                        longitude: data.longitude || 0,
-                        magnitude: data.magnitude || 0,
-                        place: data.place || '',
-                        id: doc.id
-                    });
+                    const mag = parseFloat(data.magnitude) || 0;
+                    
+                    // Client-side filter if needed
+                    if (mag > magnitude) {
+                        results.push({
+                            time: formatDate(data.time),
+                            latitude: data.latitude || 0,
+                            longitude: data.longitude || 0,
+                            magnitude: mag,
+                            place: data.place || "",
+                            id: doc.id
+                        });
+                    }
                 });
-
+                
+                // Sort by magnitude descending
+                results.sort((a, b) => b.magnitude - a.magnitude);
+                
                 hideLoading();
                 displayResults({
-                    status: 'success',
+                    status: "success",
                     query: `Magnitude > ${magnitude}`,
                     count: results.length,
+                    earthquakes: results.slice(0, 500)  // Limit display for performance
+                });
+            } catch (error) {
+                hideLoading();
+                console.error("Search error:", error);
+                showError("Search failed: " + error.message);
+            }
+        };                    count: results.length,
                     earthquakes: results
                 });
             } catch (error) {
@@ -533,8 +562,14 @@
 
         window.analyzeWeekendPatterns = async function() {
             showLoading();
+        window.analyzeWeekendPatterns = async function() {
+            showLoading();
             try {
-                const q = query(collection(db, 'earthquakes'));
+                // Use a sample of data for faster analysis
+                const q = query(
+                    collection(db, "earthquakes"),
+                    limit(5000)  // Sample for performance
+                );
                 const snapshot = await getDocs(q);
                 
                 let weekdayCount = 0;
@@ -545,6 +580,8 @@
                     if (data.time) {
                         let date = data.time;
                         if (date.toDate) date = date.toDate();
+                        else if (typeof date === "string") date = new Date(date);
+                        
                         const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
                         
                         if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -561,20 +598,21 @@
 
                 hideLoading();
                 displayResults({
-                    status: 'success',
-                    analysis: 'Earthquake frequency - Weekday vs Weekend',
-                    count: total,
+                    status: "success",
+                    analysis: `Weekend vs weekday earthquake patterns (sample of ${total} earthquakes)`,
                     weekday_count: weekdayCount,
                     weekend_count: weekendCount,
                     total_earthquakes: total,
                     weekday_percentage: Math.round(weekdayPercentage * 10) / 10,
                     weekend_percentage: Math.round(weekendPercentage * 10) / 10,
-                    conclusion: `${weekendPercentage.toFixed(1)}% of earthquakes occur on weekends (Sat-Sun)`
+                    conclusion: `${weekendPercentage.toFixed(1)}% of earthquakes occur on weekends (Sat-Sun), ${weekdayPercentage.toFixed(1)}% on weekdays`
                 });
             } catch (error) {
                 hideLoading();
-                showError('Analysis failed: ' + error.message);
+                console.error("Weekend analysis error:", error);
+                showError("Weekend analysis failed: " + error.message);
             }
+        };            }
         };
 
         window.analyzeEarlyMorning = async function() {
@@ -598,57 +636,38 @@
                         if (hour >= 0 && hour < 6) {
                             earlyMorningCount++;
                         } else if (hour >= 6 && hour < 12) {
-                            morningCount++;
-                        } else if (hour >= 12 && hour < 18) {
-                            afternoonCount++;
-                        } else {
-                            eveningCount++;
-                        }
-                    }
-                });
-
-                const total = earlyMorningCount + morningCount + afternoonCount + eveningCount;
-                const earlyMorningPercentage = total > 0 ? (earlyMorningCount / total * 100) : 0;
-
-                hideLoading();
-                displayResults({
-                    status: 'success',
-                    analysis: 'Earthquake distribution by time of day',
-                    count: total,
-                    early_morning_count: earlyMorningCount,
-                    morning_count: morningCount,
-                    afternoon_count: afternoonCount,
-                    evening_count: eveningCount,
-                    total_earthquakes: total,
-                    early_morning_percentage: Math.round(earlyMorningPercentage * 10) / 10,
-                    conclusion: `${earlyMorningPercentage.toFixed(1)}% of earthquakes occur in early morning (midnight-6 AM)`
-                });
-            } catch (error) {
-                hideLoading();
-                showError('Analysis failed: ' + error.message);
-            }
-        };
-
         window.findClusters = async function() {
             showLoading();
             try {
-                const q = query(collection(db, 'earthquakes'));
+                // Limit to higher magnitude earthquakes for better performance
+                const q = query(
+                    collection(db, "earthquakes"),
+                    where("magnitude", ">", 4.0),  // Only significant earthquakes
+                    limit(2000)  // Limit for performance
+                );
                 const snapshot = await getDocs(q);
                 
                 const earthquakes = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    if (data.latitude && data.longitude) {
+                    const mag = parseFloat(data.magnitude) || 0;
+                    if (data.latitude && data.longitude && mag > 4.0) {
                         earthquakes.push({
-                            lat: data.latitude,
-                            lon: data.longitude,
-                            magnitude: data.magnitude || 0,
-                            place: data.place || ''
+                            lat: parseFloat(data.latitude),
+                            lon: parseFloat(data.longitude),
+                            magnitude: mag,
+                            place: data.place || ""
                         });
                     }
                 });
 
-                // Simple clustering algorithm
+                if (earthquakes.length === 0) {
+                    hideLoading();
+                    showError("No earthquakes with magnitude > 4.0 found for clustering.");
+                    return;
+                }
+
+                // Simple clustering algorithm (optimized for fewer records)
                 const clusterThreshold = 50; // km
                 const clusters = [];
                 const processed = new Set();
@@ -659,8 +678,8 @@
                     const cluster = [earthquakes[i]];
                     processed.add(i);
                     
-                    for (let j = 0; j < earthquakes.length; j++) {
-                        if (processed.has(j) || i === j) continue;
+                    for (let j = i + 1; j < earthquakes.length; j++) {
+                        if (processed.has(j)) continue;
                         
                         const distance = haversineDistance(
                             earthquakes[i].lat, earthquakes[i].lon,
@@ -673,8 +692,38 @@
                         }
                     }
                     
-                    if (cluster.length >= 5) {
+                    if (cluster.length >= 3) {  // Lowered minimum for magnitude > 4.0
                         const avgLat = cluster.reduce((sum, eq) => sum + eq.lat, 0) / cluster.length;
+                        const avgLon = cluster.reduce((sum, eq) => sum + eq.lon, 0) / cluster.length;
+                        const avgMagnitude = cluster.reduce((sum, eq) => sum + eq.magnitude, 0) / cluster.length;
+                        
+                        clusters.push({
+                            count: cluster.length,
+                            center_lat: Math.round(avgLat * 1000) / 1000,
+                            center_lon: Math.round(avgLon * 1000) / 1000,
+                            avg_magnitude: Math.round(avgMagnitude * 100) / 100,
+                            sample_location: cluster[0].place
+                        });
+                    }
+                }
+
+                clusters.sort((a, b) => b.count - a.count);
+
+                hideLoading();
+                displayResults({
+                    status: "success",
+                    analysis: `Earthquake clusters (magnitude > 4.0, within ${clusterThreshold}km, 3+ earthquakes)`,
+                    count: clusters.length,
+                    clusters: clusters.slice(0, 20),
+                    total_clustered_earthquakes: clusters.reduce((sum, c) => sum + c.count, 0),
+                    conclusion: `Found ${clusters.length} significant clusters containing ${clusters.reduce((sum, c) => sum + c.count, 0)} earthquakes`
+                });
+            } catch (error) {
+                hideLoading();
+                console.error("Clustering error:", error);
+                showError("Clustering analysis failed: " + error.message);
+            }
+        };                        const avgLat = cluster.reduce((sum, eq) => sum + eq.lat, 0) / cluster.length;
                         const avgLon = cluster.reduce((sum, eq) => sum + eq.lon, 0) / cluster.length;
                         const avgMagnitude = cluster.reduce((sum, eq) => sum + eq.magnitude, 0) / cluster.length;
                         
