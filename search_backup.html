@@ -337,73 +337,44 @@
 
         // Search Functions
         window.searchMagnitudeGreater = async function() {
-            const magnitude = parseFloat(document.getElementById("magGreater").value);
+            const magnitude = parseFloat(document.getElementById('magGreater').value);
             if (isNaN(magnitude)) {
-                showError("Please enter a valid magnitude value.");
+                showError('Please enter a valid magnitude value.');
                 return;
             }
 
             showLoading();
             try {
-                // Since Firestore where() queries with numbers might fail due to type mismatch,
-                // we'll use client-side filtering which is more reliable
-                console.log(`Searching for magnitude > ${magnitude}`);
-                
                 const q = query(
-                    collection(db, "earthquakes"),
-                    limit(3000)  // Get a good sample for filtering
+                    collection(db, 'earthquakes'),
+                    where('magnitude', '>', magnitude),
+                    orderBy('magnitude', 'desc')
                 );
-                
                 const snapshot = await getDocs(q);
-                console.log(`Retrieved ${snapshot.size} documents from Firestore`);
                 
                 const results = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    
-                    // Handle both 'magnitude' and 'mag' field names and string/number types
-                    let mag = data.magnitude || data.mag;
-                    
-                    // Convert to number regardless of storage type
-                    if (typeof mag === 'string') {
-                        mag = parseFloat(mag);
-                    } else if (typeof mag === 'number') {
-                        mag = mag;
-                    } else {
-                        mag = 0;
-                    }
-                    
-                    console.log(`Document ${doc.id}: magnitude = ${mag} (type: ${typeof mag})`);
-                    
-                    // Client-side filter with number comparison
-                    if (!isNaN(mag) && mag > magnitude) {
-                        results.push({
-                            time: formatDate(data.time),
-                            latitude: parseFloat(data.latitude) || 0,
-                            longitude: parseFloat(data.longitude) || 0,
-                            magnitude: mag,
-                            place: data.place || "",
-                            id: doc.id
-                        });
-                    }
+                    results.push({
+                        time: formatDate(data.time),
+                        latitude: data.latitude || 0,
+                        longitude: data.longitude || 0,
+                        magnitude: data.magnitude || 0,
+                        place: data.place || '',
+                        id: doc.id
+                    });
                 });
-                
-                console.log(`Found ${results.length} earthquakes with magnitude > ${magnitude}`);
-                
-                // Sort by magnitude descending
-                results.sort((a, b) => b.magnitude - a.magnitude);
-                
+
                 hideLoading();
                 displayResults({
-                    status: "success",
+                    status: 'success',
                     query: `Magnitude > ${magnitude}`,
                     count: results.length,
-                    earthquakes: results.slice(0, 500)  // Limit display for performance
+                    earthquakes: results
                 });
             } catch (error) {
                 hideLoading();
-                console.error("Search error:", error);
-                showError("Search failed: " + error.message);
+                showError('Search failed: ' + error.message);
             }
         };
 
@@ -418,61 +389,36 @@
 
             showLoading();
             try {
-                // Use client-side filtering since Firebase stores magnitudes as strings
-                console.log(`Searching for magnitude ${minMag} - ${maxMag}`);
-                
                 const q = query(
-                    collection(db, "earthquakes"),
-                    limit(3000)  // Get a good sample for filtering
+                    collection(db, 'earthquakes'),
+                    where('magnitude', '>=', minMag),
+                    where('magnitude', '<=', maxMag),
+                    orderBy('magnitude', 'desc')
                 );
-                
                 const snapshot = await getDocs(q);
-                console.log(`Retrieved ${snapshot.size} documents from Firestore`);
                 
                 const results = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    
-                    // Handle both 'magnitude' and 'mag' field names and string/number types
-                    let mag = data.magnitude || data.mag;
-                    
-                    // Convert to number regardless of storage type
-                    if (typeof mag === 'string') {
-                        mag = parseFloat(mag);
-                    } else if (typeof mag === 'number') {
-                        mag = mag;
-                    } else {
-                        mag = 0;
-                    }
-                    
-                    // Client-side filter with number comparison
-                    if (!isNaN(mag) && mag >= minMag && mag <= maxMag) {
-                        results.push({
-                            time: formatDate(data.time),
-                            latitude: parseFloat(data.latitude) || 0,
-                            longitude: parseFloat(data.longitude) || 0,
-                            magnitude: mag,
-                            place: data.place || "",
-                            id: doc.id
-                        });
-                    }
+                    results.push({
+                        time: formatDate(data.time),
+                        latitude: data.latitude || 0,
+                        longitude: data.longitude || 0,
+                        magnitude: data.magnitude || 0,
+                        place: data.place || '',
+                        id: doc.id
+                    });
                 });
-                
-                console.log(`Found ${results.length} earthquakes with magnitude ${minMag} - ${maxMag}`);
-                
-                // Sort by magnitude descending
-                results.sort((a, b) => b.magnitude - a.magnitude);
 
                 hideLoading();
                 displayResults({
                     status: 'success',
                     query: `Magnitude ${minMag} - ${maxMag}`,
                     count: results.length,
-                    earthquakes: results.slice(0, 500)  // Limit display for performance
+                    earthquakes: results
                 });
             } catch (error) {
                 hideLoading();
-                console.error("Magnitude range search error:", error);
                 showError('Search failed: ' + error.message);
             }
         };
@@ -489,47 +435,28 @@
 
             showLoading();
             try {
-                // For better performance, limit the dataset for location searches
-                console.log(`Searching within ${radius}km of ${searchLat}, ${searchLng}`);
-                
-                const q = query(
-                    collection(db, 'earthquakes'),
-                    limit(5000)  // Limit for performance - can be adjusted based on needs
-                );
+                // Get all earthquakes (Firestore doesn't support geo queries without special setup)
+                const q = query(collection(db, 'earthquakes'));
                 const snapshot = await getDocs(q);
-                console.log(`Processing ${snapshot.size} documents for location search`);
                 
                 const results = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     if (data.latitude && data.longitude) {
-                        const lat = parseFloat(data.latitude);
-                        const lng = parseFloat(data.longitude);
-                        
-                        if (!isNaN(lat) && !isNaN(lng)) {
-                            const distance = haversineDistance(searchLat, searchLng, lat, lng);
-                            if (distance <= radius) {
-                                // Convert magnitude if it's a string
-                                let mag = data.magnitude || data.mag;
-                                if (typeof mag === 'string') {
-                                    mag = parseFloat(mag);
-                                }
-                                
-                                results.push({
-                                    time: formatDate(data.time),
-                                    latitude: lat,
-                                    longitude: lng,
-                                    magnitude: mag || 0,
-                                    place: data.place || '',
-                                    distance_km: Math.round(distance * 100) / 100,
-                                    id: doc.id
-                                });
-                            }
+                        const distance = haversineDistance(searchLat, searchLng, data.latitude, data.longitude);
+                        if (distance <= radius) {
+                            results.push({
+                                time: formatDate(data.time),
+                                latitude: data.latitude,
+                                longitude: data.longitude,
+                                magnitude: data.magnitude || 0,
+                                place: data.place || '',
+                                distance_km: Math.round(distance * 100) / 100,
+                                id: doc.id
+                            });
                         }
                     }
                 });
-
-                console.log(`Found ${results.length} earthquakes within ${radius}km`);
 
                 // Sort by distance
                 results.sort((a, b) => a.distance_km - b.distance_km);
@@ -539,11 +466,10 @@
                     status: 'success',
                     query: `Within ${radius}km of (${searchLat}, ${searchLng})`,
                     count: results.length,
-                    earthquakes: results.slice(0, 200)  // Limit display for performance
+                    earthquakes: results
                 });
             } catch (error) {
                 hideLoading();
-                console.error("Location search error:", error);
                 showError('Search failed: ' + error.message);
             }
         };
@@ -559,10 +485,9 @@
         window.analyzeTimePatterns = async function() {
             showLoading();
             try {
-                // Use client-side filtering since magnitude is stored as string
                 const q = query(
                     collection(db, 'earthquakes'),
-                    limit(5000)  // Sample for performance
+                    where('magnitude', '>', 4.0)
                 );
                 const snapshot = await getDocs(q);
                 
@@ -571,18 +496,9 @@
                 
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    
-                    // Only analyze significant earthquakes (magnitude > 4.0)
-                    let mag = data.magnitude || data.mag;
-                    if (typeof mag === 'string') {
-                        mag = parseFloat(mag);
-                    }
-                    
-                    if (!isNaN(mag) && mag > 4.0 && data.time) {
+                    if (data.time) {
                         let date = data.time;
                         if (date.toDate) date = date.toDate();
-                        else if (typeof date === 'string') date = new Date(date);
-                        
                         const hour = date.getHours();
                         
                         if (hour >= 18 || hour < 6) {
@@ -664,11 +580,7 @@
         window.analyzeEarlyMorning = async function() {
             showLoading();
             try {
-                // Use a sample of data for fast analysis
-                const q = query(
-                    collection(db, 'earthquakes'),
-                    limit(3000)  // Sample for performance
-                );
+                const q = query(collection(db, 'earthquakes'));
                 const snapshot = await getDocs(q);
                 
                 let earlyMorningCount = 0; // 0-6 AM
@@ -681,8 +593,6 @@
                     if (data.time) {
                         let date = data.time;
                         if (date.toDate) date = date.toDate();
-                        else if (typeof date === 'string') date = new Date(date);
-                        
                         const hour = date.getHours();
                         
                         if (hour >= 0 && hour < 6) {
@@ -703,7 +613,7 @@
                 hideLoading();
                 displayResults({
                     status: 'success',
-                    analysis: `Earthquake distribution by time of day (sample of ${total} earthquakes)`,
+                    analysis: 'Earthquake distribution by time of day',
                     count: total,
                     early_morning_count: earlyMorningCount,
                     morning_count: morningCount,
@@ -715,7 +625,6 @@
                 });
             } catch (error) {
                 hideLoading();
-                console.error("Early morning analysis error:", error);
                 showError('Analysis failed: ' + error.message);
             }
         };

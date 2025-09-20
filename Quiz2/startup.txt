@@ -1,3 +1,0 @@
-# startup.txt for Azure App Service
-# This tells Azure how to start your Flask app
-gunicorn --bind=0.0.0.0 --timeout 600 --chdir /home/site/wwwroot app:app

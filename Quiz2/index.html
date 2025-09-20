@@ -249,7 +249,7 @@
                 
                 console.log('CSV Headers:', headers);
                 
-                const batchSize = 50; // Firestore batch limit
+                const batchSize = 500; // Increased batch size for faster upload
                 let uploadedCount = 0;
                 
                 for (let i = 1; i < lines.length; i += batchSize) {

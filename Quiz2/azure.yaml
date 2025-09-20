@@ -1,6 +1,0 @@
-# Azure Deployment Configuration
-name: earthquake-app
-services:
-  web:
-    language: python
-    host: appservice
