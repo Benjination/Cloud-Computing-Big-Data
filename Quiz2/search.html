@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earthquake Search & Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .search-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .search-form input, .search-form button, .search-form select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .search-form button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        .search-form button:hover {
+            background-color: #0056b3;
+        }
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .quick-link {
+            background-color: #007bff;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px;
+            text-decoration: none;
+            display: block;
+            cursor: pointer;
+            border: none;
+        }
+        .quick-link:hover {
+            background-color: #0056b3;
+            text-decoration: none;
+            color: white;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            max-height: 500px;
+            overflow-y: auto;
+            display: none;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .pagination button:hover:not(:disabled) {
+            background-color: #f8f9fa;
+        }
+        .pagination button:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        .pagination .active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .back-link {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .form-row label {
+            min-width: 100px;
+        }
+        .form-row input {
+            flex: 1;
+            min-width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to Dashboard</a>
+        
+        <h1>🔍 Earthquake Search & Analysis</h1>
+        
+        <div id="error" class="error"></div>
+        
+        <!-- Quick Analysis Links -->
+        <div class="search-section">
+            <h2>📊 Quick Analysis</h2>
+            <div class="quick-links">
+                <button onclick="quickMagnitudeRange(5.0, 10.0)" class="quick-link">
+                    🌋 Major Earthquakes (5.0+)
+                </button>
+                <button onclick="quickMagnitudeRange(4.0, 4.9)" class="quick-link">
+                    ⚠️ Moderate Earthquakes (4.0-4.9)
+                </button>
+                <button onclick="analyzeTimePatterns()" class="quick-link">
+                    🌙 Day vs Night Analysis
+                </button>
+                <button onclick="analyzeWeekendPatterns()" class="quick-link">
+                    📅 Weekend vs Weekday
+                </button>
+                <button onclick="analyzeEarlyMorning()" class="quick-link">
+                    🌅 Early Morning Pattern
+                </button>
+                <button onclick="findClusters()" class="quick-link">
+                    🗺️ Earthquake Clusters
+                </button>
+            </div>
+        </div>
+        
+        <!-- Magnitude Search -->
+        <div class="search-section">
+            <h2>🔢 Search by Magnitude</h2>
+            <div class="search-form">
+                <div class="form-row">
+                    <label>Greater than:</label>
+                    <input type="number" id="magGreater" step="0.1" min="0" max="10" value="5.0">
+                    <button onclick="searchMagnitudeGreater()">Search</button>
+                </div>
+            </div>
+            
+            <div class="search-form">
+                <div class="form-row">
+                    <label>Range:</label>
+                    <input type="number" id="magMin" step="0.1" min="0" max="10" value="2.0" placeholder="Min">
+                    <input type="number" id="magMax" step="0.1" min="0" max="10" value="5.0" placeholder="Max">
+                    <button onclick="searchMagnitudeRange()">Search Range</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Location Search -->
+        <div class="search-section">
+            <h2>📍 Search Near Location</h2>
+            <div class="search-form">
+                <div class="form-row">
+                    <label>Latitude:</label>
+                    <input type="number" id="searchLat" step="0.0001" placeholder="e.g., 35.6762" value="35.6762" min="-90" max="90">
+                    <label>Longitude:</label>
+                    <input type="number" id="searchLng" step="0.0001" placeholder="e.g., 139.6503" value="139.6503" min="-180" max="180">
+                    <label>Radius (km):</label>
+                    <input type="number" id="searchRadius" min="1" max="1000" value="100">
+                    <button onclick="searchNearLocation()">Search</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Loading Area -->
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <div>Searching earthquake data...</div>
+        </div>
+        
+        <!-- Results Area -->
+        <div id="results" class="results">
+            <h3>Results</h3>
+            <div class="search-form">
+                <label>Results per page:</label>
+                <select id="resultsPerPage" onchange="changeResultsPerPage()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div id="resultsContent"></div>
+            <div id="paginationControls" class="pagination" style="display: none;">
+                <button id="prevPage" onclick="goToPage(currentPage - 1)">Previous</button>
+                <span>Page <span id="currentPageSpan">1</span> of <span id="totalPagesSpan">1</span></span>
+                <button id="nextPage" onclick="goToPage(currentPage + 1)">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase configuration (replace with your config)
+        const firebaseConfig = {
+            apiKey: "your-api-key-here",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "your-app-id"
+        };
+
+        // Initialize Firebase
+        let app, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            console.log('Firebase initialized successfully');
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            showError('Firebase configuration needed. Please update the firebaseConfig object.');
+        }
+
+        // Make Firebase available globally
+        window.db = db;
+        window.firestore = { collection, getDocs, query, where, orderBy, limit };
+
+        // Pagination variables
+        let allResults = [];
+        let currentPage = 1;
+        let resultsPerPage = 20;
+        let totalPages = 1;
+        let currentResultsType = null;
+
+        // Utility Functions
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 10000);
+        }
+
+        function formatDate(date) {
+            if (!date) return '';
+            if (date.toDate) date = date.toDate(); // Convert Firestore timestamp
+            return date.toISOString().split('T')[0];
+        }
+
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                     Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Search Functions
+        window.searchMagnitudeGreater = async function() {
+            const magnitude = parseFloat(document.getElementById('magGreater').value);
+            if (isNaN(magnitude)) {
+                showError('Please enter a valid magnitude value.');
+                return;
+            }
+
+            showLoading();
+            try {
+                const q = query(
+                    collection(db, 'earthquakes'),
+                    where('magnitude', '>', magnitude),
+                    orderBy('magnitude', 'desc')
+                );
+                const snapshot = await getDocs(q);
+                
+                const results = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    results.push({
+                        time: formatDate(data.time),
+                        latitude: data.latitude || 0,
+                        longitude: data.longitude || 0,
+                        magnitude: data.magnitude || 0,
+                        place: data.place || '',
+                        id: doc.id
+                    });
+                });
+
+                hideLoading();
+                displayResults({
+                    status: 'success',
+                    query: `Magnitude > ${magnitude}`,
+                    count: results.length,
+                    earthquakes: results
+                });
+            } catch (error) {
+                hideLoading();
+                showError('Search failed: ' + error.message);
+            }
+        };
+
+        window.searchMagnitudeRange = async function() {
+            const minMag = parseFloat(document.getElementById('magMin').value);
+            const maxMag = parseFloat(document.getElementById('magMax').value);
+            
+            if (isNaN(minMag) || isNaN(maxMag)) {
+                showError('Please enter valid magnitude values.');
+                return;
+            }
+
+            showLoading();
+            try {
+                const q = query(
+                    collection(db, 'earthquakes'),
+                    where('magnitude', '>=', minMag),
+                    where('magnitude', '<=', maxMag),
+                    orderBy('magnitude', 'desc')
+                );
+                const snapshot = await getDocs(q);
+                
+                const results = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    results.push({
+                        time: formatDate(data.time),
+                        latitude: data.latitude || 0,
+                        longitude: data.longitude || 0,
+                        magnitude: data.magnitude || 0,
+                        place: data.place || '',
+                        id: doc.id
+                    });
+                });
+
+                hideLoading();
+                displayResults({
+                    status: 'success',
+                    query: `Magnitude ${minMag} - ${maxMag}`,
+                    count: results.length,
+                    earthquakes: results
+                });
+            } catch (error) {
+                hideLoading();
+                showError('Search failed: ' + error.message);
+            }
+        };
+
+        window.searchNearLocation = async function() {
+            const searchLat = parseFloat(document.getElementById('searchLat').value);
+            const searchLng = parseFloat(document.getElementById('searchLng').value);
+            const radius = parseFloat(document.getElementById('searchRadius').value);
+            
+            if (isNaN(searchLat) || isNaN(searchLng) || isNaN(radius)) {
+                showError('Please enter valid location values.');
+                return;
+            }
+
+            showLoading();
+            try {
+                // Get all earthquakes (Firestore doesn't support geo queries without special setup)
+                const q = query(collection(db, 'earthquakes'));
+                const snapshot = await getDocs(q);
+                
+                const results = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.latitude && data.longitude) {
+                        const distance = haversineDistance(searchLat, searchLng, data.latitude, data.longitude);
+                        if (distance <= radius) {
+                            results.push({
+                                time: formatDate(data.time),
+                                latitude: data.latitude,
+                                longitude: data.longitude,
+                                magnitude: data.magnitude || 0,
+                                place: data.place || '',
+                                distance_km: Math.round(distance * 100) / 100,
+                                id: doc.id
+                            });
+                        }
+                    }
+                });
+
+                // Sort by distance
+                results.sort((a, b) => a.distance_km - b.distance_km);
+
+                hideLoading();
+                displayResults({
+                    status: 'success',
+                    query: `Within ${radius}km of (${searchLat}, ${searchLng})`,
+                    count: results.length,
+                    earthquakes: results
+                });
+            } catch (error) {
+                hideLoading();
+                showError('Search failed: ' + error.message);
+            }
+        };
+
+        // Quick search functions
+        window.quickMagnitudeRange = async function(minMag, maxMag) {
+            document.getElementById('magMin').value = minMag;
+            document.getElementById('magMax').value = maxMag;
+            await searchMagnitudeRange();
+        };
+
+        // Analysis Functions
+        window.analyzeTimePatterns = async function() {
+            showLoading();
+            try {
+                const q = query(
+                    collection(db, 'earthquakes'),
+                    where('magnitude', '>', 4.0)
+                );
+                const snapshot = await getDocs(q);
+                
+                let dayCount = 0;
+                let nightCount = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.time) {
+                        let date = data.time;
+                        if (date.toDate) date = date.toDate();
+                        const hour = date.getHours();
+                        
+                        if (hour >= 18 || hour < 6) {
+                            nightCount++;
+                        } else {
+                            dayCount++;
+                        }
+                    }
+                });
+
+                const total = dayCount + nightCount;
+                const nightPercentage = total > 0 ? (nightCount / total * 100) : 0;
+                const dayPercentage = total > 0 ? (dayCount / total * 100) : 0;
+
+                hideLoading();
+                displayResults({
+                    status: 'success',
+                    analysis: 'Large earthquakes (>4.0) - Day vs Night',
+                    count: total,
+                    day_count: dayCount,
+                    night_count: nightCount,
+                    total_large_quakes: total,
+                    day_percentage: Math.round(dayPercentage * 10) / 10,
+                    night_percentage: Math.round(nightPercentage * 10) / 10,
+                    conclusion: `${nightPercentage.toFixed(1)}% of large earthquakes occur at night (6 PM - 6 AM)`
+                });
+            } catch (error) {
+                hideLoading();
+                showError('Analysis failed: ' + error.message);
+            }
+        };
+
+        window.analyzeWeekendPatterns = async function() {
+            showLoading();
+            try {
+                const q = query(collection(db, 'earthquakes'));
+                const snapshot = await getDocs(q);
+                
+                let weekdayCount = 0;
+                let weekendCount = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.time) {
+                        let date = data.time;
+                        if (date.toDate) date = date.toDate();
+                        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+                        
+                        if (dayOfWeek === 0 || dayOfWeek === 6) {
+                            weekendCount++;
+                        } else {
+                            weekdayCount++;
+                        }
+                    }
+                });
+
+                const total = weekdayCount + weekendCount;
+                const weekendPercentage = total > 0 ? (weekendCount / total * 100) : 0;
+                const weekdayPercentage = total > 0 ? (weekdayCount / total * 100) : 0;
+
+                hideLoading();
+                displayResults({
+                    status: 'success',
+                    analysis: 'Earthquake frequency - Weekday vs Weekend',
+                    count: total,
+                    weekday_count: weekdayCount,
+                    weekend_count: weekendCount,
+                    total_earthquakes: total,
+                    weekday_percentage: Math.round(weekdayPercentage * 10) / 10,
+                    weekend_percentage: Math.round(weekendPercentage * 10) / 10,
+                    conclusion: `${weekendPercentage.toFixed(1)}% of earthquakes occur on weekends (Sat-Sun)`
+                });
+            } catch (error) {
+                hideLoading();
+                showError('Analysis failed: ' + error.message);
+            }
+        };
+
+        window.analyzeEarlyMorning = async function() {
+            showLoading();
+            try {
+                const q = query(collection(db, 'earthquakes'));
+                const snapshot = await getDocs(q);
+                
+                let earlyMorningCount = 0; // 0-6 AM
+                let morningCount = 0;      // 6-12 PM  
+                let afternoonCount = 0;    // 12-6 PM
+                let eveningCount = 0;      // 6 PM-midnight
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.time) {
+                        let date = data.time;
+                        if (date.toDate) date = date.toDate();
+                        const hour = date.getHours();
+                        
+                        if (hour >= 0 && hour < 6) {
+                            earlyMorningCount++;
+                        } else if (hour >= 6 && hour < 12) {
+                            morningCount++;
+                        } else if (hour >= 12 && hour < 18) {
+                            afternoonCount++;
+                        } else {
+                            eveningCount++;
+                        }
+                    }
+                });
+
+                const total = earlyMorningCount + morningCount + afternoonCount + eveningCount;
+                const earlyMorningPercentage = total > 0 ? (earlyMorningCount / total * 100) : 0;
+
+                hideLoading();
+                displayResults({
+                    status: 'success',
+                    analysis: 'Earthquake distribution by time of day',
+                    count: total,
+                    early_morning_count: earlyMorningCount,
+                    morning_count: morningCount,
+                    afternoon_count: afternoonCount,
+                    evening_count: eveningCount,
+                    total_earthquakes: total,
+                    early_morning_percentage: Math.round(earlyMorningPercentage * 10) / 10,
+                    conclusion: `${earlyMorningPercentage.toFixed(1)}% of earthquakes occur in early morning (midnight-6 AM)`
+                });
+            } catch (error) {
+                hideLoading();
+                showError('Analysis failed: ' + error.message);
+            }
+        };
+
+        window.findClusters = async function() {
+            showLoading();
+            try {
+                const q = query(collection(db, 'earthquakes'));
+                const snapshot = await getDocs(q);
+                
+                const earthquakes = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.latitude && data.longitude) {
+                        earthquakes.push({
+                            lat: data.latitude,
+                            lon: data.longitude,
+                            magnitude: data.magnitude || 0,
+                            place: data.place || ''
+                        });
+                    }
+                });
+
+                // Simple clustering algorithm
+                const clusterThreshold = 50; // km
+                const clusters = [];
+                const processed = new Set();
+                
+                for (let i = 0; i < earthquakes.length; i++) {
+                    if (processed.has(i)) continue;
+                    
+                    const cluster = [earthquakes[i]];
+                    processed.add(i);
+                    
+                    for (let j = 0; j < earthquakes.length; j++) {
+                        if (processed.has(j) || i === j) continue;
+                        
+                        const distance = haversineDistance(
+                            earthquakes[i].lat, earthquakes[i].lon,
+                            earthquakes[j].lat, earthquakes[j].lon
+                        );
+                        
+                        if (distance <= clusterThreshold) {
+                            cluster.push(earthquakes[j]);
+                            processed.add(j);
+                        }
+                    }
+                    
+                    if (cluster.length >= 5) {
+                        const avgLat = cluster.reduce((sum, eq) => sum + eq.lat, 0) / cluster.length;
+                        const avgLon = cluster.reduce((sum, eq) => sum + eq.lon, 0) / cluster.length;
+                        const avgMagnitude = cluster.reduce((sum, eq) => sum + eq.magnitude, 0) / cluster.length;
+                        
+                        clusters.push({
+                            count: cluster.length,
+                            center_lat: Math.round(avgLat * 1000) / 1000,
+                            center_lon: Math.round(avgLon * 1000) / 1000,
+                            avg_magnitude: Math.round(avgMagnitude * 100) / 100,
+                            sample_location: cluster[0].place
+                        });
+                    }
+                }
+
+                clusters.sort((a, b) => b.count - a.count);
+
+                hideLoading();
+                displayResults({
+                    status: 'success',
+                    analysis: `Earthquake clusters (within ${clusterThreshold}km, 5+ earthquakes)`,
+                    count: clusters.length,
+                    clusters: clusters.slice(0, 10),
+                    total_clustered_earthquakes: clusters.reduce((sum, c) => sum + c.count, 0),
+                    conclusion: `Found ${clusters.length} clusters containing ${clusters.reduce((sum, c) => sum + c.count, 0)} earthquakes`
+                });
+            } catch (error) {
+                hideLoading();
+                showError('Analysis failed: ' + error.message);
+            }
+        };
+
+        // Display and Pagination Functions
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            const contentDiv = document.getElementById('resultsContent');
+            const paginationDiv = document.getElementById('paginationControls');
+            
+            if (data.status === 'success') {
+                allResults = data;
+                currentPage = 1;
+                
+                if (data.analysis) {
+                    currentResultsType = 'analysis';
+                    paginationDiv.style.display = 'none';
+                } else if (data.earthquakes) {
+                    currentResultsType = 'earthquakes';
+                    totalPages = Math.ceil(data.earthquakes.length / resultsPerPage);
+                    paginationDiv.style.display = totalPages > 1 ? 'flex' : 'none';
+                }
+                
+                renderCurrentPage();
+            } else {
+                contentDiv.innerHTML = `<strong>❌ Error:</strong> ${data.message}`;
+                paginationDiv.style.display = 'none';
+            }
+            
+            resultsDiv.style.display = 'block';
+            resultsDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function renderCurrentPage() {
+            const contentDiv = document.getElementById('resultsContent');
+            const data = allResults;
+            
+            let html = `<strong>${data.query || 'Search Results'}</strong><br>`;
+            html += `Found ${data.count} records<br><br>`;
+            
+            if (currentResultsType === 'analysis') {
+                html += `<strong>Analysis:</strong> ${data.analysis}<br>`;
+                
+                if (data.day_count !== undefined && data.night_count !== undefined) {
+                    html += `Total: ${data.total_large_quakes}<br>`;
+                    html += `Day: ${data.day_count} (${data.day_percentage}%)<br>`;
+                    html += `Night: ${data.night_count} (${data.night_percentage}%)<br>`;
+                } else if (data.weekday_count !== undefined && data.weekend_count !== undefined) {
+                    html += `Total: ${data.total_earthquakes}<br>`;
+                    html += `Weekday: ${data.weekday_count} (${data.weekday_percentage}%)<br>`;
+                    html += `Weekend: ${data.weekend_count} (${data.weekend_percentage}%)<br>`;
+                } else if (data.early_morning_count !== undefined) {
+                    html += `Total: ${data.total_earthquakes}<br>`;
+                    html += `Early Morning (0-6 AM): ${data.early_morning_count} (${data.early_morning_percentage}%)<br>`;
+                    html += `Morning (6-12 PM): ${data.morning_count}<br>`;
+                    html += `Afternoon (12-6 PM): ${data.afternoon_count}<br>`;
+                    html += `Evening (6 PM-12 AM): ${data.evening_count}<br>`;
+                } else if (data.clusters) {
+                    html += `<table><tr><th>Cluster Size</th><th>Center Location</th><th>Avg Magnitude</th><th>Sample Location</th></tr>`;
+                    data.clusters.forEach(cluster => {
+                        html += `<tr>
+                            <td><strong>${cluster.count}</strong></td>
+                            <td>${cluster.center_lat}, ${cluster.center_lon}</td>
+                            <td>${cluster.avg_magnitude}</td>
+                            <td>${cluster.sample_location}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                }
+                
+                html += `<br><strong>Conclusion:</strong> ${data.conclusion}<br>`;
+            } else if (currentResultsType === 'earthquakes' && data.earthquakes) {
+                const startIndex = (currentPage - 1) * resultsPerPage;
+                const endIndex = Math.min(startIndex + resultsPerPage, data.earthquakes.length);
+                const pageResults = data.earthquakes.slice(startIndex, endIndex);
+                
+                html += `<p><em>Showing ${startIndex + 1}-${endIndex} of ${data.earthquakes.length} results</em></p>`;
+                
+                html += '<table><tr><th>Date</th><th>Location</th><th>Magnitude</th><th>Place</th>';
+                if (data.earthquakes[0] && data.earthquakes[0].distance_km !== undefined) {
+                    html += '<th>Distance (km)</th>';
+                }
+                html += '</tr>';
+                
+                pageResults.forEach(record => {
+                    html += `<tr>
+                        <td>${record.time}</td>
+                        <td>${record.latitude.toFixed(3)}, ${record.longitude.toFixed(3)}</td>
+                        <td><strong>${record.magnitude}</strong></td>
+                        <td>${record.place}</td>`;
+                    if (record.distance_km !== undefined) {
+                        html += `<td>${record.distance_km}</td>`;
+                    }
+                    html += '</tr>';
+                });
+                html += '</table>';
+                
+                updatePaginationControls();
+            }
+            
+            contentDiv.innerHTML = html;
+        }
+
+        function updatePaginationControls() {
+            const prevBtn = document.getElementById('prevPage');
+            const nextBtn = document.getElementById('nextPage');
+            const currentPageSpan = document.getElementById('currentPageSpan');
+            const totalPagesSpan = document.getElementById('totalPagesSpan');
+            
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+            currentPageSpan.textContent = currentPage;
+            totalPagesSpan.textContent = totalPages;
+        }
+
+        window.goToPage = function(page) {
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                renderCurrentPage();
+            }
+        };
+
+        window.changeResultsPerPage = function() {
+            const select = document.getElementById('resultsPerPage');
+            resultsPerPage = parseInt(select.value);
+            
+            if (currentResultsType === 'earthquakes' && allResults.earthquakes) {
+                totalPages = Math.ceil(allResults.earthquakes.length / resultsPerPage);
+                currentPage = 1;
+                renderCurrentPage();
+                
+                const paginationDiv = document.getElementById('paginationControls');
+                paginationDiv.style.display = totalPages > 1 ? 'flex' : 'none';
+            }
+        };
+
+        // Format inputs for better UX
+        const numberInputs = document.querySelectorAll('input[type="number"]');
+        numberInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                let value = parseFloat(this.value);
+                if (!isNaN(value)) {
+                    if (this.step === '0.1') {
+                        this.value = Math.round(value * 10) / 10;
+                    } else if (this.step === '0.0001') {
+                        this.value = Math.round(value * 10000) / 10000;
+                    }
+                }
+            });
+        });
+
+        // Make functions available globally
+        window.showError = showError;
+    </script>
+</body>
+</html>
