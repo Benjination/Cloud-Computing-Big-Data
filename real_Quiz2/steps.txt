@@ -94,37 +94,39 @@ record = DataRecord(
 
 ## OPTION B: FIREBASE FRONTEND SETUP (ORIGINAL APPROACH)
 
-### STEP 1: CREATE FIREBASE PROJECT
-- [ ] Go to https://console.firebase.google.com/
-- [ ] Click "Create a project" or "Add project"
-- [ ] Name it something like "quiz-data-analysis" or "quiz-project-2025"
-- [ ] Enable Google Analytics (optional)
-- [ ] Wait for project creation to complete
+### STEP 1: CREATE FIREBASE PROJECT ✅ COMPLETE
+- [x] Firebase project created: `realquiz2-a1d06`
+- [x] Project URL: https://console.firebase.google.com/project/realquiz2-a1d06
+- [x] Ready for configuration
 
-### STEP 2: SETUP FIRESTORE DATABASE
-- [ ] In Firebase console, go to "Firestore Database"
+### STEP 2: ADD WEB APP TO PROJECT
+- [ ] Go to: https://console.firebase.google.com/project/realquiz2-a1d06/settings/general
+- [ ] Click "Add app" → Web app (</>) icon  
+- [ ] Register app with any nickname (e.g., "quiz-app")
+- [ ] Copy the firebaseConfig object
+
+### STEP 3: ENABLE FIRESTORE DATABASE
+- [ ] Go to: https://console.firebase.google.com/project/realquiz2-a1d06/firestore
 - [ ] Click "Create database"
-- [ ] Choose "Start in test mode" (allows read/write for 30 days)
-- [ ] Select a location (choose closest to you)
-- [ ] Database will be created automatically
+- [ ] Choose "Start in test mode" (for development)
+- [ ] Select region (us-central1 recommended)
 
-### STEP 3: GET FIREBASE CONFIGURATION
-- [ ] In Firebase console, click the gear icon → "Project settings"
-- [ ] Scroll down to "Your apps" section
-- [ ] Click "Web" icon (</>) to add a web app
-- [ ] Register app with nickname like "quiz-web-app"
-- [ ] Copy the firebaseConfig object - SAVE THIS SOMEWHERE SAFE
-- [ ] It should look like:
+### STEP 4: UPDATE CONFIGURATION FILES
+Files created: firebase-index.html, firebase-search.html
+- [ ] Replace firebaseConfig object in both files with your actual config
+- [ ] Change collection name from "quiz_data" to your preferred name
+- [ ] Test connection using the built-in test button
 ```javascript
 const firebaseConfig = {
     apiKey: "your-api-key-here",
-    authDomain: "your-project.firebaseapp.com",
-    projectId: "your-project-id",
-    storageBucket: "your-project.appspot.com",
+    authDomain: "realquiz2-a1d06.firebaseapp.com",
+    projectId: "realquiz2-a1d06",
+    storageBucket: "realquiz2-a1d06.appspot.com",
     messagingSenderId: "123456789",
     appId: "your-app-id"
 };
 ```
+- [ ] **IMPORTANT**: Save this configuration - you'll need it for the next step
 
 ### STEP 4: CREATE GITHUB REPOSITORY
 - [ ] Go to https://github.com/

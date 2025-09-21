@@ -19,17 +19,13 @@
     </style>
 </head>
 <body>
-    <h1>Data Analysis Project - Upload Interface</h1>
+    <h1>Data Analysis Project - Firebase Upload</h1>
     
     <div class="container">
-        <h2>Firebase Connection Status</h2>
-        <button onclick="testConnection()">Test Firebase Connection</button>
-        <div id="connectionStatus"></div>
-    </div>
-
-    <div class="container">
-        <h2>CSV Data Upload</h2>
-        <input type="file" id="csvFile" accept=".csv" />
+        <h2>CSV/TSV Data Upload</h2>
+        <p>Upload your data file (supports both comma-separated and tab-separated formats)</p>
+        
+        <input type="file" id="csvFile" accept=".csv,.tsv,.txt" />
         <button onclick="uploadCSV()">Upload Data to Firebase</button>
         
         <div class="progress" style="display: none;" id="progressContainer">
@@ -76,21 +72,6 @@
 
         // Collection name - CHANGE THIS FOR YOUR QUIZ DATA
         window.COLLECTION_NAME = "quiz_data";
-
-        // Test Firebase Connection
-        window.testConnection = async function() {
-            const statusDiv = document.getElementById('connectionStatus');
-            try {
-                statusDiv.innerHTML = '<div class="status">Testing connection...</div>';
-                
-                // Try to read from the collection
-                const testQuery = await getDocs(collection(db, window.COLLECTION_NAME));
-                statusDiv.innerHTML = `<div class="status success">✅ Firebase connection successful!<br>Collection: ${window.COLLECTION_NAME}<br>Current documents: ${testQuery.size}</div>`;
-            } catch (error) {
-                statusDiv.innerHTML = `<div class="status error">❌ Connection failed: ${error.message}<br>Check your Firebase configuration and security rules.</div>`;
-                console.error("Firebase connection error:", error);
-            }
-        };
 
         // CSV Upload Function - CUSTOMIZE FOR YOUR DATA
         window.uploadCSV = async function() {
@@ -212,12 +193,7 @@
             }
         };
 
-        // Auto-test connection on page load
-        window.addEventListener('load', function() {
-            if (firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
-                testConnection();
-            }
-        });
+
     </script>
 </body>
 </html>

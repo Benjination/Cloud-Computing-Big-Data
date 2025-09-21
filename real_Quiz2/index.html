@@ -91,47 +91,19 @@
             </div>
 
             <!-- Firebase Option -->
-            <div class="option-card" onclick="showFirebaseOptions()">
-                <h3>☁️ Option B: Firebase Frontend <span class="status-badge setup-needed">CONFIG NEEDED</span></h3>
+            <div class="option-card" onclick="window.location.href='firebase-index.html'">
+                <h3>☁️ Option B: Firebase Frontend <span class="status-badge ready">READY</span></h3>
                 <p><strong>Best for:</strong> Cloud deployment and scalability</p>
                 <ul>
                     <li>✅ NoSQL Firestore database</li>
-                    <li>✅ Auto-detects CSV field types</li>
+                    <li>✅ Auto-detects CSV field types (CSV/TSV)</li>
                     <li>✅ Real-time search and analysis</li>
                     <li>✅ Export functionality (CSV/JSON)</li>
-                    <li>⚠️ Requires Firebase configuration</li>
+                    <li>✅ Firebase configuration complete</li>
                 </ul>
                 <div class="mt-3">
-                    <button class="btn btn-custom">Setup Firebase</button>
-                    <small class="text-muted">Configure database connection first</small>
-                </div>
-            </div>
-
-            <!-- Firebase Options (hidden by default) -->
-            <div id="firebaseOptions" style="display: none;" class="mt-4">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5>🔧 Test Connection</h5>
-                                <p>Check if Firebase is properly configured</p>
-                                <button class="btn btn-outline-primary btn-sm" onclick="window.location.href='connection-test.html'">
-                                    Test Firebase
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5>📊 Firebase App</h5>
-                                <p>Upload data and run analysis</p>
-                                <button class="btn btn-outline-success btn-sm" onclick="window.location.href='firebase-index.html'">
-                                    Launch App
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <button class="btn btn-custom">Launch Firebase App</button>
+                    <small class="text-muted">Click to access upload interface</small>
                 </div>
             </div>
 
@@ -170,16 +142,10 @@
     </div>
 
     <script>
-        function showFirebaseOptions() {
-            const options = document.getElementById('firebaseOptions');
-            options.style.display = options.style.display === 'none' ? 'block' : 'none';
-        }
-
         // Auto-detect if Firebase is configured
         window.addEventListener('load', function() {
-            // You can add logic here to check Firebase status
             console.log('Quiz 2 landing page loaded');
-            console.log('GitHub Pages URL should be: https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/');
+            console.log('GitHub Pages URL: https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/');
         });
     </script>
 </body>
