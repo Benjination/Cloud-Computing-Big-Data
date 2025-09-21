@@ -110,10 +110,19 @@
                 statusDiv.innerHTML = '<div class="status">Reading file...</div>';
                 const csvText = await file.text();
                 const lines = csvText.split('\n');
-                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                
+                // Auto-detect delimiter (comma or tab)
+                const firstLine = lines[0];
+                let delimiter = ',';
+                if (firstLine.includes('\t') && firstLine.split('\t').length > firstLine.split(',').length) {
+                    delimiter = '\t';
+                }
+                
+                const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''));
                 
                 console.log('CSV Headers detected:', headers);
-                statusDiv.innerHTML = `<div class="status">Found ${lines.length - 1} records with columns: ${headers.join(', ')}<br>Starting upload...</div>`;
+                console.log('Delimiter detected:', delimiter === '\t' ? 'TAB' : 'COMMA');
+                statusDiv.innerHTML = `<div class="status">Found ${lines.length - 1} records with columns: ${headers.join(', ')}<br>Delimiter: ${delimiter === '\t' ? 'TAB-separated' : 'COMMA-separated'}<br>Starting upload...</div>`;
                 
                 progressContainer.style.display = 'block';
                 const batchSize = 500;
@@ -124,7 +133,7 @@
                 // CUSTOMIZE THIS SECTION BASED ON YOUR DATA FIELDS
                 for (let i = 1; i < lines.length; i++) {
                     if (lines[i].trim()) {
-                        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                        const values = lines[i].split(delimiter).map(v => v.trim().replace(/"/g, ''));
                         const record = {};
                         
                         headers.forEach((header, index) => {
