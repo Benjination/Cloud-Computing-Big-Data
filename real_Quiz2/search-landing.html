@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earthquake Data - Search & Analysis</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background-color: #f5f5f5;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            margin: 20px 0; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .search-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
+        }
+        .form-group {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        label {
+            font-weight: bold;
+            min-width: 120px;
+            color: #2c3e50;
+        }
+        input, select {
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .clear-btn {
+            background: #e74c3c;
+            margin-left: 10px;
+        }
+        .clear-btn:hover {
+            background: #c0392b;
+        }
+        .results-container {
+            margin-top: 30px;
+        }
+        .results {
+            background: white;
+            border: 1px solid #ecf0f1;
+            border-radius: 8px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .result-item {
+            padding: 15px;
+            border-bottom: 1px solid #ecf0f1;
+            transition: background-color 0.2s;
+        }
+        .result-item:hover {
+            background-color: #f8f9fa;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .magnitude {
+            color: #e74c3c;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .location {
+            color: #2c3e50;
+            font-size: 16px;
+            margin: 5px 0;
+        }
+        .details {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .coordinates {
+            color: #27ae60;
+            font-family: monospace;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .proximity-inputs {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .coord-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .nav-section {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .nav-btn {
+            background: #95a5a6;
+            margin: 5px;
+        }
+        .nav-btn:hover {
+            background: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌍 Earthquake Data - Search & Analysis</h1>
+    
+    <div class="nav-section">
+        <button class="nav-btn" onclick="window.location.href='index.html'">← Back to Main</button>
+        <button class="nav-btn" onclick="window.location.href='firebase-index.html'">Upload Data</button>
+    </div>
+
+    <div class="container">
+        <h2>🔍 Search Functions</h2>
+        
+        <!-- Magnitude Over/Under Search -->
+        <div class="search-form">
+            <h3>1. Magnitude Threshold Search</h3>
+            <div class="form-group">
+                <label>Search for earthquakes:</label>
+                <select id="magnitudeOperator">
+                    <option value="over">Over (≥)</option>
+                    <option value="under">Under (<)</option>
+                </select>
+                <input type="number" id="magnitudeThreshold" placeholder="2.5" step="0.1" min="0" max="10">
+                <span>magnitude</span>
+                <button onclick="searchByMagnitudeThreshold()">Search</button>
+                <button class="clear-btn" onclick="clearResults()">Clear</button>
+            </div>
+        </div>
+
+        <!-- Magnitude Range Search -->
+        <div class="search-form">
+            <h3>2. Magnitude Range Search</h3>
+            <div class="form-group">
+                <label>Magnitude between:</label>
+                <input type="number" id="magnitudeMin" placeholder="1.0" step="0.1" min="0" max="10">
+                <span>and</span>
+                <input type="number" id="magnitudeMax" placeholder="3.0" step="0.1" min="0" max="10">
+                <button onclick="searchByMagnitudeRange()">Search Range</button>
+                <button class="clear-btn" onclick="clearResults()">Clear</button>
+            </div>
+        </div>
+
+        <!-- Proximity Search -->
+        <div class="search-form">
+            <h3>3. Proximity Search</h3>
+            <div class="form-group">
+                <label>Find earthquakes within:</label>
+                <input type="number" id="proximityRadius" placeholder="50" min="1" max="1000">
+                <span>km of coordinates:</span>
+            </div>
+            <div class="form-group proximity-inputs">
+                <div class="coord-group">
+                    <label>Latitude:</label>
+                    <input type="number" id="centerLat" placeholder="33.5" step="0.0001" min="-90" max="90">
+                </div>
+                <div class="coord-group">
+                    <label>Longitude:</label>
+                    <input type="number" id="centerLon" placeholder="-116.5" step="0.0001" min="-180" max="180">
+                </div>
+                <button onclick="searchByProximity()">Search Proximity</button>
+                <button class="clear-btn" onclick="clearResults()">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container results-container">
+        <h2>📊 Search Results</h2>
+        <div id="searchStatus"></div>
+        <div id="searchResults" class="results"></div>
+    </div>
+
+    <!-- Firebase Configuration -->
+    <script type="module">
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvOk4jLm5N9zjSJfAOe5wGl2rJqvj6oVo",
+            authDomain: "realquiz2-a1d06.firebaseapp.com",
+            projectId: "realquiz2-a1d06",
+            storageBucket: "realquiz2-a1d06.firebasestorage.app",
+            messagingSenderId: "1020294472984",
+            appId: "1:1020294472984:web:3aee76d6a34be40d47ea6d",
+            measurementId: "G-6NBBPMXKXL"
+        };
+
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Make database available globally
+        window.db = db;
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.query = query;
+        window.where = where;
+        window.orderBy = orderBy;
+        window.COLLECTION_NAME = "quiz_data";
+
+        // Load all data on page load for client-side searching
+        let earthquakeData = [];
+        
+        async function loadEarthquakeData() {
+            try {
+                const querySnapshot = await getDocs(collection(db, window.COLLECTION_NAME));
+                earthquakeData = [];
+                querySnapshot.forEach((doc) => {
+                    earthquakeData.push({id: doc.id, ...doc.data()});
+                });
+                console.log(`Loaded ${earthquakeData.length} earthquake records`);
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('searchStatus').innerHTML = 
+                    '<div class="status error">❌ Error loading earthquake data</div>';
+            }
+        }
+
+        // Load data when page loads
+        loadEarthquakeData();
+
+        // Make functions available globally
+        window.searchByMagnitudeThreshold = async function() {
+            const operator = document.getElementById('magnitudeOperator').value;
+            const threshold = parseFloat(document.getElementById('magnitudeThreshold').value);
+            
+            if (isNaN(threshold)) {
+                showStatus('error', 'Please enter a valid magnitude threshold');
+                return;
+            }
+            
+            showStatus('loading', 'Searching earthquakes...');
+            
+            let results;
+            if (operator === 'over') {
+                results = earthquakeData.filter(eq => parseFloat(eq.mag) >= threshold);
+            } else {
+                results = earthquakeData.filter(eq => parseFloat(eq.mag) < threshold);
+            }
+            
+            displayResults(results, `Magnitude ${operator} ${threshold}`);
+        };
+
+        window.searchByMagnitudeRange = async function() {
+            const minMag = parseFloat(document.getElementById('magnitudeMin').value);
+            const maxMag = parseFloat(document.getElementById('magnitudeMax').value);
+            
+            if (isNaN(minMag) || isNaN(maxMag)) {
+                showStatus('error', 'Please enter valid minimum and maximum magnitudes');
+                return;
+            }
+            
+            if (minMag >= maxMag) {
+                showStatus('error', 'Minimum magnitude must be less than maximum magnitude');
+                return;
+            }
+            
+            showStatus('loading', 'Searching magnitude range...');
+            
+            const results = earthquakeData.filter(eq => {
+                const mag = parseFloat(eq.mag);
+                return mag >= minMag && mag <= maxMag;
+            });
+            
+            displayResults(results, `Magnitude between ${minMag} and ${maxMag}`);
+        };
+
+        window.searchByProximity = async function() {
+            const radius = parseFloat(document.getElementById('proximityRadius').value);
+            const centerLat = parseFloat(document.getElementById('centerLat').value);
+            const centerLon = parseFloat(document.getElementById('centerLon').value);
+            
+            if (isNaN(radius) || isNaN(centerLat) || isNaN(centerLon)) {
+                showStatus('error', 'Please enter valid radius and coordinates');
+                return;
+            }
+            
+            showStatus('loading', 'Searching by proximity...');
+            
+            const results = earthquakeData.filter(eq => {
+                const distance = calculateDistance(centerLat, centerLon, parseFloat(eq.latitude), parseFloat(eq.longitude));
+                return distance <= radius;
+            });
+            
+            displayResults(results, `Within ${radius}km of (${centerLat}, ${centerLon})`);
+        };
+
+        window.clearResults = function() {
+            document.getElementById('searchResults').innerHTML = '';
+            document.getElementById('searchStatus').innerHTML = '';
+        };
+
+        function showStatus(type, message) {
+            document.getElementById('searchStatus').innerHTML = 
+                `<div class="status ${type}">${message}</div>`;
+        }
+
+        function displayResults(results, searchDescription) {
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (results.length === 0) {
+                showStatus('error', `No earthquakes found for: ${searchDescription}`);
+                resultsDiv.innerHTML = '';
+                return;
+            }
+            
+            showStatus('success', `Found ${results.length} earthquakes for: ${searchDescription}`);
+            
+            // Sort by magnitude (highest first)
+            results.sort((a, b) => parseFloat(b.mag) - parseFloat(a.mag));
+            
+            resultsDiv.innerHTML = results.map(eq => `
+                <div class="result-item">
+                    <div class="magnitude">Magnitude: ${eq.mag} ${eq.magType || ''}</div>
+                    <div class="location">${eq.place || 'Location unknown'}</div>
+                    <div class="details">
+                        <span class="coordinates">Lat: ${eq.latitude}, Lon: ${eq.longitude}</span> | 
+                        Time: ${new Date(eq.time).toLocaleString()} | 
+                        Type: ${eq.type || 'earthquake'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Haversine formula to calculate distance between two coordinates
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                     Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+    </script>
+</body>
+</html>
