@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Diagnostic Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .status { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .step { margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 4px; font-size: 12px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Firebase Diagnostic Tool</h1>
+    
+    <div class="step">
+        <h3>Step 1: Configuration Check</h3>
+        <button onclick="checkConfig()">Check Firebase Config</button>
+        <div id="configResult"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: SDK Loading Test</h3>
+        <button onclick="testSDK()">Test Firebase SDK</button>
+        <div id="sdkResult"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: App Initialization</h3>
+        <button onclick="initializeApp()">Initialize Firebase App</button>
+        <div id="initResult"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Firestore Connection</h3>
+        <button onclick="testFirestore()">Test Firestore Connection</button>
+        <div id="firestoreResult"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 5: Test Data Upload</h3>
+        <button onclick="testUpload()">Test Document Creation</button>
+        <div id="uploadResult"></div>
+    </div>
+
+    <script type="module">
+        let firebaseApp = null;
+        let db = null;
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyARxVQ5jA7HZoYKZUSyxDsuHh9-b6pidWQ",
+            authDomain: "realquiz2-a1d06.firebaseapp.com",
+            projectId: "realquiz2-a1d06",
+            storageBucket: "realquiz2-a1d06.firebasestorage.app",
+            messagingSenderId: "1020294472984",
+            appId: "1:1020294472984:web:3aee76d6a34be40d47ea6d",
+            measurementId: "G-6NBBPMXKXL"
+        };
+
+        window.checkConfig = function() {
+            const resultDiv = document.getElementById('configResult');
+            
+            try {
+                let html = '<div class="status info"><strong>Firebase Configuration:</strong><br>';
+                html += `Project ID: ${firebaseConfig.projectId}<br>`;
+                html += `Auth Domain: ${firebaseConfig.authDomain}<br>`;
+                html += `Storage Bucket: ${firebaseConfig.storageBucket}<br>`;
+                html += `API Key Length: ${firebaseConfig.apiKey.length} chars<br>`;
+                html += `App ID Format: ${firebaseConfig.appId.startsWith('1:') ? 'Valid' : 'Invalid'}<br>`;
+                html += '</div>';
+                
+                // Validate config format
+                const issues = [];
+                if (!firebaseConfig.apiKey || firebaseConfig.apiKey.length < 30) issues.push('API Key seems invalid');
+                if (!firebaseConfig.projectId) issues.push('Project ID missing');
+                if (!firebaseConfig.authDomain.includes(firebaseConfig.projectId)) issues.push('Auth domain mismatch');
+                
+                if (issues.length > 0) {
+                    html += '<div class="status error"><strong>Configuration Issues:</strong><br>' + issues.join('<br>') + '</div>';
+                } else {
+                    html += '<div class="status success">✅ Configuration looks valid!</div>';
+                }
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="status error">❌ Config check failed: ${error.message}</div>`;
+            }
+        };
+
+        window.testSDK = async function() {
+            const resultDiv = document.getElementById('sdkResult');
+            resultDiv.innerHTML = '<div class="status info">Loading Firebase SDK...</div>';
+            
+            try {
+                // Test loading Firebase modules
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js');
+                const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js');
+                
+                resultDiv.innerHTML = '<div class="status success">✅ Firebase SDK loaded successfully!</div>';
+                
+                // Store for next steps
+                window.initializeApp_func = initializeApp;
+                window.getFirestore_func = getFirestore;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="status error">❌ SDK loading failed: ${error.message}<br><br>` +
+                    `<strong>This usually means:</strong><br>` +
+                    `• Internet connection issue<br>` +
+                    `• Firebase CDN blocked<br>` +
+                    `• Browser compatibility issue</div>`;
+                console.error('SDK Error:', error);
+            }
+        };
+
+        window.initializeApp = async function() {
+            const resultDiv = document.getElementById('initResult');
+            resultDiv.innerHTML = '<div class="status info">Initializing Firebase App...</div>';
+            
+            try {
+                if (!window.initializeApp_func) {
+                    resultDiv.innerHTML = '<div class="status error">❌ SDK not loaded. Run Step 2 first.</div>';
+                    return;
+                }
+                
+                firebaseApp = window.initializeApp_func(firebaseConfig);
+                
+                resultDiv.innerHTML = '<div class="status success">✅ Firebase App initialized successfully!<br>' +
+                    `App Name: ${firebaseApp.name}<br>` +
+                    `Project ID: ${firebaseApp.options.projectId}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="status error">❌ App initialization failed: ${error.message}<br><br>` +
+                    `<strong>Common causes:</strong><br>` +
+                    `• Invalid API key format<br>` +
+                    `• Project doesn't exist<br>` +
+                    `• Configuration mismatch<br><br>` +
+                    `<strong>Error details:</strong><br><pre>${error.stack}</pre></div>`;
+                console.error('Init Error:', error);
+            }
+        };
+
+        window.testFirestore = async function() {
+            const resultDiv = document.getElementById('firestoreResult');
+            resultDiv.innerHTML = '<div class="status info">Testing Firestore connection...</div>';
+            
+            try {
+                if (!firebaseApp) {
+                    resultDiv.innerHTML = '<div class="status error">❌ Firebase app not initialized. Run Step 3 first.</div>';
+                    return;
+                }
+                
+                if (!window.getFirestore_func) {
+                    resultDiv.innerHTML = '<div class="status error">❌ Firestore SDK not loaded. Run Step 2 first.</div>';
+                    return;
+                }
+                
+                db = window.getFirestore_func(firebaseApp);
+                
+                // Test basic connection by importing collection function
+                const { collection } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js');
+                
+                // Try to create a collection reference
+                const testCollection = collection(db, 'connection_test');
+                
+                resultDiv.innerHTML = '<div class="status success">✅ Firestore connection established!<br>' +
+                    `Database ready for operations</div>`;
+                
+                window.collection_func = collection;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="status error">❌ Firestore connection failed: ${error.message}<br><br>` +
+                    `<strong>This usually means:</strong><br>` +
+                    `• Firestore Database not enabled in Firebase Console<br>` +
+                    `• Security rules blocking access<br>` +
+                    `• Project configuration issue<br><br>` +
+                    `<strong>Next steps:</strong><br>` +
+                    `1. Go to Firebase Console → Firestore Database<br>` +
+                    `2. Click "Create database"<br>` +
+                    `3. Choose "Start in test mode"<br><br>` +
+                    `<strong>Error details:</strong><br><pre>${error.stack}</pre></div>`;
+                console.error('Firestore Error:', error);
+            }
+        };
+
+        window.testUpload = async function() {
+            const resultDiv = document.getElementById('uploadResult');
+            resultDiv.innerHTML = '<div class="status info">Testing document creation...</div>';
+            
+            try {
+                if (!db) {
+                    resultDiv.innerHTML = '<div class="status error">❌ Firestore not connected. Run Step 4 first.</div>';
+                    return;
+                }
+                
+                // Import additional Firestore functions
+                const { addDoc, getDocs } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js');
+                
+                // Create test document
+                const testDoc = {
+                    message: "Connection test successful!",
+                    timestamp: new Date(),
+                    source: "diagnostic-tool",
+                    test_number: Math.floor(Math.random() * 1000)
+                };
+                
+                const collectionRef = window.collection_func(db, 'quiz_data');
+                const docRef = await addDoc(collectionRef, testDoc);
+                
+                // Verify by reading back
+                const snapshot = await getDocs(collectionRef);
+                
+                resultDiv.innerHTML = `<div class="status success">✅ Document upload successful!<br>` +
+                    `Document ID: ${docRef.id}<br>` +
+                    `Collection size: ${snapshot.size} documents<br>` +
+                    `Your Firebase setup is working perfectly!</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="status error">❌ Document upload failed: ${error.message}<br><br>` +
+                    `<strong>This usually means:</strong><br>` +
+                    `• Security rules don't allow writes<br>` +
+                    `• Firestore database not properly enabled<br>` +
+                    `• Collection name restrictions<br><br>` +
+                    `<strong>Error details:</strong><br><pre>${error.stack}</pre></div>`;
+                console.error('Upload Error:', error);
+            }
+        };
+
+        // Auto-run the first check
+        window.addEventListener('load', function() {
+            setTimeout(checkConfig, 500);
+        });
+    </script>
+
+    <div style="margin-top: 30px; padding: 20px; background: #e8f4fd; border-radius: 5px;">
+        <h3>🎯 Quick Setup Checklist</h3>
+        <p>If any step fails, here's what to check:</p>
+        <ol>
+            <li><strong>Firestore Database:</strong> <a href="https://console.firebase.google.com/project/realquiz2-a1d06/firestore" target="_blank">Enable Firestore</a></li>
+            <li><strong>Security Rules:</strong> Start in "test mode" for 30 days</li>
+            <li><strong>Network:</strong> Make sure you can access Firebase CDN</li>
+            <li><strong>Browser:</strong> Try a different browser if issues persist</li>
+        </ol>
+    </div>
+</body>
+</html>
