@@ -1,0 +1,1126 @@
+# QUIZ PREPARATION STEPS - PRE-SETUP CHECKLIST
+# 75-Minute Quiz Ready Infrastructure Setup
+
+## OVERVIEW
+This checklist prepares you to recreate a data analysis web application similar to your earthquake project but with different data. You now have TWO infrastructure options:
+
+1. **Flask + SQLite Backend** (RECOMMENDED FOR QUIZ - Faster setup, local development)
+2. **Firebase Firestore + GitHub Pages** (Original approach - Good for production)
+
+Choose the Flask approach for quiz environment as it's faster to customize and debug locally.
+
+## OPTION A: FLASK BACKEND SETUP (RECOMMENDED FOR QUIZ)
+
+### PRE-QUIZ SETUP (DO BEFORE MONDAY)
+
+### FLASK OPTION - STEP 1: PREPARE DEVELOPMENT ENVIRONMENT
+- [ ] Install Python 3.8+ on your system
+- [ ] Have a code editor ready (VS Code, PyCharm, etc.)
+- [ ] Create a project folder for your quiz
+- [ ] Copy all template files from this directory to your quiz folder
+- [ ] Test the setup by running the application locally
+
+### FLASK OPTION - STEP 2: UNDERSTAND THE TEMPLATE STRUCTURE
+- [ ] Review `app.py` - main Flask application with customizable routes
+- [ ] Review `config.py` - database and environment configuration
+- [ ] Review `utils.py` - helper functions for data processing
+- [ ] Review `templates/upload.html` - file upload interface
+- [ ] Review `templates/search.html` - search and analysis interface
+- [ ] Review `requirements.txt` - Python dependencies
+
+### FLASK OPTION - STEP 3: QUIZ DAY WORKFLOW (15 MINUTES TOTAL SETUP)
+
+#### FIRST 5 MINUTES: Environment Setup
+- [ ] Create virtual environment: `python -m venv quiz_env`
+- [ ] Activate environment: `source quiz_env/bin/activate` (Mac/Linux) or `quiz_env\Scripts\activate` (Windows)
+- [ ] Install dependencies: `pip install -r requirements.txt`
+- [ ] Initialize database: `python -c "from app import app, db; app.app_context().push(); db.create_all()"`
+
+#### NEXT 10 MINUTES: Data Structure Customization
+- [ ] Open the provided CSV file and identify column names
+- [ ] Update the `DataRecord` class in `app.py` with your field names
+- [ ] Update the field mapping in the `upload_data()` function
+- [ ] Update search functions to use your field names
+- [ ] Update the HTML templates to display your fields
+
+#### RUN APPLICATION: `python app.py`
+- Application will be available at http://localhost:5000
+- Upload your CSV file
+- Test search and analysis functions
+
+### FLASK OPTION - STEP 4: FIELD CUSTOMIZATION EXAMPLES
+
+For different data types, update these sections in `app.py`:
+
+#### For Sales Data:
+```python
+# In DataRecord class:
+product_name = db.Column(db.String(200))
+price = db.Column(db.Float)
+quantity = db.Column(db.Integer)
+sale_date = db.Column(db.DateTime)
+salesperson = db.Column(db.String(100))
+region = db.Column(db.String(100))
+
+# In upload_data function:
+record = DataRecord(
+    product_name=str(row.get('product_name', '')),
+    price=float(row.get('price', 0)) if pd.notna(row.get('price')) else None,
+    quantity=int(row.get('quantity', 0)) if pd.notna(row.get('quantity')) else None,
+    sale_date=pd.to_datetime(row.get('sale_date'), errors='coerce'),
+    salesperson=str(row.get('salesperson', '')),
+    region=str(row.get('region', ''))
+)
+```
+
+#### For Review Data:
+```python
+# In DataRecord class:
+product_name = db.Column(db.String(200))
+rating = db.Column(db.Float)
+review_text = db.Column(db.Text)
+review_date = db.Column(db.DateTime)
+reviewer_location = db.Column(db.String(100))
+
+# In upload_data function:
+record = DataRecord(
+    product_name=str(row.get('product_name', '')),
+    rating=float(row.get('rating', 0)) if pd.notna(row.get('rating')) else None,
+    review_text=str(row.get('review_text', '')),
+    review_date=pd.to_datetime(row.get('review_date'), errors='coerce'),
+    reviewer_location=str(row.get('reviewer_location', ''))
+)
+```
+
+## OPTION B: FIREBASE FRONTEND SETUP (ORIGINAL APPROACH)
+
+### STEP 1: CREATE FIREBASE PROJECT
+- [ ] Go to https://console.firebase.google.com/
+- [ ] Click "Create a project" or "Add project"
+- [ ] Name it something like "quiz-data-analysis" or "quiz-project-2025"
+- [ ] Enable Google Analytics (optional)
+- [ ] Wait for project creation to complete
+
+### STEP 2: SETUP FIRESTORE DATABASE
+- [ ] In Firebase console, go to "Firestore Database"
+- [ ] Click "Create database"
+- [ ] Choose "Start in test mode" (allows read/write for 30 days)
+- [ ] Select a location (choose closest to you)
+- [ ] Database will be created automatically
+
+### STEP 3: GET FIREBASE CONFIGURATION
+- [ ] In Firebase console, click the gear icon → "Project settings"
+- [ ] Scroll down to "Your apps" section
+- [ ] Click "Web" icon (</>) to add a web app
+- [ ] Register app with nickname like "quiz-web-app"
+- [ ] Copy the firebaseConfig object - SAVE THIS SOMEWHERE SAFE
+- [ ] It should look like:
+```javascript
+const firebaseConfig = {
+    apiKey: "your-api-key-here",
+    authDomain: "your-project.firebaseapp.com",
+    projectId: "your-project-id",
+    storageBucket: "your-project.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "your-app-id"
+};
+```
+
+### STEP 4: CREATE GITHUB REPOSITORY
+- [ ] Go to https://github.com/
+- [ ] Click "New repository"
+- [ ] Name it something like "quiz-data-analysis" or "data-quiz-2025"
+- [ ] Make it PUBLIC (required for GitHub Pages)
+- [ ] Initialize with README
+- [ ] Create the repository
+
+### STEP 5: ENABLE GITHUB PAGES
+- [ ] In your new repository, go to Settings → Pages
+- [ ] Under "Source", select "Deploy from a branch"
+- [ ] Choose "main" branch and "/ (root)" folder
+- [ ] Click Save
+- [ ] Note the URL where your site will be published
+
+### STEP 6: PREPARE TEMPLATE FILES
+Create these template files in your repository (you can do this now):
+
+#### 6A: Create index.html (Upload Page Template)
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Upload - Quiz Project</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .container { background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        button { background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #45a049; }
+        .progress { background: #f0f0f0; border-radius: 4px; margin: 10px 0; }
+        .progress-bar { background: #4CAF50; height: 20px; border-radius: 4px; transition: width 0.3s; }
+        input[type="file"] { margin: 10px 0; padding: 10px; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Data Analysis Project - Upload Interface</h1>
+    
+    <div class="container">
+        <h2>Firebase Connection Test</h2>
+        <button onclick="testConnection()">Test Firebase Connection</button>
+        <div id="connectionStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>CSV Data Upload</h2>
+        <input type="file" id="csvFile" accept=".csv" />
+        <button onclick="uploadCSV()">Upload Data to Firebase</button>
+        
+        <div class="progress" style="display: none;" id="progressContainer">
+            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+        </div>
+        
+        <div id="uploadStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>Navigation</h2>
+        <button onclick="window.location.href='search.html'">Go to Search & Analysis</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // REPLACE THIS WITH YOUR FIREBASE CONFIG
+        const firebaseConfig = {
+            // YOUR CONFIG GOES HERE
+        };
+
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, writeBatch, doc, getDocs } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Make database available globally
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.writeBatch = writeBatch;
+        window.doc = doc;
+        window.getDocs = getDocs;
+
+        // Test Firebase Connection
+        window.testConnection = async function() {
+            const statusDiv = document.getElementById('connectionStatus');
+            try {
+                statusDiv.innerHTML = '<div class="status">Testing connection...</div>';
+                
+                // Try to read from a test collection
+                const testQuery = await getDocs(collection(db, 'test'));
+                statusDiv.innerHTML = '<div class="status success">✅ Firebase connection successful!</div>';
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Connection failed: ${error.message}</div>`;
+            }
+        };
+
+        // CSV Upload Function - CUSTOMIZE FOR YOUR DATA
+        window.uploadCSV = async function() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            const statusDiv = document.getElementById('uploadStatus');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            
+            if (!file) {
+                statusDiv.innerHTML = '<div class="status error">Please select a CSV file</div>';
+                return;
+            }
+
+            try {
+                statusDiv.innerHTML = '<div class="status">Reading file...</div>';
+                const csvText = await file.text();
+                const lines = csvText.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                
+                console.log('CSV Headers:', headers);
+                statusDiv.innerHTML = `<div class="status">Found ${lines.length - 1} records. Starting upload...</div>`;
+                
+                progressContainer.style.display = 'block';
+                const batchSize = 500;
+                let batch = writeBatch(db);
+                let batchCount = 0;
+                let totalProcessed = 0;
+                
+                // MODIFY THIS SECTION BASED ON YOUR DATA FIELDS
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim()) {
+                        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                        const record = {};
+                        
+                        headers.forEach((header, index) => {
+                            if (values[index]) {
+                                let value = values[index];
+                                
+                                // CUSTOMIZE THESE DATA TYPE CONVERSIONS
+                                // Common numeric fields: price, rating, amount, score, value, etc.
+                                if (header.includes('price') || header.includes('rating') || 
+                                    header.includes('amount') || header.includes('value') ||
+                                    header.includes('lat') || header.includes('lng') ||
+                                    header.includes('longitude') || header.includes('latitude')) {
+                                    value = parseFloat(value) || null;
+                                }
+                                // Common date fields: date, time, created, updated, etc.
+                                else if (header.includes('date') || header.includes('time') || 
+                                         header.includes('created') || header.includes('updated')) {
+                                    value = value ? new Date(value) : null;
+                                }
+                                
+                                record[header] = value;
+                            }
+                        });
+                        
+                        const docRef = doc(collection(db, "data")); // CHANGE "data" TO YOUR COLLECTION NAME
+                        batch.set(docRef, record);
+                        batchCount++;
+                        totalProcessed++;
+                        
+                        if (batchCount >= batchSize) {
+                            await batch.commit();
+                            batch = writeBatch(db);
+                            batchCount = 0;
+                            
+                            const progress = (totalProcessed / (lines.length - 1)) * 100;
+                            progressBar.style.width = progress + '%';
+                            statusDiv.innerHTML = `<div class="status">Uploaded ${totalProcessed} records...</div>`;
+                        }
+                    }
+                }
+                
+                if (batchCount > 0) {
+                    await batch.commit();
+                }
+                
+                progressBar.style.width = '100%';
+                statusDiv.innerHTML = `<div class="status success">✅ Upload complete! ${totalProcessed} records uploaded successfully.</div>`;
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Upload failed: ${error.message}</div>`;
+                console.error('Upload error:', error);
+            }
+        };
+    </script>
+</body>
+</html>
+```
+
+#### 6B: Create search.html (Search & Analysis Template)
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Search & Analysis - Quiz Project</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .container { background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        button { background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #45a049; }
+        input[type="number"], input[type="text"] { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .pagination { margin: 20px 0; text-align: center; }
+        .page-btn { background: #2196F3; margin: 0 2px; }
+        .current-page { background: #ff9800; }
+        .analysis-result { background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .loading { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Data Search & Analysis Interface</h1>
+    
+    <div class="container">
+        <h2>Navigation</h2>
+        <button onclick="window.location.href='index.html'">Back to Upload</button>
+    </div>
+
+    <!-- SEARCH FUNCTIONS - CUSTOMIZE THESE -->
+    <div class="container">
+        <h2>Search Functions</h2>
+        
+        <!-- NUMERIC SEARCH TEMPLATE -->
+        <div>
+            <h3>Search by Numeric Value</h3>
+            <input type="number" id="numericThreshold" placeholder="Enter threshold value" step="0.1">
+            <button onclick="searchByNumericValue()">Search</button>
+        </div>
+        
+        <!-- TEXT SEARCH TEMPLATE -->
+        <div>
+            <h3>Search by Text</h3>
+            <input type="text" id="textSearch" placeholder="Enter search term">
+            <button onclick="searchByText()">Search</button>
+        </div>
+        
+        <!-- LOCATION SEARCH TEMPLATE (if you have lat/lng data) -->
+        <div>
+            <h3>Search by Location</h3>
+            <input type="number" id="searchLat" placeholder="Latitude" step="0.000001">
+            <input type="number" id="searchLng" placeholder="Longitude" step="0.000001">
+            <input type="number" id="radius" placeholder="Radius (km)" step="1">
+            <button onclick="searchByLocation()">Search</button>
+        </div>
+    </div>
+
+    <!-- ANALYSIS FUNCTIONS - CUSTOMIZE THESE -->
+    <div class="container">
+        <h2>Analysis Functions</h2>
+        <button onclick="analyzePattern1()">Pattern Analysis 1</button>
+        <button onclick="analyzePattern2()">Pattern Analysis 2</button>
+        <button onclick="analyzePattern3()">Pattern Analysis 3</button>
+        
+        <div id="analysisResults"></div>
+    </div>
+
+    <!-- RESULTS DISPLAY -->
+    <div class="container">
+        <h2>Search Results</h2>
+        <div id="loadingIndicator" style="display: none;" class="loading">Searching...</div>
+        <div id="resultsCount"></div>
+        <div id="pagination" class="pagination"></div>
+        <div id="resultsTable"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // REPLACE THIS WITH YOUR FIREBASE CONFIG
+        const firebaseConfig = {
+            // YOUR CONFIG GOES HERE - SAME AS index.html
+        };
+
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js';
+        import { getFirestore, collection, query, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Global variables for pagination
+        window.currentPage = 1;
+        window.itemsPerPage = 20;
+        window.allResults = [];
+
+        // CUSTOMIZE THESE SEARCH FUNCTIONS FOR YOUR DATA
+
+        // Numeric Value Search - MODIFY FOR YOUR FIELD
+        window.searchByNumericValue = async function() {
+            const threshold = parseFloat(document.getElementById('numericThreshold').value);
+            if (isNaN(threshold)) {
+                alert('Please enter a valid number');
+                return;
+            }
+
+            showLoading(true);
+            try {
+                const q = query(collection(db, "data"), limit(3000)); // CHANGE "data" TO YOUR COLLECTION
+                const snapshot = await getDocs(q);
+                const results = [];
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    
+                    // MODIFY THIS - change 'your_numeric_field' to your actual field name
+                    const value = parseFloat(data.your_numeric_field) || 0;
+                    
+                    if (value > threshold) {
+                        results.push({
+                            id: doc.id,
+                            // CUSTOMIZE THESE FIELDS FOR YOUR DATA
+                            field1: data.field1 || "",
+                            field2: data.field2 || "",
+                            numeric_value: value,
+                            // Add more fields as needed
+                        });
+                    }
+                });
+
+                window.allResults = results.sort((a, b) => b.numeric_value - a.numeric_value);
+                displayResults();
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                alert('Search failed: ' + error.message);
+            }
+            showLoading(false);
+        };
+
+        // Text Search - MODIFY FOR YOUR FIELD
+        window.searchByText = async function() {
+            const searchTerm = document.getElementById('textSearch').value.toLowerCase();
+            if (!searchTerm) {
+                alert('Please enter a search term');
+                return;
+            }
+
+            showLoading(true);
+            try {
+                const q = query(collection(db, "data"), limit(3000)); // CHANGE "data" TO YOUR COLLECTION
+                const snapshot = await getDocs(q);
+                const results = [];
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    
+                    // MODIFY THIS - change 'your_text_field' to your actual field name
+                    const textField = (data.your_text_field || "").toLowerCase();
+                    
+                    if (textField.includes(searchTerm)) {
+                        results.push({
+                            id: doc.id,
+                            // CUSTOMIZE THESE FIELDS FOR YOUR DATA
+                            field1: data.field1 || "",
+                            field2: data.field2 || "",
+                            text_field: data.your_text_field || "",
+                            // Add more fields as needed
+                        });
+                    }
+                });
+
+                window.allResults = results;
+                displayResults();
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                alert('Search failed: ' + error.message);
+            }
+            showLoading(false);
+        };
+
+        // Location Search (if applicable) - MODIFY FOR YOUR FIELDS
+        window.searchByLocation = async function() {
+            const searchLat = parseFloat(document.getElementById('searchLat').value);
+            const searchLng = parseFloat(document.getElementById('searchLng').value);
+            const radius = parseFloat(document.getElementById('radius').value);
+
+            if (isNaN(searchLat) || isNaN(searchLng) || isNaN(radius)) {
+                alert('Please enter valid coordinates and radius');
+                return;
+            }
+
+            showLoading(true);
+            try {
+                const q = query(collection(db, "data"), limit(5000)); // CHANGE "data" TO YOUR COLLECTION
+                const snapshot = await getDocs(q);
+                const results = [];
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    
+                    // MODIFY THESE - change field names to your lat/lng fields
+                    const lat = parseFloat(data.latitude) || 0;
+                    const lng = parseFloat(data.longitude) || 0;
+
+                    if (lat && lng) {
+                        const distance = haversineDistance(searchLat, searchLng, lat, lng);
+                        if (distance <= radius) {
+                            results.push({
+                                id: doc.id,
+                                // CUSTOMIZE THESE FIELDS FOR YOUR DATA
+                                latitude: lat,
+                                longitude: lng,
+                                distance_km: Math.round(distance * 100) / 100,
+                                field1: data.field1 || "",
+                                field2: data.field2 || "",
+                                // Add more fields as needed
+                            });
+                        }
+                    }
+                });
+
+                window.allResults = results.sort((a, b) => a.distance_km - b.distance_km);
+                displayResults();
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                alert('Search failed: ' + error.message);
+            }
+            showLoading(false);
+        };
+
+        // CUSTOMIZE THESE ANALYSIS FUNCTIONS
+        
+        window.analyzePattern1 = async function() {
+            showLoading(true);
+            try {
+                const q = query(collection(db, "data"), limit(3000));
+                const snapshot = await getDocs(q);
+                
+                // IMPLEMENT YOUR ANALYSIS LOGIC HERE
+                let count1 = 0, count2 = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    
+                    // MODIFY THIS LOGIC FOR YOUR DATA
+                    if (data.some_field === 'condition1') {
+                        count1++;
+                    } else if (data.some_field === 'condition2') {
+                        count2++;
+                    }
+                });
+                
+                const total = count1 + count2;
+                const percentage1 = total > 0 ? (count1 / total * 100).toFixed(1) : 0;
+                
+                document.getElementById('analysisResults').innerHTML = `
+                    <div class="analysis-result">
+                        <h3>Pattern Analysis 1 Results</h3>
+                        <p>Condition 1: ${count1} (${percentage1}%)</p>
+                        <p>Condition 2: ${count2} (${(100 - percentage1).toFixed(1)}%)</p>
+                        <p>Total analyzed: ${total}</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Analysis error:', error);
+                alert('Analysis failed: ' + error.message);
+            }
+            showLoading(false);
+        };
+
+        window.analyzePattern2 = async function() {
+            // IMPLEMENT SECOND ANALYSIS
+        };
+
+        window.analyzePattern3 = async function() {
+            // IMPLEMENT THIRD ANALYSIS
+        };
+
+        // UTILITY FUNCTIONS - PROBABLY DON'T NEED TO CHANGE THESE
+
+        function showLoading(show) {
+            document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+        }
+
+        function displayResults() {
+            const totalResults = window.allResults.length;
+            window.totalPages = Math.ceil(totalResults / window.itemsPerPage);
+            
+            document.getElementById('resultsCount').innerHTML = 
+                `<p>Found ${totalResults} results (Page ${window.currentPage} of ${window.totalPages})</p>`;
+            
+            displayCurrentPage();
+            setupPagination();
+        }
+
+        function displayCurrentPage() {
+            const start = (window.currentPage - 1) * window.itemsPerPage;
+            const end = start + window.itemsPerPage;
+            const pageResults = window.allResults.slice(start, end);
+            
+            if (pageResults.length === 0) {
+                document.getElementById('resultsTable').innerHTML = '<p>No results found.</p>';
+                return;
+            }
+
+            // CUSTOMIZE THIS TABLE BASED ON YOUR DATA FIELDS
+            let html = '<table><thead><tr>';
+            
+            // ADD YOUR COLUMN HEADERS HERE
+            html += '<th>Field 1</th><th>Field 2</th><th>Numeric Value</th><th>Text Field</th>';
+            // Add more columns as needed
+            
+            html += '</tr></thead><tbody>';
+            
+            pageResults.forEach(result => {
+                html += '<tr>';
+                // ADD YOUR DATA FIELDS HERE - MATCH THE HEADERS ABOVE
+                html += `<td>${result.field1 || ''}</td>`;
+                html += `<td>${result.field2 || ''}</td>`;
+                html += `<td>${result.numeric_value || ''}</td>`;
+                html += `<td>${result.text_field || ''}</td>`;
+                // Add more columns as needed
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('resultsTable').innerHTML = html;
+        }
+
+        function setupPagination() {
+            if (window.totalPages <= 1) {
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            
+            if (window.currentPage > 1) {
+                html += '<button class="page-btn" onclick="changePage(' + (window.currentPage - 1) + ')">Previous</button>';
+            }
+            
+            for (let i = Math.max(1, window.currentPage - 2); i <= Math.min(window.totalPages, window.currentPage + 2); i++) {
+                const className = i === window.currentPage ? 'page-btn current-page' : 'page-btn';
+                html += `<button class="${className}" onclick="changePage(${i})">${i}</button>`;
+            }
+            
+            if (window.currentPage < window.totalPages) {
+                html += '<button class="page-btn" onclick="changePage(' + (window.currentPage + 1) + ')">Next</button>';
+            }
+            
+            document.getElementById('pagination').innerHTML = html;
+        }
+
+        window.changePage = function(page) {
+            window.currentPage = page;
+            displayCurrentPage();
+            setupPagination();
+        };
+
+        // Haversine distance calculation (for location searches)
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Format date helper
+        function formatDate(date) {
+            if (!date) return '';
+            if (date.toDate) date = date.toDate();
+            else if (typeof date === 'string') date = new Date(date);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+    </script>
+</body>
+</html>
+```
+
+### STEP 7: QUIZ DAY WORKFLOW (WHAT TO DO DURING THE 75 MINUTES)
+
+## FLASK APPROACH (RECOMMENDED - FASTER CUSTOMIZATION)
+
+#### MINUTES 1-5: Setup
+- [ ] Read assignment and download CSV data
+- [ ] Activate virtual environment: `source quiz_env/bin/activate`
+- [ ] Run `python app.py` to start the server
+- [ ] Open http://localhost:5000 in browser
+
+#### MINUTES 6-25: Data Model Customization
+- [ ] Open CSV and identify all column names
+- [ ] In `app.py`, update `DataRecord` class with your fields:
+  ```python
+  # Replace these with your actual CSV columns
+  your_text_field = db.Column(db.String(200))
+  your_numeric_field = db.Column(db.Float)
+  your_date_field = db.Column(db.DateTime)
+  your_category_field = db.Column(db.String(100))
+  ```
+- [ ] Update the `upload_data()` function field mapping:
+  ```python
+  record = DataRecord(
+      your_text_field=str(row.get('your_csv_column_name', '')),
+      your_numeric_field=float(row.get('your_numeric_csv_column', 0)),
+      # Map all your CSV columns here
+  )
+  ```
+- [ ] Update `to_dict()` method to include your fields
+
+#### MINUTES 26-45: Search Function Customization
+- [ ] Update search functions in `app.py`:
+  - `search_numeric()`: Change field name for numeric comparisons
+  - `search_text()`: Update field names for text searches
+  - `search_category()`: Change category field name
+- [ ] Test each search function as you update it
+
+#### MINUTES 46-60: Analysis Functions
+- [ ] Customize the three analysis functions:
+  - `analysis_summary()`: Update field names for statistics
+  - `analysis_pattern1()`: Implement pattern specific to your data
+  - `analysis_pattern2()`: Implement second pattern analysis
+  - `analysis_pattern3()`: Implement third pattern analysis
+- [ ] Common analysis patterns:
+  - Time-based: Group by date/time periods
+  - Category-based: Count by categories
+  - Geographic: Group by location if coordinates available
+  - Value-based: Create ranges and count occurrences
+
+#### MINUTES 61-70: HTML Template Updates
+- [ ] Update `templates/search.html`:
+  - Change table headers to match your fields
+  - Update result display to show your data
+  - Modify search form labels
+- [ ] Update `templates/upload.html` labels if needed
+
+#### MINUTES 71-75: Testing & Finalization
+- [ ] Upload your CSV data through the web interface
+- [ ] Test all search functions
+- [ ] Test all analysis functions
+- [ ] Document any issues or limitations
+
+## FIREBASE APPROACH (ORIGINAL)
+
+#### FIRST 5 MINUTES: Setup
+- [ ] Read the assignment and identify the data fields
+- [ ] Download the provided CSV file
+- [ ] Open your prepared GitHub repository
+- [ ] Update the Firebase config in both HTML files
+
+#### NEXT 15 MINUTES: Data Analysis & Customization
+- [ ] Open the CSV file and identify key fields:
+  - Numeric fields (price, rating, amount, score, etc.)
+  - Text fields (name, description, category, etc.)  
+  - Date fields (created_date, updated_time, etc.)
+  - Location fields (latitude, longitude, address)
+
+- [ ] Update the upload function in index.html:
+  - Change collection name from "data" to something descriptive
+  - Update data type conversions for your specific fields
+  - Modify field name checks in the upload logic
+
+#### NEXT 25 MINUTES: Search Function Implementation
+- [ ] Update search.html with your field names:
+  - Replace "your_numeric_field" with actual field name
+  - Replace "your_text_field" with actual field name
+  - Update latitude/longitude field names if applicable
+  - Change collection name from "data" to match upload
+
+- [ ] Customize table display:
+  - Update column headers in displayCurrentPage()
+  - Update table rows to show your data fields
+  - Make sure field names match your CSV columns
+
+#### NEXT 20 MINUTES: Analysis Functions
+- [ ] Implement 3 analysis functions based on your data:
+  - Pattern 1: Categories/groupings analysis
+  - Pattern 2: Numeric value analysis (averages, totals)
+  - Pattern 3: Time-based or location-based analysis
+
+- [ ] Common analysis patterns:
+  - Count by category
+  - Average by group
+  - Time pattern analysis (day/night, weekday/weekend)
+  - Geographic clustering
+  - Value distribution analysis
+
+#### FINAL 10 MINUTES: Testing & Deployment
+- [ ] Commit and push all changes to GitHub
+- [ ] Upload CSV file using your interface
+- [ ] Test each search function
+- [ ] Test each analysis function
+- [ ] Verify GitHub Pages deployment is working
+
+## COMPARISON: FLASK VS FIREBASE
+
+### Flask Approach (RECOMMENDED FOR QUIZ)
+**Pros:**
+- Faster initial setup (5 minutes vs 20 minutes)
+- Local development - no internet dependency during quiz
+- Easier debugging with Python error messages
+- More familiar if you know Python
+- Can handle larger datasets efficiently
+- Better for complex search queries
+
+**Cons:**
+- Requires Python environment setup
+- Local database only (unless you deploy)
+- More files to customize
+
+**Best for:** Quiz environment, complex data analysis, larger datasets
+
+### Firebase Approach (ORIGINAL)
+**Pros:**
+- No backend code needed
+- Automatic cloud hosting
+- Real-time capabilities
+- Free hosting with GitHub Pages
+- Good for production deployment
+
+**Cons:**
+- Longer setup time
+- Internet dependency
+- Harder to debug JavaScript issues
+- Performance limitations with large datasets
+- More complex data type handling
+
+**Best for:** Production deployment, real-time features, simple datasets
+
+## QUIZ DAY SUCCESS STRATEGIES
+
+### FLASK APPROACH - KEY CUSTOMIZATION POINTS
+
+### 1. Data Model Fields (app.py - DataRecord class)
+Common field patterns to implement:
+- **Numeric**: price, cost, amount, rating, score, value, count, quantity, size
+- **Text**: name, title, description, category, type, status, comment, location
+- **Date**: date, time, created, updated, timestamp, event_date
+- **Boolean**: active, available, featured, published
+
+### 2. Upload Function Mapping (app.py - upload_data function)
+```python
+# Template for field mapping
+record = DataRecord(
+    text_field=str(row.get('csv_column_name', '')),
+    numeric_field=float(row.get('numeric_column', 0)) if pd.notna(row.get('numeric_column')) else None,
+    date_field=pd.to_datetime(row.get('date_column'), errors='coerce') if pd.notna(row.get('date_column')) else None,
+    category_field=str(row.get('category_column', ''))
+)
+```
+
+### 3. Search Function Updates
+- **Numeric search**: Update field name in `search_numeric()` function
+- **Text search**: Update field names in `search_text()` function  
+- **Category search**: Update field name in `search_category()` function
+
+### 4. HTML Template Updates (templates/search.html)
+- Update table headers: `<th>Your Field Name</th>`
+- Update table data: `<td>${result.your_field_name || ''}</td>`
+- Update search form labels and placeholders
+
+### FIREBASE APPROACH - KEY CUSTOMIZATION POINTS
+
+### 1. Collection Name
+Change "data" to something descriptive like:
+- "products" for e-commerce data
+- "sales" for sales data  
+- "reviews" for review data
+- "events" for event data
+
+### 2. Field Name Mapping
+Common field patterns to look for:
+- **Numeric**: price, cost, amount, rating, score, value, count, quantity, size
+- **Text**: name, title, description, category, type, status, comment
+- **Location**: latitude, longitude, lat, lng, address, city, state, location
+- **Date**: date, time, created, updated, timestamp, event_date
+
+### 3. Analysis Function Ideas
+Based on common data types:
+- **E-commerce**: Average price by category, ratings distribution, popular products
+- **Sales**: Revenue by time period, top salespeople, regional performance  
+- **Reviews**: Sentiment analysis, rating trends, most reviewed items
+- **Events**: Time patterns, location clusters, popularity analysis
+- **Social**: User activity patterns, engagement metrics, content analysis
+
+### 4. Search Function Templates
+- **Numeric range**: Find items above/below threshold
+- **Text search**: Find items containing keywords
+- **Category filter**: Filter by specific categories
+- **Location search**: Find items within radius of point
+- **Date range**: Find items within time period
+
+## TROUBLESHOOTING CHECKLIST
+
+## TROUBLESHOOTING GUIDE
+
+### FLASK APPROACH ISSUES
+
+### Environment Problems:
+- **Module not found**: Activate virtual environment first
+- **Import errors**: Run `pip install -r requirements.txt`
+- **Database errors**: Recreate database with `python -c "from app import app, db; app.app_context().push(); db.drop_all(); db.create_all()"`
+
+### Upload Issues:
+- **CSV parsing errors**: Check column names and data types
+- **Memory errors**: Reduce batch size in upload function
+- **Data type errors**: Add proper error handling with try/except
+
+### Search Problems:
+- **No results returned**: Verify field names match model exactly
+- **Type errors**: Ensure proper data type conversions (str, float, int)
+- **Performance issues**: Add query limits and pagination
+
+### Template Issues:
+- **Display errors**: Check field names in HTML templates
+- **JavaScript errors**: Open browser console for debugging
+- **Bootstrap issues**: Verify CDN links are working
+
+### FIREBASE APPROACH ISSUES
+
+### If Upload Fails:
+- [ ] Check Firebase config is correct
+- [ ] Verify Firestore security rules allow writes
+- [ ] Check browser console for errors
+- [ ] Try smaller batch size (250 instead of 500)
+
+### If Search Returns No Results:
+- [ ] Check field names match CSV exactly
+- [ ] Use parseFloat() for numeric comparisons
+- [ ] Check data types in Firebase console
+- [ ] Add console.log to debug data structure
+
+### If Analysis Functions Don't Work:
+- [ ] Verify field names are correct
+- [ ] Check for null/undefined values
+- [ ] Use proper data type conversions
+- [ ] Test with smaller datasets first
+
+### If GitHub Pages Doesn't Update:
+- [ ] Wait 5-10 minutes for propagation
+- [ ] Check repository Settings → Pages
+- [ ] Verify files are committed to main branch
+- [ ] Clear browser cache and refresh
+
+## COMMON QUIZ SCENARIOS & SOLUTIONS
+
+## COMMON QUIZ SCENARIOS & SOLUTIONS
+
+### FLASK IMPLEMENTATIONS
+
+### Scenario A: Sales Data
+**Fields**: date, product_name, price, quantity, salesperson, region
+**Model**:
+```python
+class DataRecord(db.Model):
+    product_name = db.Column(db.String(200))
+    price = db.Column(db.Float)
+    quantity = db.Column(db.Integer)
+    sale_date = db.Column(db.DateTime)
+    salesperson = db.Column(db.String(100))
+    region = db.Column(db.String(100))
+```
+**Searches**: Price above X, Products containing keyword, Sales by region
+**Analysis**: Revenue by region, Top products, Sales patterns by time
+
+### Scenario B: Review Data  
+**Fields**: product, rating, review_text, date, reviewer_location
+**Model**:
+```python
+class DataRecord(db.Model):
+    product = db.Column(db.String(200))
+    rating = db.Column(db.Float)
+    review_text = db.Column(db.Text)
+    review_date = db.Column(db.DateTime)
+    reviewer_location = db.Column(db.String(100))
+```
+**Searches**: Rating above X, Reviews containing keyword, Reviews by location
+**Analysis**: Average rating by product, Sentiment over time, Geographic patterns
+
+### Scenario C: Event Data
+**Fields**: event_name, date, location, attendance, category, price
+**Model**:
+```python
+class DataRecord(db.Model):
+    event_name = db.Column(db.String(200))
+    event_date = db.Column(db.DateTime)
+    location = db.Column(db.String(200))
+    attendance = db.Column(db.Integer)
+    category = db.Column(db.String(100))
+    price = db.Column(db.Float)
+```
+**Searches**: Events above attendance X, Events by category, Events near location
+**Analysis**: Popular categories, Attendance patterns, Price analysis
+
+### FIREBASE IMPLEMENTATIONS
+
+### Scenario A: Sales Data
+**Fields**: date, product_name, price, quantity, salesperson, region
+**Searches**: Price above X, Products containing keyword, Sales by region
+**Analysis**: Revenue by region, Top products, Sales patterns by time
+
+### Scenario B: Review Data  
+**Fields**: product, rating, review_text, date, reviewer_location
+**Searches**: Rating above X, Reviews containing keyword, Reviews by location
+**Analysis**: Average rating by product, Sentiment over time, Geographic patterns
+
+### Scenario C: Event Data
+**Fields**: event_name, date, location, attendance, category, price
+**Searches**: Events above attendance X, Events by category, Events near location
+**Analysis**: Popular categories, Attendance patterns, Price analysis
+
+### Scenario D: Real Estate Data
+**Fields**: address, price, bedrooms, bathrooms, square_feet, listing_date
+**Searches**: Price above X, Bedrooms = X, Properties near location
+**Analysis**: Price per square foot, Popular features, Market trends
+
+## FINAL REMINDERS
+
+### Quiz Day Success Tips:
+
+#### FLASK APPROACH:
+1. **Start with data model** - Get the fields right first
+2. **Test incrementally** - Test upload, then each search function
+3. **Use print statements** - Add debugging prints in Python functions
+4. **Check browser console** - For frontend JavaScript errors  
+5. **Keep it simple** - Basic functionality that works beats complex features that don't
+
+#### FIREBASE APPROACH:
+1. **Read the CSV headers first** - this tells you everything
+2. **Start with upload** - get data in Firebase ASAP
+3. **Test incrementally** - don't wait until the end
+4. **Use console.log** - debug as you go
+5. **Keep it simple** - basic functionality that works beats complex features that don't
+
+### Time Management:
+- **Flask**: 5 min setup, 40 min customization, 30 min testing
+- **Firebase**: 15 min setup, 45 min customization, 15 min testing
+- **Don't spend too long on styling** - functionality first
+- **Copy-paste field names** - avoid typos
+- **Test frequently** - catch issues early
+- **Have backup plans** - if one search fails, move to the next
+
+### Emergency Fixes:
+
+#### FLASK:
+- If model changes break: Delete database file and recreate
+- If searches fail: Use simpler queries with basic filtering
+- If templates break: Remove complex JavaScript and use basic forms
+- If server crashes: Check Python console for error messages
+
+#### FIREBASE:
+- If pagination breaks: Remove it and show all results
+- If analysis fails: Show simple counts instead of complex calculations
+- If searches fail: Implement basic text filtering
+- If Firebase fails: Show error messages clearly
+
+## RECOMMENDATION
+
+**For Quiz Environment: Use Flask Approach**
+- Faster setup and customization
+- Better debugging capabilities  
+- More control over data processing
+- Works offline
+- Easier to adapt to different data structures
+
+**For Production: Use Firebase Approach**
+- Better scalability
+- Free hosting
+- Real-time capabilities
+- No server maintenance
+
+## YOU'RE PREPARED! 
+
+With both templates and this comprehensive guide, you can recreate the application in 75 minutes with any dataset. The Flask approach is recommended for quiz environments due to faster setup and easier customization.
+
+**Remember**: The core functionality is the same, only the data fields and analysis logic change. You've got this! 🚀
+
+## QUICK REFERENCE
+
+### Flask Setup Commands:
+```bash
+python -m venv quiz_env
+source quiz_env/bin/activate  # Mac/Linux
+quiz_env\Scripts\activate     # Windows
+pip install -r requirements.txt
+python -c "from app import app, db; app.app_context().push(); db.create_all()"
+python app.py
+```
+
+### Key Files to Modify:
+1. `app.py` - DataRecord class and upload function
+2. `templates/search.html` - Table headers and field names
+3. `app.py` - Search and analysis functions
+
+### Common Field Types:
+- `db.Column(db.String(200))` - Text fields
+- `db.Column(db.Float)` - Numeric fields  
+- `db.Column(db.DateTime)` - Date fields
+- `db.Column(db.Integer)` - Integer fields
