@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .container { background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        button { background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #45a049; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .config-section { background: #e8f4fd; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Firebase Connection Test for GitHub Pages</h1>
+    
+    <div class="container">
+        <h2>Configuration Status</h2>
+        <div id="configStatus"></div>
+        
+        <div class="config-section">
+            <h3>🔧 Quick Setup for GitHub Pages + Firebase Database</h3>
+            <p><strong>Since you're deploying via GitHub Pages, you only need database access:</strong></p>
+            <ol>
+                <li><strong>Enable Firestore:</strong> In the browser tab I opened, make sure Firestore Database is created</li>
+                <li><strong>Get Project Config:</strong> We'll use the public project information (no web app needed)</li>
+                <li><strong>Test Connection:</strong> Use the button below to verify database access</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Database Connection Test</h2>
+        <button onclick="testBasicConnection()">Test Firebase Connection</button>
+        <button onclick="testDatabase()">Test Database Access</button>
+        <button onclick="createTestData()">Create Test Document</button>
+        <div id="connectionResults"></div>
+    </div>
+
+    <div class="container">
+        <h2>GitHub Pages Deployment Info</h2>
+        <div class="status warning">
+            <strong>Your GitHub Pages URL should be:</strong><br>
+            <code>https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/</code>
+            <br><br>
+            The root <code>index.html</code> redirects to <code>./real_Quiz2/index.html</code>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Firebase configuration using public project info
+        const firebaseConfig = {
+            apiKey: "AIzaSyDummy", // We'll use a public API key approach
+            authDomain: "realquiz2-a1d06.firebaseapp.com",
+            projectId: "realquiz2-a1d06",
+            storageBucket: "realquiz2-a1d06.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abc123"
+        };
+
+        // For testing, we'll try a minimal connection approach
+        let db;
+        let isConnected = false;
+
+        // Update config status
+        document.getElementById('configStatus').innerHTML = `
+            <div class="status warning">
+                <strong>Project ID:</strong> ${firebaseConfig.projectId}<br>
+                <strong>Domain:</strong> ${firebaseConfig.authDomain}<br>
+                <strong>Storage:</strong> ${firebaseConfig.storageBucket}<br>
+                <em>Using minimal config for database-only access</em>
+            </div>
+        `;
+
+        // Test basic Firebase connection
+        window.testBasicConnection = async function() {
+            const resultsDiv = document.getElementById('connectionResults');
+            resultsDiv.innerHTML = '<div class="status">Testing basic Firebase connection...</div>';
+            
+            try {
+                // Try to import Firebase modules
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js');
+                const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js');
+                
+                resultsDiv.innerHTML = '<div class="status success">✅ Firebase SDK loaded successfully!</div>';
+                
+                // Try to initialize (this might fail without proper API key, but that's expected)
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    isConnected = true;
+                    resultsDiv.innerHTML += '<div class="status success">✅ Firebase app initialized!</div>';
+                } catch (initError) {
+                    resultsDiv.innerHTML += `<div class="status error">⚠️ App initialization needs real API key: ${initError.message}</div>`;
+                    resultsDiv.innerHTML += '<div class="status warning">This is expected - you need to get your actual Firebase config from the console.</div>';
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="status error">❌ Failed to load Firebase SDK: ${error.message}</div>`;
+            }
+        };
+
+        // Test database access (requires proper config)
+        window.testDatabase = async function() {
+            const resultsDiv = document.getElementById('connectionResults');
+            
+            if (!isConnected) {
+                resultsDiv.innerHTML += '<div class="status error">❌ Firebase not initialized. Need real API key.</div>';
+                return;
+            }
+            
+            try {
+                const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js');
+                const querySnapshot = await getDocs(collection(db, "quiz_data"));
+                
+                resultsDiv.innerHTML += `<div class="status success">✅ Database access successful! Found ${querySnapshot.size} documents in 'quiz_data' collection.</div>`;
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="status error">❌ Database access failed: ${error.message}</div>`;
+                if (error.code === 'permission-denied') {
+                    resultsDiv.innerHTML += '<div class="status warning">💡 This might be a security rules issue. Make sure Firestore rules allow read access.</div>';
+                }
+            }
+        };
+
+        // Create test document
+        window.createTestData = async function() {
+            const resultsDiv = document.getElementById('connectionResults');
+            
+            if (!isConnected) {
+                resultsDiv.innerHTML += '<div class="status error">❌ Firebase not initialized. Need real API key.</div>';
+                return;
+            }
+            
+            try {
+                const { collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js');
+                
+                const testDoc = {
+                    test_field: "Hello from GitHub Pages!",
+                    timestamp: new Date(),
+                    source: "connection-test"
+                };
+                
+                const docRef = await addDoc(collection(db, "quiz_data"), testDoc);
+                resultsDiv.innerHTML += `<div class="status success">✅ Test document created with ID: ${docRef.id}</div>`;
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="status error">❌ Failed to create test document: ${error.message}</div>`;
+                if (error.code === 'permission-denied') {
+                    resultsDiv.innerHTML += '<div class="status warning">💡 This might be a security rules issue. Make sure Firestore rules allow write access.</div>';
+                }
+            }
+        };
+
+        // Auto-run basic connection test
+        window.addEventListener('load', function() {
+            setTimeout(testBasicConnection, 1000);
+        });
+    </script>
+
+    <div class="container">
+        <h2>Next Steps</h2>
+        <div class="config-section">
+            <h3>To get your actual Firebase config:</h3>
+            <ol>
+                <li>In the Firebase console that's open, go to Project Settings (gear icon)</li>
+                <li>Scroll down to "Your apps" section</li>
+                <li>Click "Add app" → Web (</>) → Enter nickname → Register app</li>
+                <li>Copy the config object and replace the dummy one above</li>
+                <li>Or, if you prefer, just enable Firestore and use the project ID directly</li>
+            </ol>
+            
+            <h3>Security Rules for Development:</h3>
+            <pre>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+            <p><em>⚠️ Change this for production use!</em></p>
+        </div>
+    </div>
+</body>
+</html>
