@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // PRODUCTION SECURITY RULES FOR QUIZ PROJECT
+    
+    // Quiz data collection - time-limited access
+    match /quiz_data/{document} {
+      // Allow reads always (for search/analysis)
+      allow read: if true;
+      
+      // Allow writes only during quiz period
+      // Update this date range for your quiz schedule
+      allow write: if request.time >= timestamp.date(2025, 9, 21) && 
+                     request.time <= timestamp.date(2025, 12, 31);
+      
+      // Alternative: Allow writes only from authorized domains
+      // allow write: if request.auth != null || 
+      //                request.host.startsWith('benjination.github.io');
+    }
+    
+    // Test collection (for connection testing)
+    match /test/{document} {
+      allow read, write: if true;
+    }
+    
+    // Default: deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// DEPLOYMENT INSTRUCTIONS:
+// 1. Go to: https://console.firebase.google.com/project/realquiz2-a1d06/firestore/rules
+// 2. Replace the current rules with this content
+// 3. Click "Publish"
+// 4. Test the rules using the Firebase Rules Playground

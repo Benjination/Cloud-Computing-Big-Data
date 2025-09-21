@@ -258,3 +258,14 @@ temp/
 BasicDatabase/.venv/
 BasicDatabase/__pycache__/
 BasicDatabase/instance/
+
+# Firebase Configuration
+firebase.env
+firebase-config.js
+**/firebase.env
+**/firebase-config.js
+
+# Local development secrets (if any)
+*.private
+*.secret
+local-config.*

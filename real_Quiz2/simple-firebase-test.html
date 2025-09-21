@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Firebase Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .status { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .config-box { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        textarea { width: 100%; height: 120px; margin: 10px 0; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🔥 Firebase Connection Test - Simple Version</h1>
+    
+    <div class="status warning">
+        <strong>Project:</strong> realquiz2-a1d06<br>
+        <strong>Status:</strong> Needs real Firebase config
+    </div>
+
+    <div class="config-box">
+        <h3>Paste Your Firebase Config Here:</h3>
+        <textarea id="configInput" placeholder="Paste the firebaseConfig object from Firebase console here...
+Example:
+const firebaseConfig = {
+  apiKey: 'your-api-key',
+  authDomain: 'realquiz2-a1d06.firebaseapp.com',
+  projectId: 'realquiz2-a1d06',
+  storageBucket: 'realquiz2-a1d06.appspot.com',
+  messagingSenderId: 'your-sender-id',
+  appId: 'your-app-id'
+};"></textarea>
+        <button onclick="testWithConfig()">Test This Config</button>
+        <button onclick="useMinimalConfig()">Try Minimal Config</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script type="module">
+        let firebaseApp;
+        let db;
+
+        // Minimal config that might work for testing
+        const minimalConfig = {
+            projectId: "realquiz2-a1d06",
+            authDomain: "realquiz2-a1d06.firebaseapp.com",
+            storageBucket: "realquiz2-a1d06.appspot.com"
+        };
+
+        window.useMinimalConfig = async function() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status">Testing with minimal config...</div>';
+            
+            try {
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js');
+                const { getFirestore, collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js');
+                
+                firebaseApp = initializeApp(minimalConfig);
+                db = getFirestore(firebaseApp);
+                
+                resultsDiv.innerHTML += '<div class="status success">✅ Firebase app initialized with minimal config!</div>';
+                
+                // Try to read from database
+                try {
+                    const snapshot = await getDocs(collection(db, "quiz_data"));
+                    resultsDiv.innerHTML += `<div class="status success">✅ Database access successful! Found ${snapshot.size} documents.</div>`;
+                } catch (dbError) {
+                    resultsDiv.innerHTML += `<div class="status error">❌ Database access failed: ${dbError.message}</div>`;
+                    if (dbError.code === 'permission-denied') {
+                        resultsDiv.innerHTML += '<div class="status warning">💡 Database exists but needs security rules update or proper API key.</div>';
+                    }
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="status error">❌ Firebase initialization failed: ${error.message}</div>`;
+            }
+        };
+
+        window.testWithConfig = async function() {
+            const configText = document.getElementById('configInput').value.trim();
+            const resultsDiv = document.getElementById('results');
+            
+            if (!configText) {
+                resultsDiv.innerHTML = '<div class="status error">Please paste your Firebase config first!</div>';
+                return;
+            }
+            
+            try {
+                // Extract the config object from the pasted text
+                let configMatch = configText.match(/firebaseConfig\s*=\s*(\{[\s\S]*?\});?/);
+                if (!configMatch) {
+                    // Try to parse as direct JSON
+                    configMatch = [null, configText];
+                }
+                
+                // Clean up the config string and parse it
+                let configStr = configMatch[1].replace(/'/g, '"').replace(/(\w+):/g, '"$1":');
+                const firebaseConfig = JSON.parse(configStr);
+                
+                resultsDiv.innerHTML = '<div class="status">Testing with your config...</div>';
+                
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js');
+                const { getFirestore, collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js');
+                
+                firebaseApp = initializeApp(firebaseConfig);
+                db = getFirestore(firebaseApp);
+                
+                resultsDiv.innerHTML += '<div class="status success">✅ Firebase app initialized with your config!</div>';
+                
+                // Test database access
+                const snapshot = await getDocs(collection(db, "quiz_data"));
+                resultsDiv.innerHTML += `<div class="status success">✅ Database access successful! Found ${snapshot.size} documents in 'quiz_data' collection.</div>`;
+                
+                // Show how to update your files
+                resultsDiv.innerHTML += `
+                    <div class="status success">
+                        <strong>Success! Your config works.</strong><br>
+                        Now copy this config to:<br>
+                        • firebase-index.html<br>
+                        • firebase-search.html<br>
+                        Replace the placeholder firebaseConfig object with your real one.
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                console.error('Full error:', error);
+            }
+        };
+
+        // Auto-test minimal config on load
+        window.addEventListener('load', function() {
+            setTimeout(useMinimalConfig, 1000);
+        });
+    </script>
+
+    <div style="margin-top: 30px; padding: 15px; background: #e8f4fd; border-radius: 5px;">
+        <h3>📋 Quick Setup Steps</h3>
+        <ol>
+            <li>Go to <a href="https://console.firebase.google.com/project/realquiz2-a1d06/settings/general" target="_blank">Firebase Console</a></li>
+            <li>Add a web app (click the web icon)</li>
+            <li>Copy the firebaseConfig object</li>
+            <li>Paste it in the box above and test</li>
+            <li>If it works, update your Firebase HTML files</li>
+        </ol>
+    </div>
+</body>
+</html>
