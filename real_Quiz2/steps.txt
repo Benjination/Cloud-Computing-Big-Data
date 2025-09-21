@@ -997,25 +997,46 @@ Your quiz files are in `/real_Quiz2/` folder inside the larger `Cloud-Computing-
 3. Set GitHub Pages to deploy from `/docs` folder
 4. URL: `https://benjination.github.io/Cloud-Computing-Big-Data/`
 
-### RECOMMENDED FOR QUIZ: OPTION 1 (Current Repository)
-Since you're preparing for a quiz, use your existing repository:
+### RECOMMENDED FOR QUIZ: OPTION B (Subfolder Deployment)
+Since you're using your existing `Cloud-Computing-Big-Data` repository:
 
-1. **Copy the redirect file**:
-   ```bash
-   cp real_Quiz2/redirect-index.html index.html
-   ```
+**✅ DEPLOYMENT SETUP COMPLETE:**
+Your quiz folder is at: `https://github.com/Benjination/Cloud-Computing-Big-Data/tree/main/real_Quiz2`
 
-2. **Your quiz URLs will be**:
-   - Main page: `https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/index.html`
-   - Search page: `https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/search.html`
-   - Auto-redirect: `https://benjination.github.io/Cloud-Computing-Big-Data/` (redirects to quiz)
+**Your quiz URLs will be:**
+- **Main Quiz Page**: `https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/index.html`
+- **Search & Analysis**: `https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/search.html`  
+- **Auto-redirect**: `https://benjination.github.io/Cloud-Computing-Big-Data/` → redirects to quiz
 
-3. **Enable GitHub Pages**:
-   - Go to repository Settings → Pages
-   - Source: Deploy from a branch
-   - Branch: main, Folder: / (root)
+**To enable GitHub Pages:**
+1. Go to your repository: `https://github.com/Benjination/Cloud-Computing-Big-Data`
+2. Click Settings → Pages (in left sidebar)
+3. Under "Source": Select "Deploy from a branch"
+4. Branch: "main", Folder: "/ (root)"
+5. Click "Save"
+6. GitHub will provide your site URL (should be the URLs listed above)
 
-This way, anyone visiting your main repository URL will automatically be redirected to your quiz project!
+**File structure for deployment:**
+```
+Cloud-Computing-Big-Data/
+├── index.html                    # Redirect page (✅ ready)
+├── real_Quiz2/                   # Your quiz folder (✅ ready)
+│   ├── index.html               # Firebase upload page
+│   ├── search.html              # Firebase search page
+│   ├── app.py                   # Flask backend (for local dev)
+│   ├── requirements.txt         # Python dependencies
+│   ├── config.py                # Flask configuration
+│   ├── utils.py                 # Helper functions
+│   ├── templates/               # Flask HTML templates
+│   └── steps.txt                # This guide
+└── (other repository files)
+```
+
+**✅ READY TO USE:**
+- All files are committed and pushed to GitHub
+- Redirect index.html is in place
+- Quiz templates are ready for customization
+- Both Flask (local) and Firebase (deployed) options available
 
 ### FLASK APPROACH ISSUES
 
