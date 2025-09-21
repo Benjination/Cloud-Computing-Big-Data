@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Upload - Quiz Project</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .container { background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        button { background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #45a049; }
+        .progress { background: #f0f0f0; border-radius: 4px; margin: 10px 0; }
+        .progress-bar { background: #4CAF50; height: 20px; border-radius: 4px; transition: width 0.3s; }
+        input[type="file"] { margin: 10px 0; padding: 10px; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .config-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Data Analysis Project - Upload Interface</h1>
+    
+    <div class="container">
+        <h2>Firebase Connection Status</h2>
+        <button onclick="testConnection()">Test Firebase Connection</button>
+        <div id="connectionStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>CSV Data Upload</h2>
+        <input type="file" id="csvFile" accept=".csv" />
+        <button onclick="uploadCSV()">Upload Data to Firebase</button>
+        
+        <div class="progress" style="display: none;" id="progressContainer">
+            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+        </div>
+        
+        <div id="uploadStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>Navigation</h2>
+        <button onclick="window.location.href='search.html'">Go to Search & Analysis</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // 🔥 FIREBASE CONFIGURATION FOR PROJECT: realquiz2-a1d06
+        const firebaseConfig = {
+            apiKey: "AIzaSyARxVQ5jA7HZoYKZUSyxDsuHh9-b6pidWQ",
+            authDomain: "realquiz2-a1d06.firebaseapp.com",
+            projectId: "realquiz2-a1d06",
+            storageBucket: "realquiz2-a1d06.firebasestorage.app",
+            messagingSenderId: "1020294472984",
+            appId: "1:1020294472984:web:3aee76d6a34be40d47ea6d",
+            measurementId: "G-6NBBPMXKXL"
+        };
+
+        // Config is now properly set
+        console.log("✅ Firebase configuration loaded for project:", firebaseConfig.projectId);
+
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, writeBatch, doc, getDocs } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Make database available globally
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.writeBatch = writeBatch;
+        window.doc = doc;
+        window.getDocs = getDocs;
+
+        // Collection name - CHANGE THIS FOR YOUR QUIZ DATA
+        window.COLLECTION_NAME = "quiz_data";
+
+        // Test Firebase Connection
+        window.testConnection = async function() {
+            const statusDiv = document.getElementById('connectionStatus');
+            try {
+                statusDiv.innerHTML = '<div class="status">Testing connection...</div>';
+                
+                // Try to read from the collection
+                const testQuery = await getDocs(collection(db, window.COLLECTION_NAME));
+                statusDiv.innerHTML = `<div class="status success">✅ Firebase connection successful!<br>Collection: ${window.COLLECTION_NAME}<br>Current documents: ${testQuery.size}</div>`;
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Connection failed: ${error.message}<br>Check your Firebase configuration and security rules.</div>`;
+                console.error("Firebase connection error:", error);
+            }
+        };
+
+        // CSV Upload Function - CUSTOMIZE FOR YOUR DATA
+        window.uploadCSV = async function() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            const statusDiv = document.getElementById('uploadStatus');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            
+            // Check if file is selected
+            if (!file) {
+                statusDiv.innerHTML = '<div class="status error">Please select a CSV file</div>';
+                return;
+            }
+
+            try {
+                statusDiv.innerHTML = '<div class="status">Reading file...</div>';
+                const csvText = await file.text();
+                const lines = csvText.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                
+                console.log('CSV Headers detected:', headers);
+                statusDiv.innerHTML = `<div class="status">Found ${lines.length - 1} records with columns: ${headers.join(', ')}<br>Starting upload...</div>`;
+                
+                progressContainer.style.display = 'block';
+                const batchSize = 500;
+                let batch = writeBatch(db);
+                let batchCount = 0;
+                let totalProcessed = 0;
+                
+                // CUSTOMIZE THIS SECTION BASED ON YOUR DATA FIELDS
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim()) {
+                        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                        const record = {};
+                        
+                        headers.forEach((header, index) => {
+                            if (values[index]) {
+                                let value = values[index];
+                                
+                                // AUTO-DETECT AND CONVERT DATA TYPES
+                                // Numeric fields (common patterns)
+                                if (header.toLowerCase().includes('price') || 
+                                    header.toLowerCase().includes('rating') || 
+                                    header.toLowerCase().includes('amount') || 
+                                    header.toLowerCase().includes('value') ||
+                                    header.toLowerCase().includes('score') ||
+                                    header.toLowerCase().includes('quantity') ||
+                                    header.toLowerCase().includes('lat') || 
+                                    header.toLowerCase().includes('lng') ||
+                                    header.toLowerCase().includes('longitude') || 
+                                    header.toLowerCase().includes('latitude') ||
+                                    header.toLowerCase().includes('magnitude') ||
+                                    header.toLowerCase().includes('depth') ||
+                                    !isNaN(parseFloat(value)) && isFinite(value) && value.includes('.')) {
+                                    value = parseFloat(value) || null;
+                                }
+                                // Integer fields
+                                else if (header.toLowerCase().includes('count') ||
+                                         header.toLowerCase().includes('id') ||
+                                         (!isNaN(parseInt(value)) && !value.includes('.') && value.match(/^\d+$/))) {
+                                    value = parseInt(value) || null;
+                                }
+                                // Date fields (common patterns)
+                                else if (header.toLowerCase().includes('date') || 
+                                         header.toLowerCase().includes('time') || 
+                                         header.toLowerCase().includes('created') || 
+                                         header.toLowerCase().includes('updated') ||
+                                         value.match(/\d{4}-\d{2}-\d{2}/) ||
+                                         value.match(/\d{1,2}\/\d{1,2}\/\d{4}/)) {
+                                    try {
+                                        value = new Date(value);
+                                        if (isNaN(value.getTime())) value = null;
+                                    } catch {
+                                        value = null;
+                                    }
+                                }
+                                
+                                record[header] = value;
+                            }
+                        });
+                        
+                        const docRef = doc(collection(db, window.COLLECTION_NAME));
+                        batch.set(docRef, record);
+                        batchCount++;
+                        totalProcessed++;
+                        
+                        if (batchCount >= batchSize) {
+                            await batch.commit();
+                            batch = writeBatch(db);
+                            batchCount = 0;
+                            
+                            const progress = (totalProcessed / (lines.length - 1)) * 100;
+                            progressBar.style.width = progress + '%';
+                            statusDiv.innerHTML = `<div class="status">Uploaded ${totalProcessed} records...</div>`;
+                        }
+                    }
+                }
+                
+                if (batchCount > 0) {
+                    await batch.commit();
+                }
+                
+                progressBar.style.width = '100%';
+                statusDiv.innerHTML = `<div class="status success">✅ Upload complete! ${totalProcessed} records uploaded successfully to collection: ${window.COLLECTION_NAME}</div>`;
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Upload failed: ${error.message}</div>`;
+                console.error('Upload error:', error);
+            }
+        };
+
+        // Auto-test connection on page load
+        window.addEventListener('load', function() {
+            if (firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
+                testConnection();
+            }
+        });
+    </script>
+</body>
+</html>
