@@ -134,12 +134,45 @@ const firebaseConfig = {
 - [ ] Initialize with README
 - [ ] Create the repository
 
-### STEP 5: ENABLE GITHUB PAGES
+### STEP 5: HANDLE SUBFOLDER DEPLOYMENT
+Since your quiz files are in a subfolder (`real_Quiz2`), you have two options:
+
+#### OPTION A: Create Separate Repository (RECOMMENDED FOR QUIZ)
+- [ ] Create a new repository specifically for your quiz project
+- [ ] Copy only the Firebase files (index.html, search.html, any CSV files) to the root
+- [ ] This gives you a clean deployment at `https://username.github.io/repository-name`
+
+#### OPTION B: Use Subfolder Deployment
+- [ ] In your existing repository, GitHub Pages will serve from root by default
+- [ ] You'll need to access your quiz at `https://username.github.io/Cloud-Computing-Big-Data/real_Quiz2/`
+- [ ] Create an `index.html` file in the repository root that redirects to your quiz:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="refresh" content="0; url=./real_Quiz2/index.html">
+    <title>Redirecting to Quiz...</title>
+</head>
+<body>
+    <p>Redirecting to quiz project...</p>
+    <p>If not redirected, <a href="./real_Quiz2/index.html">click here</a></p>
+</body>
+</html>
+```
+
+### STEP 5A: ENABLE GITHUB PAGES (OPTION A - SEPARATE REPO)
 - [ ] In your new repository, go to Settings → Pages
 - [ ] Under "Source", select "Deploy from a branch"
 - [ ] Choose "main" branch and "/ (root)" folder
 - [ ] Click Save
 - [ ] Note the URL where your site will be published
+
+### STEP 5B: ENABLE GITHUB PAGES (OPTION B - EXISTING REPO)
+- [ ] In your existing Cloud-Computing-Big-Data repository, go to Settings → Pages
+- [ ] Under "Source", select "Deploy from a branch"
+- [ ] Choose "main" branch and "/ (root)" folder
+- [ ] Your quiz will be accessible at: `https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/`
+- [ ] Optionally create a redirect index.html in the repository root
 
 ### STEP 6: PREPARE TEMPLATE FILES
 Create these template files in your repository (you can do this now):
@@ -814,10 +847,15 @@ Create these template files in your repository (you can do this now):
 
 #### FINAL 10 MINUTES: Testing & Deployment
 - [ ] Commit and push all changes to GitHub
+- [ ] For subfolder deployment: Copy `redirect-index.html` to repository root as `index.html`
+- [ ] Enable GitHub Pages in repository Settings → Pages
 - [ ] Upload CSV file using your interface
-- [ ] Test each search function
+- [ ] Test each search function at the GitHub Pages URL
 - [ ] Test each analysis function
 - [ ] Verify GitHub Pages deployment is working
+- [ ] Note: Your URLs will be:
+  - Quiz: `https://yourusername.github.io/repository-name/real_Quiz2/index.html`
+  - Search: `https://yourusername.github.io/repository-name/real_Quiz2/search.html`
 
 ## COMPARISON: FLASK VS FIREBASE
 
@@ -919,7 +957,65 @@ Based on common data types:
 
 ## TROUBLESHOOTING CHECKLIST
 
-## TROUBLESHOOTING GUIDE
+## GITHUB PAGES DEPLOYMENT OPTIONS
+
+### CURRENT SITUATION:
+Your quiz files are in `/real_Quiz2/` folder inside the larger `Cloud-Computing-Big-Data` repository.
+
+### DEPLOYMENT OPTION 1: USE CURRENT REPOSITORY (EASIEST)
+**URL will be**: `https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/`
+
+**Steps:**
+1. Copy the `redirect-index.html` file to the repository root as `index.html`
+2. Commit and push all changes
+3. Enable GitHub Pages from Settings → Pages → Deploy from main branch
+4. Access your quiz at the full URL path
+
+**Pros:** No new repository needed, uses existing setup
+**Cons:** Longer URL path
+
+### DEPLOYMENT OPTION 2: CREATE NEW REPOSITORY (CLEANEST)
+**URL will be**: `https://yourusername.github.io/quiz-project-name/`
+
+**Steps:**
+1. Create new repository: `quiz-data-analysis-2025`
+2. Copy only the web files (for Firebase approach):
+   - `index.html` → root
+   - `search.html` → root  
+   - Any CSS/JS files → root
+   - CSV data files → root
+3. Enable GitHub Pages
+4. Clean, short URL
+
+**Pros:** Clean URL, dedicated repository
+**Cons:** Need to copy files to new repository
+
+### DEPLOYMENT OPTION 3: GITHUB PAGES FROM DOCS FOLDER
+**Steps:**
+1. Create a `/docs` folder in repository root
+2. Copy web files to `/docs` folder
+3. Set GitHub Pages to deploy from `/docs` folder
+4. URL: `https://benjination.github.io/Cloud-Computing-Big-Data/`
+
+### RECOMMENDED FOR QUIZ: OPTION 1 (Current Repository)
+Since you're preparing for a quiz, use your existing repository:
+
+1. **Copy the redirect file**:
+   ```bash
+   cp real_Quiz2/redirect-index.html index.html
+   ```
+
+2. **Your quiz URLs will be**:
+   - Main page: `https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/index.html`
+   - Search page: `https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/search.html`
+   - Auto-redirect: `https://benjination.github.io/Cloud-Computing-Big-Data/` (redirects to quiz)
+
+3. **Enable GitHub Pages**:
+   - Go to repository Settings → Pages
+   - Source: Deploy from a branch
+   - Branch: main, Folder: / (root)
+
+This way, anyone visiting your main repository URL will automatically be redirected to your quiz project!
 
 ### FLASK APPROACH ISSUES
 
