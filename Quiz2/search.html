@@ -294,12 +294,12 @@
         window.db = db;
         window.firestore = { collection, getDocs, query, where, orderBy, limit };
 
-        // Pagination variables
-        let allResults = [];
-        let currentPage = 1;
-        let resultsPerPage = 20;
-        let totalPages = 1;
-        let currentResultsType = null;
+        // Pagination variables - make them global
+        window.allResults = [];
+        window.currentPage = 1;
+        window.resultsPerPage = 20;
+        window.totalPages = 1;
+        window.currentResultsType = null;
 
         // Utility Functions
         function showLoading() {
@@ -803,16 +803,17 @@
             const paginationDiv = document.getElementById('paginationControls');
             
             if (data.status === 'success') {
-                allResults = data;
-                currentPage = 1;
+                window.allResults = data;
+                window.currentPage = 1;
                 
                 if (data.analysis) {
-                    currentResultsType = 'analysis';
+                    window.currentResultsType = 'analysis';
                     paginationDiv.style.display = 'none';
                 } else if (data.earthquakes) {
-                    currentResultsType = 'earthquakes';
-                    totalPages = Math.ceil(data.earthquakes.length / resultsPerPage);
-                    paginationDiv.style.display = totalPages > 1 ? 'flex' : 'none';
+                    window.currentResultsType = 'earthquakes';
+                    window.totalPages = Math.ceil(data.earthquakes.length / window.resultsPerPage);
+                    paginationDiv.style.display = window.totalPages > 1 ? 'flex' : 'none';
+                    console.log(`Total results: ${data.earthquakes.length}, Results per page: ${window.resultsPerPage}, Total pages: ${window.totalPages}`);
                 }
                 
                 renderCurrentPage();
@@ -901,30 +902,36 @@
             const currentPageSpan = document.getElementById('currentPageSpan');
             const totalPagesSpan = document.getElementById('totalPagesSpan');
             
-            prevBtn.disabled = currentPage <= 1;
-            nextBtn.disabled = currentPage >= totalPages;
-            currentPageSpan.textContent = currentPage;
-            totalPagesSpan.textContent = totalPages;
+            if (prevBtn) prevBtn.disabled = window.currentPage <= 1;
+            if (nextBtn) nextBtn.disabled = window.currentPage >= window.totalPages;
+            if (currentPageSpan) currentPageSpan.textContent = window.currentPage;
+            if (totalPagesSpan) totalPagesSpan.textContent = window.totalPages;
+            
+            console.log(`Pagination: Page ${window.currentPage} of ${window.totalPages}`);
         }
 
         window.goToPage = function(page) {
-            if (page >= 1 && page <= totalPages) {
-                currentPage = page;
+            console.log(`goToPage called with page: ${page}, currentPage: ${window.currentPage}, totalPages: ${window.totalPages}`);
+            if (page >= 1 && page <= window.totalPages && page !== window.currentPage) {
+                window.currentPage = page;
+                console.log(`Changing to page ${window.currentPage}`);
                 renderCurrentPage();
+            } else {
+                console.log(`Invalid page navigation: ${page} (current: ${window.currentPage}, total: ${window.totalPages})`);
             }
         };
 
         window.changeResultsPerPage = function() {
             const select = document.getElementById('resultsPerPage');
-            resultsPerPage = parseInt(select.value);
+            window.resultsPerPage = parseInt(select.value);
             
-            if (currentResultsType === 'earthquakes' && allResults.earthquakes) {
-                totalPages = Math.ceil(allResults.earthquakes.length / resultsPerPage);
-                currentPage = 1;
+            if (window.currentResultsType === 'earthquakes' && window.allResults.earthquakes) {
+                window.totalPages = Math.ceil(window.allResults.earthquakes.length / window.resultsPerPage);
+                window.currentPage = 1;
                 renderCurrentPage();
                 
                 const paginationDiv = document.getElementById('paginationControls');
-                paginationDiv.style.display = totalPages > 1 ? 'flex' : 'none';
+                paginationDiv.style.display = window.totalPages > 1 ? 'flex' : 'none';
             }
         };
 
