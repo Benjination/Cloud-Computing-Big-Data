@@ -258,6 +258,24 @@
                 <button class="clear-btn" onclick="clearResults()">Clear</button>
             </div>
         </div>
+
+        <!-- Q14: Net Value Search and Delete -->
+        <div class="search-form">
+            <h3>4. Q14: Net Value Management</h3>
+            <p><strong>Quiz Requirement:</strong> Count occurrences of net value, delete all entries, show remaining count</p>
+            <div class="form-group">
+                <label>Net Value:</label>
+                <input type="text" id="netValue" value="ci" placeholder="e.g., ci, us, nn, ak">
+                <button onclick="countNetEntries()">Count Entries</button>
+                <button class="clear-btn" onclick="deleteNetEntries()">Delete All</button>
+                <button onclick="countTotalRecords()" style="background: #27ae60;">Count Remaining</button>
+            </div>
+            <div class="form-group">
+                <button onclick="performQ14Workflow()" style="background: #e74c3c; font-weight: bold;">🎯 Complete Q14 Workflow</button>
+                <small style="display: block; margin-top: 5px; color: #666;">Performs all 3 steps: Count → Delete → Show Remaining</small>
+            </div>
+            <div id="netResults" class="results" style="margin-top: 15px;"></div>
+        </div>
     </div>
 
     <div class="container results-container">
@@ -280,7 +298,7 @@
         };
 
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -292,6 +310,8 @@
         window.query = query;
         window.where = where;
         window.orderBy = orderBy;
+        window.deleteDoc = deleteDoc;
+        window.doc = doc;
         window.COLLECTION_NAME = "quiz_data";
 
         // Load all data on page load for client-side searching
@@ -374,7 +394,7 @@
             showStatus('loading', 'Searching by proximity...');
             
             const results = earthquakeData.filter(eq => {
-                const distance = calculateDistance(centerLat, centerLon, parseFloat(eq.latitude), parseFloat(eq.longitude));
+                const distance = calculateDistance(centerLat, centerLon, parseFloat(eq.lat), parseFloat(eq.long));
                 return distance <= radius;
             });
             
@@ -410,7 +430,8 @@
                     <div class="magnitude">Magnitude: ${eq.mag} ${eq.magType || ''}</div>
                     <div class="location">${eq.place || 'Location unknown'}</div>
                     <div class="details">
-                        <span class="coordinates">Lat: ${eq.latitude}, Lon: ${eq.longitude}</span> | 
+                        <span class="coordinates">Lat: ${eq.lat}, Lon: ${eq.long}</span> | 
+                        <span class="earthquake-id">ID: ${eq.id || 'unknown'}</span> | 
                         Time: ${new Date(eq.time).toLocaleString()} | 
                         Type: ${eq.type || 'earthquake'}
                     </div>
@@ -429,6 +450,163 @@
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             return R * c;
         }
+
+        // Q14: Net Value Search Functions
+        window.countNetEntries = async function() {
+            const netValue = document.getElementById('netValueInput').value.trim();
+            if (!netValue) {
+                showStatus('error', 'Please enter a net value to search for');
+                return;
+            }
+
+            try {
+                showStatus('info', 'Counting entries...');
+                
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    where('net', '==', netValue)
+                );
+                
+                const querySnapshot = await getDocs(q);
+                const count = querySnapshot.size;
+                
+                document.getElementById('q14Results').innerHTML = `
+                    <div class="result-item">
+                        <strong>Count Result:</strong> Found ${count} entries with net value "${netValue}"
+                    </div>
+                `;
+                
+                showStatus('success', `Count completed: ${count} entries found`);
+                console.log(`Q14 Count: Found ${count} entries with net="${netValue}"`);
+                
+            } catch (error) {
+                console.error('Error counting entries:', error);
+                showStatus('error', 'Error counting entries: ' + error.message);
+            }
+        };
+
+        window.deleteNetEntries = async function() {
+            const netValue = document.getElementById('netValueInput').value.trim();
+            if (!netValue) {
+                showStatus('error', 'Please enter a net value to delete');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete ALL entries with net value "${netValue}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                showStatus('info', 'Deleting entries...');
+                
+                // First, get all documents with the specified net value
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    where('net', '==', netValue)
+                );
+                
+                const querySnapshot = await getDocs(q);
+                const deleteCount = querySnapshot.size;
+                
+                if (deleteCount === 0) {
+                    showStatus('error', `No entries found with net value "${netValue}"`);
+                    return;
+                }
+                
+                // Delete all matching documents
+                const deletePromises = [];
+                querySnapshot.forEach((docSnapshot) => {
+                    deletePromises.push(deleteDoc(doc(db, window.COLLECTION_NAME, docSnapshot.id)));
+                });
+                
+                await Promise.all(deletePromises);
+                
+                // Get remaining count
+                const remainingSnapshot = await getDocs(collection(db, window.COLLECTION_NAME));
+                const remainingCount = remainingSnapshot.size;
+                
+                document.getElementById('q14Results').innerHTML = `
+                    <div class="result-item">
+                        <strong>Delete Result:</strong> Successfully deleted ${deleteCount} entries with net value "${netValue}"<br>
+                        <strong>Remaining total entries:</strong> ${remainingCount}
+                    </div>
+                `;
+                
+                showStatus('success', `Deleted ${deleteCount} entries. ${remainingCount} entries remain in database.`);
+                console.log(`Q14 Delete: Removed ${deleteCount} entries with net="${netValue}". ${remainingCount} total entries remaining.`);
+                
+            } catch (error) {
+                console.error('Error deleting entries:', error);
+                showStatus('error', 'Error deleting entries: ' + error.message);
+            }
+        };
+
+        window.performQ14Workflow = async function() {
+            const netValue = document.getElementById('netValueInput').value.trim();
+            if (!netValue) {
+                showStatus('error', 'Please enter a net value to process');
+                return;
+            }
+
+            try {
+                showStatus('info', 'Starting Q14 workflow...');
+                document.getElementById('q14Results').innerHTML = '<div class="result-item">Processing workflow...</div>';
+                
+                // Step 1: Count entries
+                const countQuery = query(
+                    collection(db, window.COLLECTION_NAME),
+                    where('net', '==', netValue)
+                );
+                
+                const countSnapshot = await getDocs(countQuery);
+                const initialCount = countSnapshot.size;
+                
+                document.getElementById('q14Results').innerHTML = `
+                    <div class="result-item">
+                        <strong>Step 1 - Count:</strong> Found ${initialCount} entries with net value "${netValue}"
+                    </div>
+                `;
+                
+                if (initialCount === 0) {
+                    showStatus('error', `No entries found with net value "${netValue}"`);
+                    return;
+                }
+                
+                // Step 2: Ask for confirmation
+                if (!confirm(`Found ${initialCount} entries with net value "${netValue}". Proceed with deletion?`)) {
+                    showStatus('info', 'Q14 workflow cancelled by user');
+                    return;
+                }
+                
+                // Step 3: Delete entries
+                const deletePromises = [];
+                countSnapshot.forEach((docSnapshot) => {
+                    deletePromises.push(deleteDoc(doc(db, window.COLLECTION_NAME, docSnapshot.id)));
+                });
+                
+                await Promise.all(deletePromises);
+                
+                // Step 4: Get final count
+                const finalSnapshot = await getDocs(collection(db, window.COLLECTION_NAME));
+                const finalCount = finalSnapshot.size;
+                
+                document.getElementById('q14Results').innerHTML = `
+                    <div class="result-item">
+                        <strong>Q14 Workflow Complete:</strong><br>
+                        • Initial count: ${initialCount} entries with net="${netValue}"<br>
+                        • Deleted: ${initialCount} entries<br>
+                        • Remaining total: ${finalCount} entries in database
+                    </div>
+                `;
+                
+                showStatus('success', `Q14 workflow completed successfully. ${finalCount} entries remain in database.`);
+                console.log(`Q14 Workflow: Deleted ${initialCount} entries with net="${netValue}". ${finalCount} total entries remaining.`);
+                
+            } catch (error) {
+                console.error('Error in Q14 workflow:', error);
+                showStatus('error', 'Error in Q14 workflow: ' + error.message);
+            }
+        };
     </script>
 </body>
 </html>
