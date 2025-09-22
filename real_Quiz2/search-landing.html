@@ -268,13 +268,9 @@
                 <input type="text" id="netValue" value="ci" placeholder="e.g., ci, us, nn, ak">
                 <button onclick="countNetEntries()">Count Entries</button>
                 <button class="clear-btn" onclick="deleteNetEntries()">Delete All</button>
-                <button onclick="countTotalRecords()" style="background: #27ae60;">Count Remaining</button>
+                <button onclick="countRemainingRecords()" style="background: #27ae60;">Count Remaining</button>
             </div>
-            <div class="form-group">
-                <button onclick="performQ14Workflow()" style="background: #e74c3c; font-weight: bold;">🎯 Complete Q14 Workflow</button>
-                <small style="display: block; margin-top: 5px; color: #666;">Performs all 3 steps: Count → Delete → Show Remaining</small>
-            </div>
-            <div id="netResults" class="results" style="margin-top: 15px;"></div>
+            <div id="q14Results" class="results" style="margin-top: 15px;"></div>
         </div>
     </div>
 
@@ -599,70 +595,26 @@
             }
         };
 
-        window.performQ14Workflow = async function() {
-            const netValue = document.getElementById('netValue').value.trim();
-            if (!netValue) {
-                showStatus('error', 'Please enter a net value to process');
-                return;
-            }
-
+        // Count Remaining Records
+        window.countRemainingRecords = async function() {
             try {
-                showStatus('info', 'Starting Q14 workflow...');
-                document.getElementById('q14Results').innerHTML = '<div class="result-item">Processing workflow...</div>';
+                showStatus('info', 'Counting total records...');
                 
-                // Step 1: Count entries
-                const countQuery = query(
-                    collection(db, window.COLLECTION_NAME),
-                    where('net', '==', netValue)
-                );
-                
-                const countSnapshot = await getDocs(countQuery);
-                const initialCount = countSnapshot.size;
+                const allSnapshot = await getDocs(collection(db, window.COLLECTION_NAME));
+                const totalCount = allSnapshot.size;
                 
                 document.getElementById('q14Results').innerHTML = `
                     <div class="result-item">
-                        <strong>Step 1 - Count:</strong> Found ${initialCount} entries with net value "${netValue}"
+                        <strong>Total Records:</strong> ${totalCount} earthquakes in database
                     </div>
                 `;
                 
-                if (initialCount === 0) {
-                    showStatus('error', `No entries found with net value "${netValue}"`);
-                    return;
-                }
-                
-                // Step 2: Ask for confirmation
-                if (!confirm(`Found ${initialCount} entries with net value "${netValue}". Proceed with deletion?`)) {
-                    showStatus('info', 'Q14 workflow cancelled by user');
-                    return;
-                }
-                
-                // Step 3: Delete entries
-                const deletePromises = [];
-                countSnapshot.forEach((docSnapshot) => {
-                    deletePromises.push(deleteDoc(doc(db, window.COLLECTION_NAME, docSnapshot.id)));
-                });
-                
-                await Promise.all(deletePromises);
-                
-                // Step 4: Get final count
-                const finalSnapshot = await getDocs(collection(db, window.COLLECTION_NAME));
-                const finalCount = finalSnapshot.size;
-                
-                document.getElementById('q14Results').innerHTML = `
-                    <div class="result-item">
-                        <strong>Q14 Workflow Complete:</strong><br>
-                        • Initial count: ${initialCount} entries with net="${netValue}"<br>
-                        • Deleted: ${initialCount} entries<br>
-                        • Remaining total: ${finalCount} entries in database
-                    </div>
-                `;
-                
-                showStatus('success', `Q14 workflow completed successfully. ${finalCount} entries remain in database.`);
-                console.log(`Q14 Workflow: Deleted ${initialCount} entries with net="${netValue}". ${finalCount} total entries remaining.`);
+                showStatus('success', `Total count: ${totalCount} records in database`);
+                console.log(`Count Remaining: ${totalCount} total records in database`);
                 
             } catch (error) {
-                console.error('Error in Q14 workflow:', error);
-                showStatus('error', 'Error in Q14 workflow: ' + error.message);
+                console.error('Error counting records:', error);
+                showStatus('error', 'Error counting records: ' + error.message);
             }
         };
 
