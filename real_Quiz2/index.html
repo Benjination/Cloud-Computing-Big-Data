@@ -74,7 +74,7 @@
             <p class="text-center text-muted mb-5">Choose your deployment approach for the 75-minute quiz</p>
             
             <!-- Flask Option -->
-            <div class="option-card" onclick="window.location.href='templates/upload.html'">
+            <div class="option-card" onclick="startFlaskApp()">
                 <h3>🚀 Option A: Flask Application <span class="status-badge ready">READY</span></h3>
                 <p><strong>Best for:</strong> Quick customization during quiz</p>
                 <ul>
@@ -86,7 +86,7 @@
                 </ul>
                 <div class="mt-3">
                     <button class="btn btn-custom">Start Flask App</button>
-                    <small class="text-muted">Click to access upload interface</small>
+                    <small class="text-muted">Click to start local Flask server</small>
                 </div>
             </div>
 
@@ -147,6 +147,11 @@
             console.log('Quiz 2 landing page loaded');
             console.log('GitHub Pages URL: https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/');
         });
+
+        // Function to start Flask app
+        function startFlaskApp() {
+            alert('🐍 Flask App Instructions:\n\n1. Open Terminal\n2. Navigate to this project folder\n3. Run: python app.py\n4. Open browser to: http://localhost:5000\n\nThe Flask app will start with upload and search functionality!');
+        }
     </script>
 </body>
 </html>
