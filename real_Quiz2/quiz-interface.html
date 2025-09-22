@@ -373,12 +373,20 @@
                         'doc.id': doc.id,
                         'data keys': Object.keys(data)
                     }); // Debug ID field
+                    
+                    // Better handling of lat/long conversion
+                    const lat = data.lat !== undefined ? Number(data.lat) : 'N/A';
+                    const long = data.long !== undefined ? Number(data.long) : 'N/A';
+                    const mag = data.mag !== undefined ? Number(data.mag) : 'N/A';
+                    
+                    console.log('Converted values:', { lat, long, mag }); // Debug converted values
+                    
                     results.push({
                         time: data.time || 'N/A',
-                        lat: parseFloat(data.lat) || data.lat || 'N/A',
-                        long: parseFloat(data.long) || data.long || 'N/A',
+                        lat: lat,
+                        long: long,
                         id: data.id || data.ID || doc.id || 'No ID',
-                        mag: parseFloat(data.mag) || data.mag || 'N/A'
+                        mag: mag
                     });
                 });
                 
@@ -437,14 +445,15 @@
                 
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
-                    const lat = parseFloat(data.lat);
-                    const long = parseFloat(data.long);
-                    const mag = parseFloat(data.mag);
+                    const lat = data.lat !== undefined ? Number(data.lat) : null;
+                    const long = data.long !== undefined ? Number(data.long) : null;
+                    const mag = data.mag !== undefined ? Number(data.mag) : null;
                     
                     // Debug log
                     console.log('Checking record:', { lat, long, mag, rawData: data });
                     
-                    if (!isNaN(lat) && !isNaN(long) && !isNaN(mag) &&
+                    if (lat !== null && long !== null && mag !== null &&
+                        !isNaN(lat) && !isNaN(long) && !isNaN(mag) &&
                         lat >= latMin && lat <= latMax && 
                         long >= longMin && long <= longMax &&
                         mag >= magLow && mag <= magHigh) {

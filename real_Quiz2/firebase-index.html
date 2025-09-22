@@ -195,10 +195,11 @@
                                     (!isNaN(parseFloat(value)) && isFinite(value) && value.includes('.'))) {
                                     value = parseFloat(value) || null;
                                 }
-                                // Integer fields
+                                // Integer fields (exclude earthquake IDs which are alphanumeric)
                                 else if (header.toLowerCase().includes('count') ||
-                                         header.toLowerCase().includes('id') ||
-                                         (!isNaN(parseInt(value)) && !value.includes('.') && value.match(/^\d+$/))) {
+                                         header.toLowerCase().includes('nst') ||
+                                         (header.toLowerCase().includes('time') && value.match(/^\d+$/)) ||
+                                         (!isNaN(parseInt(value)) && !value.includes('.') && value.match(/^\d+$/) && !header.toLowerCase().includes('id'))) {
                                     value = parseInt(value) || null;
                                 }
                                 // Date fields (common patterns)
