@@ -368,11 +368,16 @@
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
                     console.log('Raw data from Firebase:', data); // Debug log
+                    console.log('ID field variants:', {
+                        'data.id': data.id,
+                        'doc.id': doc.id,
+                        'data keys': Object.keys(data)
+                    }); // Debug ID field
                     results.push({
                         time: data.time || 'N/A',
                         lat: parseFloat(data.lat) || data.lat || 'N/A',
                         long: parseFloat(data.long) || data.long || 'N/A',
-                        id: data.id || doc.id,
+                        id: data.id || data.ID || doc.id || 'No ID',
                         mag: parseFloat(data.mag) || data.mag || 'N/A'
                     });
                 });
@@ -447,7 +452,7 @@
                             time: data.time || 'N/A',
                             lat: lat,
                             long: long,
-                            id: data.id || doc.id,
+                            id: data.id || data.ID || doc.id || 'No ID',
                             mag: mag
                         });
                     }
