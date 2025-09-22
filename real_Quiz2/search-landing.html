@@ -316,6 +316,16 @@
                                 <option value="30">30</option>
                                 <option value="45">45</option>
                             </select>
+                            <span>:</span>
+                            <select id="searchSecond">
+                                <option value="00" selected>00</option>
+                                <option value="01">01</option>
+                                <option value="05">05</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                                <option value="30">30</option>
+                                <option value="45">45</option>
+                            </select>
                             <select id="searchAmPm">
                                 <option value="AM">AM</option>
                                 <option value="PM" selected>PM</option>
@@ -349,6 +359,16 @@
                             </select>
                             <span>:</span>
                             <select id="updateMinute">
+                                <option value="00">00</option>
+                                <option value="01">01</option>
+                                <option value="05">05</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                                <option value="30">30</option>
+                                <option value="45">45</option>
+                            </select>
+                            <span>:</span>
+                            <select id="updateSecond">
                                 <option value="00">00</option>
                                 <option value="01">01</option>
                                 <option value="05">05</option>
@@ -732,8 +752,8 @@
         let currentRecordDocId = null; // Store the document ID for updating
 
         // Helper functions for time conversion
-        function convertTimeToDatabase(hour, minute, ampm) {
-            // Convert 12-hour format to our database format (like 8100 = 8:01 PM)
+        function convertTimeToDatabase(hour, minute, second, ampm) {
+            // Convert 12-hour format to our database format (like 81001 = 8:10:01 PM)
             let dbHour = parseInt(hour);
             if (ampm === 'PM' && dbHour !== 12) {
                 dbHour += 12;
@@ -741,15 +761,17 @@
                 dbHour = 0;
             }
             
-            // Convert to format like 8100 (8:01), 1430 (2:30 PM = 14:30)
-            const dbTime = (dbHour * 100) + parseInt(minute);
+            // Convert to format like 81001 (8:10:01), 143005 (2:30:05 PM = 14:30:05)
+            const dbTime = (dbHour * 10000) + (parseInt(minute) * 100) + parseInt(second);
             return dbTime;
         }
 
         function convertDatabaseToTime(dbTime) {
-            // Convert database format (like 8100) back to hour, minute, ampm
-            const hour24 = Math.floor(dbTime / 100);
-            const minute = dbTime % 100;
+            // Convert database format (like 81001) back to hour, minute, second, ampm
+            const hour24 = Math.floor(dbTime / 10000);
+            const remainder = dbTime % 10000;
+            const minute = Math.floor(remainder / 100);
+            const second = remainder % 100;
             
             let hour12 = hour24;
             let ampm = 'AM';
@@ -768,6 +790,7 @@
             return {
                 hour: hour12,
                 minute: minute.toString().padStart(2, '0'),
+                second: second.toString().padStart(2, '0'),
                 ampm: ampm
             };
         }
@@ -806,9 +829,10 @@
                 currentRecordDocId = docSnapshot.id;
                 
                 // Populate update form with current values
-                const timeData = convertDatabaseToTime(earthquake.time || 8100);
+                const timeData = convertDatabaseToTime(earthquake.time || 81000);
                 document.getElementById('updateHour').value = timeData.hour;
                 document.getElementById('updateMinute').value = timeData.minute;
+                document.getElementById('updateSecond').value = timeData.second;
                 document.getElementById('updateAmPm').value = timeData.ampm;
                 document.getElementById('updateLat').value = earthquake.lat || '';
                 document.getElementById('updateLong').value = earthquake.long || '';
@@ -837,9 +861,10 @@
         window.findRecordByTime = async function() {
             const hour = document.getElementById('searchHour').value;
             const minute = document.getElementById('searchMinute').value;
+            const second = document.getElementById('searchSecond').value;
             const ampm = document.getElementById('searchAmPm').value;
             
-            const time = convertTimeToDatabase(hour, minute, ampm);
+            const time = convertTimeToDatabase(hour, minute, second, ampm);
             
             if (isNaN(time)) {
                 showStatus('error', 'Please select a valid time');
@@ -873,9 +898,10 @@
                 currentRecordDocId = docSnapshot.id;
                 
                 // Populate update form with current values
-                const timeData2 = convertDatabaseToTime(earthquake.time || 8100);
+                const timeData2 = convertDatabaseToTime(earthquake.time || 81000);
                 document.getElementById('updateHour').value = timeData2.hour;
                 document.getElementById('updateMinute').value = timeData2.minute;
+                document.getElementById('updateSecond').value = timeData2.second;
                 document.getElementById('updateAmPm').value = timeData2.ampm;
                 document.getElementById('updateLat').value = earthquake.lat || '';
                 document.getElementById('updateLong').value = earthquake.long || '';
@@ -911,8 +937,9 @@
                 // Get all form values
                 const hour = document.getElementById('updateHour').value;
                 const minute = document.getElementById('updateMinute').value;
+                const second = document.getElementById('updateSecond').value;
                 const ampm = document.getElementById('updateAmPm').value;
-                const time = convertTimeToDatabase(hour, minute, ampm);
+                const time = convertTimeToDatabase(hour, minute, second, ampm);
                 const lat = parseFloat(document.getElementById('updateLat').value);
                 const long = parseFloat(document.getElementById('updateLong').value);
                 const mag = parseFloat(document.getElementById('updateMag').value);
