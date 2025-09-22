@@ -1,0 +1,88 @@
+
+Name:
+Last 4 digits ID:
+
+CSE 6332, Cloud Computing					
+
+
+Quiz Q2, Fall 2025   (c) DL, UTA, 2025
+
+INFORMATIONAL
+
+
+  C&P means cut and paste only those relevant lines from your program(s) into this quiz.
+
+
+ 1.  I understand that I am on my honor during this quiz, I will not collaborate, use
+     non-allowed sources, and I will not discuss or share this quiz with anyone for the next
+     12 hours.
+     You MAY: use Google to search, use previous source code,
+     YOU MAY NOT use:
+     Email, Facebook, Hangouts, IM, chats, Skype or ANY other human connection.
+
+     This is a timed test. Late tests will have points deducted for being late.
+     Very late tests will not be graded.
+
+     When you are complete, with any part, please show us the link, raise your hand, so we may visually inspect that part.
+     Please demo each part once, initially, if we have more time we will review again, if requested.
+     The majority of credit will be for applications deployed on the cloud.
+
+     The second part of the test, you should electronically submit, you will need to copy and paste
+     only those lines of code to implement that part of the test, usually a few (two to eight) lines of code.
+     Place it immediately after the question.
+
+     Submit this Quiz (renamed) with code cut and pasted, ONLY text. DO NOT submit zips, binaries, libraries,
+     or anything other than text.
+
+     When any parts(questions) are complete complete, submit this test, you may make multiple submissions.
+
+     If you have computer, or other, problems, please raise your hand immediately.
+
+     If you understand and agree, please initial here:
+     _________________
+
+ 2. Get files from this same folder.
+   
+ 3. Name your program/submission with your name and last digits of your ID.
+
+ 4. Using the cloud services provider, all functionality possible should be implemented on that provider.
+    (Of course, displaying web pages through a browser and the user interface is "local")
+    The cloud provider is MS Azure.
+
+ 5. Upload all data files (*jpg and *csv, not this quiz) to the cloud service.
+  
+QUIZ QUESTIONS
+
+Show and submit code, when each part is complete, raise your hand and then show us:
+
+
+ 10. Show a web page and interface (which resides on the cloud provider) with your name as it appears on your ID card
+       as well as your the last 2 digits of your student ID in large font at the top of every web page displayed (for this quiz)
+       On the first web page show your own personal picture (or any you choose) above your name and ID number.
+
+ 11. Please create a relational database (your choice which) from the .csv data on the cloud provider,
+       you may do this manually or in code, it is your choice.
+
+       Show and submit code, when each part is complete, raise your hand and then show us:
+
+ 12. (On a web page) Allow a user to give a mag range values Mlow to Mhigh, and show for all the earthquakes in that
+       range the time, latitude, longitude, id, for each quake.
+ 
+ 13. (On a web page) Allow a user to give a latitude and Long value pair and a number of degrees N, and a mag range, and
+       show for all the earthquakes between that position (Lat, Long) -N and +N degrees, within that mag range, show the
+       time, latitude, longitude, id, for each quake.
+
+ 14. Allow a user to specify a net value on a form, first count the number of occurrences for that value, then delete all of
+       those entries.
+       Show how many entries remain.
+
+ 15. Allow a user to create a new tuple with all attributes, check to ensure that the id does not already exist
+       (if it does give an error message)
+
+ 16. Allow a user to enter a net id (if it exists) or a time and modify any of the attributes.
+
+ 18. Show us, in a link, the application running and we will try it out. Only for parts 10,12,13, 14, 15, 16
+
+ 19. When complete, return (send) this quiz
+       If you finish early, send this immediately, otherwise send between the end of class and no more than 1 minute after that.
+

@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earthquake Analysis - Quiz 2</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        /* Header with student info */
+        .student-header {
+            background: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .student-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            border: 3px solid #667eea;
+        }
+        
+        .student-name {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 10px 0;
+        }
+        
+        .student-id {
+            font-size: 32px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 10px 0;
+        }
+        
+        .container { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 10px; 
+            margin: 20px 0; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        h1, h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .quiz-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+        
+        .form-group {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        label {
+            font-weight: bold;
+            min-width: 120px;
+            color: #2c3e50;
+        }
+        
+        input, select {
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        .delete-btn {
+            background: #e74c3c;
+        }
+        
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+        
+        .create-btn {
+            background: #27ae60;
+        }
+        
+        .create-btn:hover {
+            background: #229954;
+        }
+        
+        .results {
+            background: white;
+            border: 1px solid #ecf0f1;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .result-item {
+            padding: 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .nav-section {
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Q10: Student Header with Name, ID, and Photo -->
+    <div class="student-header">
+        <img src="https://via.placeholder.com/100/667eea/ffffff?text=PHOTO" alt="Student Photo" class="student-photo" id="studentPhoto">
+        <div class="student-name" id="studentName">YOUR NAME HERE</div>
+        <div class="student-id" id="studentId">Last 2 Digits: XX</div>
+    </div>
+
+    <div class="nav-section">
+        <button onclick="window.location.href='index.html'">← Back to Main</button>
+        <button onclick="window.location.href='firebase-index.html'">Upload Data</button>
+    </div>
+
+    <div class="container">
+        <h1>🌍 Earthquake Database - Quiz Interface</h1>
+        
+        <!-- Q12: Magnitude Range Search -->
+        <div class="quiz-section">
+            <h2>Q12: Magnitude Range Search</h2>
+            <p><strong>Requirement:</strong> Show earthquakes between Mlow and Mhigh with time, latitude, longitude, id</p>
+            <div class="form-group">
+                <label>Magnitude Low:</label>
+                <input type="number" id="magLow" value="1.0" step="0.1" min="0" max="10">
+                <label>Magnitude High:</label>
+                <input type="number" id="magHigh" value="3.0" step="0.1" min="0" max="10">
+                <button onclick="searchMagnitudeRange()">Search Range</button>
+                <button onclick="clearResults('q12Results')">Clear</button>
+            </div>
+            <div id="q12Results" class="results"></div>
+        </div>
+
+        <!-- Q13: Geographic Search with Degrees -->
+        <div class="quiz-section">
+            <h2>Q13: Geographic Search (±N Degrees)</h2>
+            <p><strong>Requirement:</strong> Show earthquakes within ±N degrees of lat/long position, within mag range</p>
+            <div class="form-group">
+                <label>Latitude:</label>
+                <input type="number" id="centerLat" value="35.0" step="0.0001" min="-90" max="90">
+                <label>Longitude:</label>
+                <input type="number" id="centerLong" value="-117.0" step="0.0001" min="-180" max="180">
+                <label>±N Degrees:</label>
+                <input type="number" id="degreesN" value="1.0" step="0.1" min="0.1" max="10">
+            </div>
+            <div class="form-group">
+                <label>Mag Low:</label>
+                <input type="number" id="geoMagLow" value="0.5" step="0.1" min="0" max="10">
+                <label>Mag High:</label>
+                <input type="number" id="geoMagHigh" value="5.0" step="0.1" min="0" max="10">
+                <button onclick="searchGeographic()">Search Geographic</button>
+                <button onclick="clearResults('q13Results')">Clear</button>
+            </div>
+            <div id="q13Results" class="results"></div>
+        </div>
+
+        <!-- Q14: Delete by Net Value -->
+        <div class="quiz-section">
+            <h2>Q14: Delete Entries by Net Value</h2>
+            <p><strong>Requirement:</strong> Count occurrences of net value, delete all entries, show remaining count</p>
+            <div class="form-group">
+                <label>Net Value:</label>
+                <input type="text" id="netValue" value="ci" placeholder="e.g., ci, us, nn">
+                <button onclick="countNetEntries()">Count Entries</button>
+                <button class="delete-btn" onclick="deleteNetEntries()">Delete All</button>
+                <button onclick="countTotalRecords()">Count Remaining</button>
+            </div>
+            <div id="q14Results" class="results"></div>
+        </div>
+
+        <!-- Q15: Create New Record -->
+        <div class="quiz-section">
+            <h2>Q15: Create New Record</h2>
+            <p><strong>Requirement:</strong> Create new tuple with all attributes, check ID doesn't exist</p>
+            <div class="form-group">
+                <label>ID:</label>
+                <input type="text" id="newId" placeholder="unique_id_123">
+                <label>Latitude:</label>
+                <input type="number" id="newLat" step="0.0001" placeholder="35.123">
+                <label>Longitude:</label>
+                <input type="number" id="newLong" step="0.0001" placeholder="-117.456">
+            </div>
+            <div class="form-group">
+                <label>Magnitude:</label>
+                <input type="number" id="newMag" step="0.1" placeholder="2.5">
+                <label>Net:</label>
+                <input type="text" id="newNet" placeholder="ci">
+                <label>NST:</label>
+                <input type="number" id="newNst" placeholder="27">
+                <label>Time:</label>
+                <input type="number" id="newTime" placeholder="7370">
+            </div>
+            <div class="form-group">
+                <button class="create-btn" onclick="createNewRecord()">Create Record</button>
+            </div>
+            <div id="q15Results" class="results"></div>
+        </div>
+
+        <!-- Q16: Update Record -->
+        <div class="quiz-section">
+            <h2>Q16: Update Record</h2>
+            <p><strong>Requirement:</strong> Enter net ID or time, modify any attributes</p>
+            <div class="form-group">
+                <label>Search by:</label>
+                <select id="updateSearchType">
+                    <option value="id">ID</option>
+                    <option value="time">Time</option>
+                </select>
+                <input type="text" id="updateSearchValue" placeholder="Enter ID or time">
+                <button onclick="findRecordToUpdate()">Find Record</button>
+            </div>
+            <div id="updateForm" style="display:none;">
+                <div class="form-group">
+                    <label>Latitude:</label>
+                    <input type="number" id="updateLat" step="0.0001">
+                    <label>Longitude:</label>
+                    <input type="number" id="updateLong" step="0.0001">
+                    <label>Magnitude:</label>
+                    <input type="number" id="updateMag" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Net:</label>
+                    <input type="text" id="updateNet">
+                    <label>NST:</label>
+                    <input type="number" id="updateNst">
+                    <label>Time:</label>
+                    <input type="number" id="updateTime">
+                </div>
+                <div class="form-group">
+                    <button onclick="updateRecord()">Update Record</button>
+                </div>
+            </div>
+            <div id="q16Results" class="results"></div>
+        </div>
+    </div>
+
+    <!-- Firebase Configuration -->
+    <script type="module">
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvOk4jLm5N9zjSJfAOe5wGl2rJqvj6oVo",
+            authDomain: "realquiz2-a1d06.firebaseapp.com",
+            projectId: "realquiz2-a1d06",
+            storageBucket: "realquiz2-a1d06.firebasestorage.app",
+            messagingSenderId: "1020294472984",
+            appId: "1:1020294472984:web:3aee76d6a34be40d47ea6d",
+            measurementId: "G-6NBBPMXKXL"
+        };
+
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, addDoc, deleteDoc, doc, updateDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Make database and functions available globally
+        window.db = db;
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.query = query;
+        window.where = where;
+        window.orderBy = orderBy;
+        window.addDoc = addDoc;
+        window.deleteDoc = deleteDoc;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+        window.getDoc = getDoc;
+
+        console.log('Firebase initialized for Quiz Interface');
+    </script>
+
+    <script>
+        // Global variables for record management
+        let currentUpdateDocId = null;
+
+        // Q12: Search by magnitude range
+        async function searchMagnitudeRange() {
+            const magLow = parseFloat(document.getElementById('magLow').value);
+            const magHigh = parseFloat(document.getElementById('magHigh').value);
+            
+            showStatus('q12Results', 'Searching magnitude range...', 'info');
+            
+            try {
+                const q = query(
+                    collection(db, 'quiz_data'),
+                    where('mag', '>=', magLow),
+                    where('mag', '<=', magHigh),
+                    orderBy('mag')
+                );
+                
+                const querySnapshot = await getDocs(q);
+                const results = [];
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    results.push({
+                        time: data.time || 'N/A',
+                        lat: data.lat || 'N/A',
+                        long: data.long || 'N/A',
+                        id: data.id || doc.id,
+                        mag: data.mag || 'N/A'
+                    });
+                });
+                
+                displayQ12Results(results);
+                
+            } catch (error) {
+                showStatus('q12Results', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function displayQ12Results(results) {
+            const container = document.getElementById('q12Results');
+            if (results.length === 0) {
+                container.innerHTML = '<div class="status error">No earthquakes found in specified magnitude range</div>';
+                return;
+            }
+            
+            let html = `<div class="status success">Found ${results.length} earthquakes</div>`;
+            html += '<div style="font-weight: bold; padding: 10px; border-bottom: 2px solid #3498db;">Time | Latitude | Longitude | ID | Magnitude</div>';
+            
+            results.forEach(item => {
+                html += `
+                    <div class="result-item">
+                        <strong>Time:</strong> ${item.time} | 
+                        <strong>Lat:</strong> ${item.lat} | 
+                        <strong>Long:</strong> ${item.long} | 
+                        <strong>ID:</strong> ${item.id} | 
+                        <strong>Mag:</strong> ${item.mag}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Q13: Geographic search with ±N degrees
+        async function searchGeographic() {
+            const centerLat = parseFloat(document.getElementById('centerLat').value);
+            const centerLong = parseFloat(document.getElementById('centerLong').value);
+            const degreesN = parseFloat(document.getElementById('degreesN').value);
+            const magLow = parseFloat(document.getElementById('geoMagLow').value);
+            const magHigh = parseFloat(document.getElementById('geoMagHigh').value);
+            
+            const latMin = centerLat - degreesN;
+            const latMax = centerLat + degreesN;
+            const longMin = centerLong - degreesN;
+            const longMax = centerLong + degreesN;
+            
+            showStatus('q13Results', 'Searching geographic area...', 'info');
+            
+            try {
+                // Firebase requires compound queries to be done client-side for multiple ranges
+                const q = query(collection(db, 'quiz_data'));
+                const querySnapshot = await getDocs(q);
+                const results = [];
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const lat = data.lat;
+                    const long = data.long;
+                    const mag = data.mag;
+                    
+                    if (lat >= latMin && lat <= latMax && 
+                        long >= longMin && long <= longMax &&
+                        mag >= magLow && mag <= magHigh) {
+                        results.push({
+                            time: data.time || 'N/A',
+                            lat: lat,
+                            long: long,
+                            id: data.id || doc.id,
+                            mag: mag
+                        });
+                    }
+                });
+                
+                displayQ13Results(results, centerLat, centerLong, degreesN);
+                
+            } catch (error) {
+                showStatus('q13Results', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function displayQ13Results(results, centerLat, centerLong, degreesN) {
+            const container = document.getElementById('q13Results');
+            if (results.length === 0) {
+                container.innerHTML = '<div class="status error">No earthquakes found in specified area and magnitude range</div>';
+                return;
+            }
+            
+            let html = `<div class="status success">Found ${results.length} earthquakes within ±${degreesN}° of (${centerLat}, ${centerLong})</div>`;
+            html += '<div style="font-weight: bold; padding: 10px; border-bottom: 2px solid #3498db;">Time | Latitude | Longitude | ID | Magnitude</div>';
+            
+            results.forEach(item => {
+                html += `
+                    <div class="result-item">
+                        <strong>Time:</strong> ${item.time} | 
+                        <strong>Lat:</strong> ${item.lat} | 
+                        <strong>Long:</strong> ${item.long} | 
+                        <strong>ID:</strong> ${item.id} | 
+                        <strong>Mag:</strong> ${item.mag}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Q14: Count entries by net value
+        async function countNetEntries() {
+            const netValue = document.getElementById('netValue').value;
+            
+            showStatus('q14Results', 'Counting net entries...', 'info');
+            
+            try {
+                const q = query(collection(db, 'quiz_data'), where('net', '==', netValue));
+                const querySnapshot = await getDocs(q);
+                
+                const count = querySnapshot.size;
+                document.getElementById('q14Results').innerHTML = 
+                    `<div class="status info">Found ${count} entries with net value "${netValue}"</div>`;
+                
+            } catch (error) {
+                showStatus('q14Results', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Q14: Delete entries by net value
+        async function deleteNetEntries() {
+            const netValue = document.getElementById('netValue').value;
+            
+            if (!confirm(`Are you sure you want to delete ALL entries with net value "${netValue}"?`)) {
+                return;
+            }
+            
+            showStatus('q14Results', 'Deleting entries...', 'info');
+            
+            try {
+                const q = query(collection(db, 'quiz_data'), where('net', '==', netValue));
+                const querySnapshot = await getDocs(q);
+                
+                const deletePromises = [];
+                querySnapshot.forEach((document) => {
+                    deletePromises.push(deleteDoc(doc(db, 'quiz_data', document.id)));
+                });
+                
+                await Promise.all(deletePromises);
+                
+                showStatus('q14Results', `Deleted ${querySnapshot.size} entries with net value "${netValue}"`, 'success');
+                
+                // Count remaining records
+                setTimeout(countTotalRecords, 1000);
+                
+            } catch (error) {
+                showStatus('q14Results', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Count total records remaining
+        async function countTotalRecords() {
+            try {
+                const querySnapshot = await getDocs(collection(db, 'quiz_data'));
+                const count = querySnapshot.size;
+                
+                const existingContent = document.getElementById('q14Results').innerHTML;
+                document.getElementById('q14Results').innerHTML = 
+                    existingContent + `<div class="status success">Total records remaining: ${count}</div>`;
+                
+            } catch (error) {
+                showStatus('q14Results', `Error counting remaining: ${error.message}`, 'error');
+            }
+        }
+
+        // Q15: Create new record
+        async function createNewRecord() {
+            const newId = document.getElementById('newId').value;
+            const newLat = parseFloat(document.getElementById('newLat').value);
+            const newLong = parseFloat(document.getElementById('newLong').value);
+            const newMag = parseFloat(document.getElementById('newMag').value);
+            const newNet = document.getElementById('newNet').value;
+            const newNst = parseInt(document.getElementById('newNst').value);
+            const newTime = parseInt(document.getElementById('newTime').value);
+            
+            if (!newId) {
+                showStatus('q15Results', 'ID is required', 'error');
+                return;
+            }
+            
+            showStatus('q15Results', 'Checking if ID exists...', 'info');
+            
+            try {
+                // Check if ID already exists
+                const q = query(collection(db, 'quiz_data'), where('id', '==', newId));
+                const querySnapshot = await getDocs(q);
+                
+                if (!querySnapshot.empty) {
+                    showStatus('q15Results', `Error: ID "${newId}" already exists!`, 'error');
+                    return;
+                }
+                
+                // Create new record
+                const newRecord = {
+                    id: newId,
+                    lat: newLat,
+                    long: newLong,
+                    mag: newMag,
+                    net: newNet,
+                    nst: newNst,
+                    time: newTime
+                };
+                
+                await addDoc(collection(db, 'quiz_data'), newRecord);
+                
+                showStatus('q15Results', `Successfully created new record with ID "${newId}"`, 'success');
+                
+                // Clear form
+                document.getElementById('newId').value = '';
+                document.getElementById('newLat').value = '';
+                document.getElementById('newLong').value = '';
+                document.getElementById('newMag').value = '';
+                document.getElementById('newNet').value = '';
+                document.getElementById('newNst').value = '';
+                document.getElementById('newTime').value = '';
+                
+            } catch (error) {
+                showStatus('q15Results', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Q16: Find record to update
+        async function findRecordToUpdate() {
+            const searchType = document.getElementById('updateSearchType').value;
+            const searchValue = document.getElementById('updateSearchValue').value;
+            
+            if (!searchValue) {
+                showStatus('q16Results', 'Please enter a search value', 'error');
+                return;
+            }
+            
+            showStatus('q16Results', 'Searching for record...', 'info');
+            
+            try {
+                let q;
+                if (searchType === 'id') {
+                    q = query(collection(db, 'quiz_data'), where('id', '==', searchValue));
+                } else {
+                    q = query(collection(db, 'quiz_data'), where('time', '==', parseInt(searchValue)));
+                }
+                
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    showStatus('q16Results', 'No record found with that value', 'error');
+                    document.getElementById('updateForm').style.display = 'none';
+                    return;
+                }
+                
+                const docData = querySnapshot.docs[0];
+                const data = docData.data();
+                currentUpdateDocId = docData.id;
+                
+                // Populate update form
+                document.getElementById('updateLat').value = data.lat || '';
+                document.getElementById('updateLong').value = data.long || '';
+                document.getElementById('updateMag').value = data.mag || '';
+                document.getElementById('updateNet').value = data.net || '';
+                document.getElementById('updateNst').value = data.nst || '';
+                document.getElementById('updateTime').value = data.time || '';
+                
+                document.getElementById('updateForm').style.display = 'block';
+                showStatus('q16Results', 'Record found! Update fields below:', 'success');
+                
+            } catch (error) {
+                showStatus('q16Results', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Q16: Update record
+        async function updateRecord() {
+            if (!currentUpdateDocId) {
+                showStatus('q16Results', 'No record selected for update', 'error');
+                return;
+            }
+            
+            const updateData = {
+                lat: parseFloat(document.getElementById('updateLat').value),
+                long: parseFloat(document.getElementById('updateLong').value),
+                mag: parseFloat(document.getElementById('updateMag').value),
+                net: document.getElementById('updateNet').value,
+                nst: parseInt(document.getElementById('updateNst').value),
+                time: parseInt(document.getElementById('updateTime').value)
+            };
+            
+            showStatus('q16Results', 'Updating record...', 'info');
+            
+            try {
+                await updateDoc(doc(db, 'quiz_data', currentUpdateDocId), updateData);
+                showStatus('q16Results', 'Record updated successfully!', 'success');
+                
+                // Hide update form
+                document.getElementById('updateForm').style.display = 'none';
+                currentUpdateDocId = null;
+                
+            } catch (error) {
+                showStatus('q16Results', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Utility functions
+        function showStatus(containerId, message, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        // Initialize student info (you'll need to update these)
+        function updateStudentInfo() {
+            // UPDATE THESE WITH YOUR ACTUAL INFO:
+            document.getElementById('studentName').textContent = 'YOUR NAME HERE';
+            document.getElementById('studentId').textContent = 'Last 2 Digits: XX';
+            // document.getElementById('studentPhoto').src = 'your-photo-url.jpg';
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            updateStudentInfo();
+            console.log('Quiz interface loaded');
+        });
+    </script>
+</body>
+</html>
