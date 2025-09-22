@@ -278,6 +278,62 @@
         </div>
     </div>
 
+    <!-- Search by ID Service -->
+    <div class="container">
+        <div class="search-section">
+            <h3>5. 🔍 Search by Earthquake ID</h3>
+            <p><strong>Service:</strong> Find specific earthquake by its unique identifier</p>
+            <div class="form-group">
+                <label>Earthquake ID:</label>
+                <input type="text" id="searchId" value="ci40994743" placeholder="e.g., ci40994743, nc75195896, us6000qkdl">
+                <button onclick="searchById()">🔍 Search by ID</button>
+            </div>
+            <div id="idSearchResults" class="results" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <!-- Add New Earthquake Service -->
+    <div class="container">
+        <div class="search-section">
+            <h3>6. ➕ Add New Earthquake Data</h3>
+            <p><strong>Service:</strong> Insert new earthquake record into the database</p>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <label>Time (timestamp):</label>
+                    <input type="number" id="newTime" value="9999" placeholder="e.g., 8100">
+                </div>
+                <div>
+                    <label>Latitude:</label>
+                    <input type="number" id="newLat" value="34.0522" step="0.0001" placeholder="e.g., 34.0522">
+                </div>
+                <div>
+                    <label>Longitude:</label>
+                    <input type="number" id="newLong" value="-118.2437" step="0.0001" placeholder="e.g., -118.2437">
+                </div>
+                <div>
+                    <label>Magnitude:</label>
+                    <input type="number" id="newMag" value="2.5" step="0.1" min="0" max="10" placeholder="e.g., 2.5">
+                </div>
+                <div>
+                    <label>NST (stations):</label>
+                    <input type="number" id="newNst" value="15" min="0" placeholder="e.g., 15 (leave empty for null)">
+                </div>
+                <div>
+                    <label>Net (network):</label>
+                    <input type="text" id="newNet" value="ci" placeholder="e.g., ci, us, nc">
+                </div>
+                <div>
+                    <label>Earthquake ID:</label>
+                    <input type="text" id="newId" value="test001" placeholder="e.g., test001">
+                </div>
+                <div style="display: flex; align-items: end;">
+                    <button onclick="addNewEarthquake()" style="background: #27ae60; width: 100%;">➕ Add to Database</button>
+                </div>
+            </div>
+            <div id="addResults" class="results" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
     <div class="container results-container">
         <h2>📊 Search Results</h2>
         <div id="searchStatus"></div>
@@ -298,7 +354,7 @@
         };
 
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, orderBy, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, deleteDoc, doc, addDoc } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -312,6 +368,7 @@
         window.orderBy = orderBy;
         window.deleteDoc = deleteDoc;
         window.doc = doc;
+        window.addDoc = addDoc;
         window.COLLECTION_NAME = "quiz_data";
 
         // Load all data on page load for client-side searching
@@ -606,6 +663,153 @@
             } catch (error) {
                 console.error('Error in Q14 workflow:', error);
                 showStatus('error', 'Error in Q14 workflow: ' + error.message);
+            }
+        };
+
+        // Search by ID Service
+        window.searchById = async function() {
+            const searchId = document.getElementById('searchId').value.trim();
+            if (!searchId) {
+                showStatus('error', 'Please enter an earthquake ID to search for');
+                return;
+            }
+
+            try {
+                showStatus('info', 'Searching for earthquake...');
+                document.getElementById('idSearchResults').innerHTML = '';
+                
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    where('id', '==', searchId)
+                );
+                
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    document.getElementById('idSearchResults').innerHTML = `
+                        <div class="result-item">
+                            <strong>No Results:</strong> No earthquake found with ID "${searchId}"
+                        </div>
+                    `;
+                    showStatus('error', `No earthquake found with ID "${searchId}"`);
+                    return;
+                }
+                
+                const earthquake = querySnapshot.docs[0].data();
+                document.getElementById('idSearchResults').innerHTML = `
+                    <div class="result-item">
+                        <div class="magnitude">Magnitude: ${earthquake.mag}</div>
+                        <div class="location">${earthquake.place || 'Location unknown'}</div>
+                        <div class="details">
+                            <span class="coordinates">Lat: ${earthquake.lat}, Lon: ${earthquake.long}</span> | 
+                            <span class="earthquake-id">ID: ${earthquake.id}</span> | 
+                            <span class="net-value">Net: ${earthquake.net}</span> | 
+                            <span class="nst-value">NST: ${earthquake.nst !== null ? earthquake.nst : 'null'}</span> | 
+                            Time: ${new Date(earthquake.time).toLocaleString()} | 
+                            Type: ${earthquake.type || 'earthquake'}
+                        </div>
+                    </div>
+                `;
+                
+                showStatus('success', `Found earthquake with ID "${searchId}"`);
+                console.log(`ID Search: Found earthquake with id="${searchId}"`, earthquake);
+                
+            } catch (error) {
+                console.error('Error searching by ID:', error);
+                showStatus('error', 'Error searching by ID: ' + error.message);
+            }
+        };
+
+        // Add New Earthquake Service
+        window.addNewEarthquake = async function() {
+            try {
+                // Get all form values
+                const time = parseInt(document.getElementById('newTime').value);
+                const lat = parseFloat(document.getElementById('newLat').value);
+                const long = parseFloat(document.getElementById('newLong').value);
+                const mag = parseFloat(document.getElementById('newMag').value);
+                const nstValue = document.getElementById('newNst').value.trim();
+                const net = document.getElementById('newNet').value.trim();
+                const id = document.getElementById('newId').value.trim();
+
+                // Validate required fields
+                if (isNaN(time) || isNaN(lat) || isNaN(long) || isNaN(mag) || !net || !id) {
+                    showStatus('error', 'Please fill in all required fields (time, lat, long, mag, net, id)');
+                    return;
+                }
+
+                // Handle NST field - convert empty to null, otherwise parse as number
+                const nst = nstValue === '' ? null : parseInt(nstValue);
+
+                showStatus('info', 'Adding new earthquake to database...');
+                document.getElementById('addResults').innerHTML = '<div class="result-item">Adding earthquake...</div>';
+
+                // Check if ID already exists
+                const existingQuery = query(
+                    collection(db, window.COLLECTION_NAME),
+                    where('id', '==', id)
+                );
+                const existingSnapshot = await getDocs(existingQuery);
+                
+                if (!existingSnapshot.empty) {
+                    showStatus('error', `Earthquake with ID "${id}" already exists. Please use a different ID.`);
+                    document.getElementById('addResults').innerHTML = `
+                        <div class="result-item">
+                            <strong>Error:</strong> Earthquake with ID "${id}" already exists
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Create new earthquake object
+                const newEarthquake = {
+                    time: time,
+                    lat: lat,
+                    long: long,
+                    mag: mag,
+                    nst: nst,
+                    net: net,
+                    id: id,
+                    type: 'earthquake',
+                    place: 'Added by user'
+                };
+
+                // Add to Firebase
+                const docRef = await addDoc(collection(db, window.COLLECTION_NAME), newEarthquake);
+                
+                // Get updated total count
+                const allSnapshot = await getDocs(collection(db, window.COLLECTION_NAME));
+                const totalCount = allSnapshot.size;
+
+                document.getElementById('addResults').innerHTML = `
+                    <div class="result-item">
+                        <strong>Success!</strong> New earthquake added to database<br>
+                        <strong>Details:</strong><br>
+                        • ID: ${id}<br>
+                        • Magnitude: ${mag}<br>
+                        • Location: ${lat}, ${long}<br>
+                        • Net: ${net}<br>
+                        • NST: ${nst !== null ? nst : 'null'}<br>
+                        • Document ID: ${docRef.id}<br>
+                        <strong>Total entries in database: ${totalCount}</strong>
+                    </div>
+                `;
+                
+                showStatus('success', `Successfully added earthquake "${id}" to database. Total entries: ${totalCount}`);
+                console.log(`Add Earthquake: Added new earthquake with id="${id}". Total entries: ${totalCount}`, newEarthquake);
+                
+                // Optional: Clear form
+                // document.getElementById('newTime').value = '';
+                // document.getElementById('newId').value = '';
+                
+            } catch (error) {
+                console.error('Error adding earthquake:', error);
+                showStatus('error', 'Error adding earthquake: ' + error.message);
+                document.getElementById('addResults').innerHTML = `
+                    <div class="result-item">
+                        <strong>Error:</strong> Failed to add earthquake - ${error.message}
+                    </div>
+                `;
             }
         };
     </script>
