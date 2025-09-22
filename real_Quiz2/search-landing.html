@@ -432,6 +432,7 @@
                     <div class="details">
                         <span class="coordinates">Lat: ${eq.lat}, Lon: ${eq.long}</span> | 
                         <span class="earthquake-id">ID: ${eq.id || 'unknown'}</span> | 
+                        <span class="net-value">Net: ${eq.net || 'unknown'}</span> | 
                         Time: ${new Date(eq.time).toLocaleString()} | 
                         Type: ${eq.type || 'earthquake'}
                     </div>
@@ -453,7 +454,7 @@
 
         // Q14: Net Value Search Functions
         window.countNetEntries = async function() {
-            const netValue = document.getElementById('netValueInput').value.trim();
+            const netValue = document.getElementById('netValue').value.trim();
             if (!netValue) {
                 showStatus('error', 'Please enter a net value to search for');
                 return;
@@ -486,7 +487,7 @@
         };
 
         window.deleteNetEntries = async function() {
-            const netValue = document.getElementById('netValueInput').value.trim();
+            const netValue = document.getElementById('netValue').value.trim();
             if (!netValue) {
                 showStatus('error', 'Please enter a net value to delete');
                 return;
@@ -542,7 +543,7 @@
         };
 
         window.performQ14Workflow = async function() {
-            const netValue = document.getElementById('netValueInput').value.trim();
+            const netValue = document.getElementById('netValue').value.trim();
             if (!netValue) {
                 showStatus('error', 'Please enter a net value to process');
                 return;
