@@ -169,9 +169,17 @@
                             if (values[index]) {
                                 let value = values[index];
                                 
+                                // Handle -1 as null for missing numeric data
+                                if (value === '-1' || value === -1) {
+                                    value = null;
+                                }
+                                // Handle empty strings as null
+                                else if (value === '' || value === 'null' || value === 'NULL') {
+                                    value = null;
+                                }
                                 // AUTO-DETECT AND CONVERT DATA TYPES
                                 // Numeric fields (common patterns)
-                                if (header.toLowerCase().includes('price') || 
+                                else if (header.toLowerCase().includes('price') || 
                                     header.toLowerCase().includes('rating') || 
                                     header.toLowerCase().includes('amount') || 
                                     header.toLowerCase().includes('value') ||
@@ -183,7 +191,8 @@
                                     header.toLowerCase().includes('latitude') ||
                                     header.toLowerCase().includes('magnitude') ||
                                     header.toLowerCase().includes('depth') ||
-                                    !isNaN(parseFloat(value)) && isFinite(value) && value.includes('.')) {
+                                    header.toLowerCase().includes('nst') ||
+                                    (!isNaN(parseFloat(value)) && isFinite(value) && value.includes('.'))) {
                                     value = parseFloat(value) || null;
                                 }
                                 // Integer fields
