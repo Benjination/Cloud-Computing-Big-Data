@@ -226,13 +226,18 @@
         <!-- Q14: Delete by Net Value -->
         <div class="quiz-section">
             <h2>Q14: Delete Entries by Net Value</h2>
-            <p><strong>Requirement:</strong> Count occurrences of net value, delete all entries, show remaining count</p>
+            <p><strong>Requirement:</strong> 1) Count occurrences of net value, 2) Delete all entries, 3) Show remaining count</p>
             <div class="form-group">
                 <label>Net Value:</label>
                 <input type="text" id="netValue" value="ci" placeholder="e.g., ci, us, nn">
-                <button onclick="countNetEntries()">Count Entries</button>
-                <button class="delete-btn" onclick="deleteNetEntries()">Delete All</button>
-                <button onclick="countTotalRecords()">Count Remaining</button>
+                <button onclick="performQ14Workflow()">Complete Q14 Workflow</button>
+                <button onclick="clearResults('q14Results')">Clear</button>
+            </div>
+            <div class="form-group">
+                <small style="color: #666;">Individual steps (for testing):</small>
+                <button onclick="countNetEntries()" style="background: #f39c12;">1. Count Only</button>
+                <button class="delete-btn" onclick="deleteNetEntries()" style="background: #e74c3c;">2. Delete Only</button>
+                <button onclick="countTotalRecords()" style="background: #27ae60;">3. Count Remaining</button>
             </div>
             <div id="q14Results" class="results"></div>
         </div>
@@ -473,6 +478,70 @@
             });
             
             container.innerHTML = html;
+        }
+
+        // Q14: Complete workflow as required
+        async function performQ14Workflow() {
+            const netValue = document.getElementById('netValue').value;
+            
+            if (!netValue) {
+                showStatus('q14Results', 'Please enter a net value', 'error');
+                return;
+            }
+            
+            let resultsHtml = `<div class="status info">Q14 Workflow for net value: "${netValue}"</div>`;
+            document.getElementById('q14Results').innerHTML = resultsHtml;
+            
+            try {
+                // Step 1: Count occurrences of that net value
+                resultsHtml += `<div class="status info">Step 1: Counting entries with net="${netValue}"...</div>`;
+                document.getElementById('q14Results').innerHTML = resultsHtml;
+                
+                const countQuery = query(collection(db, 'quiz_data'), where('net', '==', netValue));
+                const countSnapshot = await getDocs(countQuery);
+                const entriesFound = countSnapshot.size;
+                
+                resultsHtml += `<div class="status success">✅ Found ${entriesFound} entries with net="${netValue}"</div>`;
+                document.getElementById('q14Results').innerHTML = resultsHtml;
+                
+                if (entriesFound === 0) {
+                    resultsHtml += `<div class="status error">No entries to delete. Workflow complete.</div>`;
+                    document.getElementById('q14Results').innerHTML = resultsHtml;
+                    return;
+                }
+                
+                // Step 2: Delete ALL those entries
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause for demo
+                
+                resultsHtml += `<div class="status info">Step 2: Deleting all ${entriesFound} entries...</div>`;
+                document.getElementById('q14Results').innerHTML = resultsHtml;
+                
+                const deletePromises = [];
+                countSnapshot.forEach((document) => {
+                    deletePromises.push(deleteDoc(doc(db, 'quiz_data', document.id)));
+                });
+                
+                await Promise.all(deletePromises);
+                
+                resultsHtml += `<div class="status success">✅ Deleted ${entriesFound} entries with net="${netValue}"</div>`;
+                document.getElementById('q14Results').innerHTML = resultsHtml;
+                
+                // Step 3: Show how many entries remain
+                await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for demo
+                
+                resultsHtml += `<div class="status info">Step 3: Counting remaining entries in database...</div>`;
+                document.getElementById('q14Results').innerHTML = resultsHtml;
+                
+                const remainingSnapshot = await getDocs(collection(db, 'quiz_data'));
+                const remainingCount = remainingSnapshot.size;
+                
+                resultsHtml += `<div class="status success">🎯 <strong>FINAL RESULT: ${remainingCount} entries remain in database</strong></div>`;
+                document.getElementById('q14Results').innerHTML = resultsHtml;
+                
+            } catch (error) {
+                resultsHtml += `<div class="status error">Error in Q14 workflow: ${error.message}</div>`;
+                document.getElementById('q14Results').innerHTML = resultsHtml;
+            }
         }
 
         // Q14: Count entries by net value
