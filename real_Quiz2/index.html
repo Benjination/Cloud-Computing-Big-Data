@@ -73,27 +73,27 @@
             <h1 class="text-center mb-4">🎯 Quiz 2 - Data Analysis Project</h1>
             <p class="text-center text-muted mb-5">Choose your deployment approach for the 75-minute quiz</p>
             
-            <!-- Flask Option -->
-            <div class="option-card" onclick="startFlaskApp()">
-                <h3>🚀 Option A: Flask Application <span class="status-badge ready">READY</span></h3>
-                <p><strong>Best for:</strong> Quick customization during quiz</p>
+            <!-- Search & Analysis Option -->
+            <div class="option-card" onclick="window.location.href='search-landing.html'">
+                <h3>� Option A: Search & Analysis <span class="status-badge ready">READY</span></h3>
+                <p><strong>Best for:</strong> Immediate analysis with existing data</p>
                 <ul>
-                    <li>✅ Complete Flask backend with SQLAlchemy</li>
-                    <li>✅ Bootstrap UI with drag-and-drop upload</li>
-                    <li>✅ Easy field customization in app.py</li>
-                    <li>✅ Multiple database options (SQLite, PostgreSQL, Azure SQL)</li>
-                    <li>✅ Local development ready</li>
+                    <li>✅ Direct access to search functions</li>
+                    <li>✅ 3 pre-built search types (magnitude, range, proximity)</li>
+                    <li>✅ Works with existing Firebase data</li>
+                    <li>✅ No upload needed - bypass to analysis</li>
+                    <li>✅ Real-time results and visualization</li>
                 </ul>
                 <div class="mt-3">
-                    <button class="btn btn-custom">Start Flask App</button>
-                    <small class="text-muted">Click to start local Flask server</small>
+                    <button class="btn btn-custom">Start Analysis</button>
+                    <small class="text-muted">Click to access search interface</small>
                 </div>
             </div>
 
             <!-- Firebase Option -->
             <div class="option-card" onclick="window.location.href='firebase-index.html'">
-                <h3>☁️ Option B: Firebase Frontend <span class="status-badge ready">READY</span></h3>
-                <p><strong>Best for:</strong> Cloud deployment and scalability</p>
+                <h3>☁️ Option B: Firebase Upload <span class="status-badge ready">READY</span></h3>
+                <p><strong>Best for:</strong> New data upload and management</p>
                 <ul>
                     <li>✅ NoSQL Firestore database</li>
                     <li>✅ Auto-detects CSV field types (CSV/TSV)</li>
@@ -147,11 +147,6 @@
             console.log('Quiz 2 landing page loaded');
             console.log('GitHub Pages URL: https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/');
         });
-
-        // Function to start Flask app
-        function startFlaskApp() {
-            alert('🐍 Flask App Instructions:\n\n1. Open Terminal\n2. Navigate to this project folder\n3. Run: python app.py\n4. Open browser to: http://localhost:5000\n\nThe Flask app will start with upload and search functionality!');
-        }
     </script>
 </body>
 </html>
