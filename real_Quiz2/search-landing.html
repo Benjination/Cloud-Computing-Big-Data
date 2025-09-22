@@ -274,17 +274,68 @@
         </div>
     </div>
 
-    <!-- Search by ID Service -->
+    <!-- Update Earthquake Record Service -->
     <div class="container">
         <div class="search-section">
-            <h3>5. 🔍 Search by Earthquake ID</h3>
-            <p><strong>Service:</strong> Find specific earthquake by its unique identifier</p>
-            <div class="form-group">
-                <label>Earthquake ID:</label>
-                <input type="text" id="searchId" value="ci40994743" placeholder="e.g., ci40994743, nc75195896, us6000qkdl">
-                <button onclick="searchById()">🔍 Search by ID</button>
+            <h3>5. ✏️ Update Earthquake Record</h3>
+            <p><strong>Service:</strong> Find earthquake by net ID or time, then modify any attributes</p>
+            
+            <!-- Search Section -->
+            <div class="form-group" style="border: 2px solid #3498db; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <h4>Step 1: Find Record</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Search by Net ID:</label>
+                        <input type="text" id="updateSearchNetId" value="ci40994743" placeholder="e.g., ci40994743, nc75195896">
+                        <button onclick="findRecordByNetId()">🔍 Find by Net ID</button>
+                    </div>
+                    <div>
+                        <label>Or Search by Time:</label>
+                        <input type="number" id="updateSearchTime" value="8100" placeholder="e.g., 8100">
+                        <button onclick="findRecordByTime()">🔍 Find by Time</button>
+                    </div>
+                </div>
             </div>
-            <div id="idSearchResults" class="results" style="margin-top: 15px;"></div>
+
+            <!-- Update Form Section (initially hidden) -->
+            <div id="updateFormSection" style="display: none; border: 2px solid #27ae60; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <h4>Step 2: Modify Attributes</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Time:</label>
+                        <input type="number" id="updateTime" placeholder="e.g., 8100">
+                    </div>
+                    <div>
+                        <label>Latitude:</label>
+                        <input type="number" id="updateLat" step="0.0001" placeholder="e.g., 34.0522">
+                    </div>
+                    <div>
+                        <label>Longitude:</label>
+                        <input type="number" id="updateLong" step="0.0001" placeholder="e.g., -118.2437">
+                    </div>
+                    <div>
+                        <label>Magnitude:</label>
+                        <input type="number" id="updateMag" step="0.1" min="0" max="10" placeholder="e.g., 2.5">
+                    </div>
+                    <div>
+                        <label>NST (stations):</label>
+                        <input type="number" id="updateNst" min="0" placeholder="e.g., 15 (leave empty for null)">
+                    </div>
+                    <div>
+                        <label>Net:</label>
+                        <input type="text" id="updateNet" placeholder="e.g., ci, us, nc">
+                    </div>
+                    <div>
+                        <label>ID:</label>
+                        <input type="text" id="updateId" placeholder="e.g., ci40994743">
+                    </div>
+                    <div style="display: flex; align-items: end;">
+                        <button onclick="updateRecord()" style="background: #e67e22; width: 100%;">💾 Update Record</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="updateResults" class="results" style="margin-top: 15px;"></div>
         </div>
     </div>
 
@@ -350,7 +401,7 @@
         };
 
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, orderBy, deleteDoc, doc, addDoc } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, deleteDoc, doc, addDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -365,6 +416,7 @@
         window.deleteDoc = deleteDoc;
         window.doc = doc;
         window.addDoc = addDoc;
+        window.updateDoc = updateDoc;
         window.COLLECTION_NAME = "quiz_data";
 
         // Load all data on page load for client-side searching
@@ -618,57 +670,195 @@
             }
         };
 
-        // Search by ID Service
-        window.searchById = async function() {
-            const searchId = document.getElementById('searchId').value.trim();
-            if (!searchId) {
-                showStatus('error', 'Please enter an earthquake ID to search for');
+        // Update Earthquake Record Service
+        let currentRecordDocId = null; // Store the document ID for updating
+
+        window.findRecordByNetId = async function() {
+            const netId = document.getElementById('updateSearchNetId').value.trim();
+            if (!netId) {
+                showStatus('error', 'Please enter a net ID to search for');
                 return;
             }
 
             try {
-                showStatus('info', 'Searching for earthquake...');
-                document.getElementById('idSearchResults').innerHTML = '';
+                showStatus('info', 'Searching for earthquake by net ID...');
+                document.getElementById('updateResults').innerHTML = '';
                 
                 const q = query(
                     collection(db, window.COLLECTION_NAME),
-                    where('id', '==', searchId)
+                    where('id', '==', netId)
                 );
                 
                 const querySnapshot = await getDocs(q);
                 
                 if (querySnapshot.empty) {
-                    document.getElementById('idSearchResults').innerHTML = `
+                    document.getElementById('updateResults').innerHTML = `
                         <div class="result-item">
-                            <strong>No Results:</strong> No earthquake found with ID "${searchId}"
+                            <strong>No Results:</strong> No earthquake found with net ID "${netId}"
                         </div>
                     `;
-                    showStatus('error', `No earthquake found with ID "${searchId}"`);
+                    showStatus('error', `No earthquake found with net ID "${netId}"`);
+                    document.getElementById('updateFormSection').style.display = 'none';
                     return;
                 }
                 
-                const earthquake = querySnapshot.docs[0].data();
-                document.getElementById('idSearchResults').innerHTML = `
+                const docSnapshot = querySnapshot.docs[0];
+                const earthquake = docSnapshot.data();
+                currentRecordDocId = docSnapshot.id;
+                
+                // Populate update form with current values
+                document.getElementById('updateTime').value = earthquake.time || '';
+                document.getElementById('updateLat').value = earthquake.lat || '';
+                document.getElementById('updateLong').value = earthquake.long || '';
+                document.getElementById('updateMag').value = earthquake.mag || '';
+                document.getElementById('updateNst').value = earthquake.nst !== null ? earthquake.nst : '';
+                document.getElementById('updateNet').value = earthquake.net || '';
+                document.getElementById('updateId').value = earthquake.id || '';
+                
+                document.getElementById('updateResults').innerHTML = `
                     <div class="result-item">
-                        <div class="magnitude">Magnitude: ${earthquake.mag}</div>
-                        <div class="location">${earthquake.place || 'Location unknown'}</div>
-                        <div class="details">
-                            <span class="coordinates">Lat: ${earthquake.lat}, Lon: ${earthquake.long}</span> | 
-                            <span class="earthquake-id">ID: ${earthquake.id}</span> | 
-                            <span class="net-value">Net: ${earthquake.net}</span> | 
-                            <span class="nst-value">NST: ${earthquake.nst !== null ? earthquake.nst : 'null'}</span> | 
-                            Time: ${new Date(earthquake.time).toLocaleString()} | 
-                            Type: ${earthquake.type || 'earthquake'}
-                        </div>
+                        <strong>Found Record:</strong> ${earthquake.id}<br>
+                        <strong>Current values loaded into form below. Modify any fields and click Update.</strong>
                     </div>
                 `;
                 
-                showStatus('success', `Found earthquake with ID "${searchId}"`);
-                console.log(`ID Search: Found earthquake with id="${searchId}"`, earthquake);
+                document.getElementById('updateFormSection').style.display = 'block';
+                showStatus('success', `Found earthquake with net ID "${netId}". Ready to update.`);
+                console.log(`Update Search: Found earthquake with net ID="${netId}"`, earthquake);
                 
             } catch (error) {
-                console.error('Error searching by ID:', error);
-                showStatus('error', 'Error searching by ID: ' + error.message);
+                console.error('Error searching by net ID:', error);
+                showStatus('error', 'Error searching by net ID: ' + error.message);
+            }
+        };
+
+        window.findRecordByTime = async function() {
+            const time = parseInt(document.getElementById('updateSearchTime').value);
+            if (isNaN(time)) {
+                showStatus('error', 'Please enter a valid time value');
+                return;
+            }
+
+            try {
+                showStatus('info', 'Searching for earthquake by time...');
+                document.getElementById('updateResults').innerHTML = '';
+                
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    where('time', '==', time)
+                );
+                
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    document.getElementById('updateResults').innerHTML = `
+                        <div class="result-item">
+                            <strong>No Results:</strong> No earthquake found with time "${time}"
+                        </div>
+                    `;
+                    showStatus('error', `No earthquake found with time "${time}"`);
+                    document.getElementById('updateFormSection').style.display = 'none';
+                    return;
+                }
+                
+                const docSnapshot = querySnapshot.docs[0];
+                const earthquake = docSnapshot.data();
+                currentRecordDocId = docSnapshot.id;
+                
+                // Populate update form with current values
+                document.getElementById('updateTime').value = earthquake.time || '';
+                document.getElementById('updateLat').value = earthquake.lat || '';
+                document.getElementById('updateLong').value = earthquake.long || '';
+                document.getElementById('updateMag').value = earthquake.mag || '';
+                document.getElementById('updateNst').value = earthquake.nst !== null ? earthquake.nst : '';
+                document.getElementById('updateNet').value = earthquake.net || '';
+                document.getElementById('updateId').value = earthquake.id || '';
+                
+                document.getElementById('updateResults').innerHTML = `
+                    <div class="result-item">
+                        <strong>Found Record:</strong> Time ${time} (ID: ${earthquake.id})<br>
+                        <strong>Current values loaded into form below. Modify any fields and click Update.</strong>
+                    </div>
+                `;
+                
+                document.getElementById('updateFormSection').style.display = 'block';
+                showStatus('success', `Found earthquake with time "${time}". Ready to update.`);
+                console.log(`Update Search: Found earthquake with time="${time}"`, earthquake);
+                
+            } catch (error) {
+                console.error('Error searching by time:', error);
+                showStatus('error', 'Error searching by time: ' + error.message);
+            }
+        };
+
+        window.updateRecord = async function() {
+            if (!currentRecordDocId) {
+                showStatus('error', 'No record selected. Please search for a record first.');
+                return;
+            }
+
+            try {
+                // Get all form values
+                const time = parseInt(document.getElementById('updateTime').value);
+                const lat = parseFloat(document.getElementById('updateLat').value);
+                const long = parseFloat(document.getElementById('updateLong').value);
+                const mag = parseFloat(document.getElementById('updateMag').value);
+                const nstValue = document.getElementById('updateNst').value.trim();
+                const net = document.getElementById('updateNet').value.trim();
+                const id = document.getElementById('updateId').value.trim();
+
+                // Validate required fields
+                if (isNaN(time) || isNaN(lat) || isNaN(long) || isNaN(mag) || !net || !id) {
+                    showStatus('error', 'Please fill in all required fields (time, lat, long, mag, net, id)');
+                    return;
+                }
+
+                // Handle NST field - convert empty to null, otherwise parse as number
+                const nst = nstValue === '' ? null : parseInt(nstValue);
+
+                showStatus('info', 'Updating earthquake record...');
+
+                // Create update object
+                const updateData = {
+                    time: time,
+                    lat: lat,
+                    long: long,
+                    mag: mag,
+                    nst: nst,
+                    net: net,
+                    id: id,
+                    type: 'earthquake',
+                    place: 'Updated by user'
+                };
+
+                // Update the document in Firebase
+                await updateDoc(doc(db, window.COLLECTION_NAME, currentRecordDocId), updateData);
+                
+                document.getElementById('updateResults').innerHTML = `
+                    <div class="result-item">
+                        <strong>Update Successful!</strong> Record has been updated<br>
+                        <strong>Updated fields:</strong><br>
+                        • Time: ${time}<br>
+                        • Latitude: ${lat}<br>
+                        • Longitude: ${long}<br>
+                        • Magnitude: ${mag}<br>
+                        • NST: ${nst !== null ? nst : 'null'}<br>
+                        • Net: ${net}<br>
+                        • ID: ${id}<br>
+                        <strong>Document ID: ${currentRecordDocId}</strong>
+                    </div>
+                `;
+                
+                showStatus('success', `Successfully updated earthquake record "${id}"`);
+                console.log(`Update Record: Updated earthquake with doc ID="${currentRecordDocId}"`, updateData);
+                
+                // Hide the update form and reset
+                document.getElementById('updateFormSection').style.display = 'none';
+                currentRecordDocId = null;
+                
+            } catch (error) {
+                console.error('Error updating record:', error);
+                showStatus('error', 'Error updating record: ' + error.message);
             }
         };
 
