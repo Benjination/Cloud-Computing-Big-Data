@@ -65,10 +65,49 @@
         }
         .ready { background: #d4edda; color: #155724; }
         .setup-needed { background: #fff3cd; color: #856404; }
+        
+        /* Student Header Styles */
+        .student-header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            text-align: center;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .student-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            border: 3px solid #667eea;
+        }
+        
+        .student-name {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 10px 0;
+        }
+        
+        .student-id {
+            font-size: 32px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
     <div class="main-container">
+        <!-- Student Header -->
+        <div class="student-header">
+            <img src="Face.png" alt="Benjamin Niccum" class="student-photo">
+            <div class="student-name">Benjamin Niccum</div>
+            <div class="student-id">Last 2 Digits: 09</div>
+        </div>
+        
         <div class="quiz-card">
             <h1 class="text-center mb-4">🎯 Quiz 2 - Data Analysis Project</h1>
             <p class="text-center text-muted mb-5">Choose your deployment approach for the 75-minute quiz</p>
