@@ -367,12 +367,13 @@
                 
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
+                    console.log('Raw data from Firebase:', data); // Debug log
                     results.push({
                         time: data.time || 'N/A',
-                        lat: data.lat || 'N/A',
-                        long: data.long || 'N/A',
+                        lat: parseFloat(data.lat) || data.lat || 'N/A',
+                        long: parseFloat(data.long) || data.long || 'N/A',
                         id: data.id || doc.id,
-                        mag: data.mag || 'N/A'
+                        mag: parseFloat(data.mag) || data.mag || 'N/A'
                     });
                 });
                 
@@ -431,11 +432,15 @@
                 
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
-                    const lat = data.lat;
-                    const long = data.long;
-                    const mag = data.mag;
+                    const lat = parseFloat(data.lat);
+                    const long = parseFloat(data.long);
+                    const mag = parseFloat(data.mag);
                     
-                    if (lat >= latMin && lat <= latMax && 
+                    // Debug log
+                    console.log('Checking record:', { lat, long, mag, rawData: data });
+                    
+                    if (!isNaN(lat) && !isNaN(long) && !isNaN(mag) &&
+                        lat >= latMin && lat <= latMax && 
                         long >= longMin && long <= longMax &&
                         mag >= magLow && mag <= magHigh) {
                         results.push({
