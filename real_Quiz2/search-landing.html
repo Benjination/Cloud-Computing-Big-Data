@@ -291,7 +291,36 @@
                     </div>
                     <div>
                         <label>Or Search by Time:</label>
-                        <input type="number" id="updateSearchTime" value="8100" placeholder="e.g., 8100">
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <select id="searchHour">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8" selected>8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                            </select>
+                            <span>:</span>
+                            <select id="searchMinute">
+                                <option value="00">00</option>
+                                <option value="01" selected>01</option>
+                                <option value="05">05</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                                <option value="30">30</option>
+                                <option value="45">45</option>
+                            </select>
+                            <select id="searchAmPm">
+                                <option value="AM">AM</option>
+                                <option value="PM" selected>PM</option>
+                            </select>
+                        </div>
                         <button onclick="findRecordByTime()">🔍 Find by Time</button>
                     </div>
                 </div>
@@ -303,7 +332,36 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div>
                         <label>Time:</label>
-                        <input type="number" id="updateTime" placeholder="e.g., 8100">
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <select id="updateHour">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                            </select>
+                            <span>:</span>
+                            <select id="updateMinute">
+                                <option value="00">00</option>
+                                <option value="01">01</option>
+                                <option value="05">05</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                                <option value="30">30</option>
+                                <option value="45">45</option>
+                            </select>
+                            <select id="updateAmPm">
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
                     </div>
                     <div>
                         <label>Latitude:</label>
@@ -673,6 +731,47 @@
         // Update Earthquake Record Service
         let currentRecordDocId = null; // Store the document ID for updating
 
+        // Helper functions for time conversion
+        function convertTimeToDatabase(hour, minute, ampm) {
+            // Convert 12-hour format to our database format (like 8100 = 8:01 PM)
+            let dbHour = parseInt(hour);
+            if (ampm === 'PM' && dbHour !== 12) {
+                dbHour += 12;
+            } else if (ampm === 'AM' && dbHour === 12) {
+                dbHour = 0;
+            }
+            
+            // Convert to format like 8100 (8:01), 1430 (2:30 PM = 14:30)
+            const dbTime = (dbHour * 100) + parseInt(minute);
+            return dbTime;
+        }
+
+        function convertDatabaseToTime(dbTime) {
+            // Convert database format (like 8100) back to hour, minute, ampm
+            const hour24 = Math.floor(dbTime / 100);
+            const minute = dbTime % 100;
+            
+            let hour12 = hour24;
+            let ampm = 'AM';
+            
+            if (hour24 === 0) {
+                hour12 = 12;
+                ampm = 'AM';
+            } else if (hour24 === 12) {
+                hour12 = 12;
+                ampm = 'PM';
+            } else if (hour24 > 12) {
+                hour12 = hour24 - 12;
+                ampm = 'PM';
+            }
+            
+            return {
+                hour: hour12,
+                minute: minute.toString().padStart(2, '0'),
+                ampm: ampm
+            };
+        }
+
         window.findRecordByNetId = async function() {
             const netId = document.getElementById('updateSearchNetId').value.trim();
             if (!netId) {
@@ -707,7 +806,10 @@
                 currentRecordDocId = docSnapshot.id;
                 
                 // Populate update form with current values
-                document.getElementById('updateTime').value = earthquake.time || '';
+                const timeData = convertDatabaseToTime(earthquake.time || 8100);
+                document.getElementById('updateHour').value = timeData.hour;
+                document.getElementById('updateMinute').value = timeData.minute;
+                document.getElementById('updateAmPm').value = timeData.ampm;
                 document.getElementById('updateLat').value = earthquake.lat || '';
                 document.getElementById('updateLong').value = earthquake.long || '';
                 document.getElementById('updateMag').value = earthquake.mag || '';
@@ -733,9 +835,14 @@
         };
 
         window.findRecordByTime = async function() {
-            const time = parseInt(document.getElementById('updateSearchTime').value);
+            const hour = document.getElementById('searchHour').value;
+            const minute = document.getElementById('searchMinute').value;
+            const ampm = document.getElementById('searchAmPm').value;
+            
+            const time = convertTimeToDatabase(hour, minute, ampm);
+            
             if (isNaN(time)) {
-                showStatus('error', 'Please enter a valid time value');
+                showStatus('error', 'Please select a valid time');
                 return;
             }
 
@@ -766,7 +873,10 @@
                 currentRecordDocId = docSnapshot.id;
                 
                 // Populate update form with current values
-                document.getElementById('updateTime').value = earthquake.time || '';
+                const timeData2 = convertDatabaseToTime(earthquake.time || 8100);
+                document.getElementById('updateHour').value = timeData2.hour;
+                document.getElementById('updateMinute').value = timeData2.minute;
+                document.getElementById('updateAmPm').value = timeData2.ampm;
                 document.getElementById('updateLat').value = earthquake.lat || '';
                 document.getElementById('updateLong').value = earthquake.long || '';
                 document.getElementById('updateMag').value = earthquake.mag || '';
@@ -799,7 +909,10 @@
 
             try {
                 // Get all form values
-                const time = parseInt(document.getElementById('updateTime').value);
+                const hour = document.getElementById('updateHour').value;
+                const minute = document.getElementById('updateMinute').value;
+                const ampm = document.getElementById('updateAmPm').value;
+                const time = convertTimeToDatabase(hour, minute, ampm);
                 const lat = parseFloat(document.getElementById('updateLat').value);
                 const long = parseFloat(document.getElementById('updateLong').value);
                 const mag = parseFloat(document.getElementById('updateMag').value);
