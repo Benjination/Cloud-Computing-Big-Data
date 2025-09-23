@@ -3,119 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="2; url=./real_Quiz2/">
-    <title>Cloud Computing & Big Data Projects</title>
-    <script>
-        // Immediate redirect with JavaScript as backup
-        window.location.href = './real_Quiz2/';
-    </script>
+    <title>Benjamin Niccum - Cloud Computing & Big Data Projects</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .redirect-container {
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+        .main-container {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            padding: 20px;
         }
-        .card {
+        .project-selector {
             background: rgba(255, 255, 255, 0.95);
-            color: #333;
-            border: none;
             border-radius: 15px;
+            padding: 40px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
         }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #007bff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        .project-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 15px 0;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .project-card:hover {
+            border-color: #007bff;
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,123,255,0.15);
+            text-decoration: none;
+            color: inherit;
         }
-        .progress-bar {
-            animation: progress 3s linear forwards;
+        .project-title {
+            color: #007bff;
+            font-weight: bold;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
         }
-        @keyframes progress {
-            from { width: 0%; }
-            to { width: 100%; }
+        .project-description {
+            color: #6c757d;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .project-features {
+            list-style: none;
+            padding: 0;
+        }
+        .project-features li {
+            padding: 5px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .project-features li:last-child {
+            border-bottom: none;
+        }
+        .student-info {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 10px;
+        }
+        .launch-btn {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            float: right;
+        }
+        .launch-btn:hover {
+            background: linear-gradient(45deg, #0056b3, #004085);
         }
     </style>
 </head>
 <body>
-    <div class="redirect-container">
-        <div class="container">
-            <div class="row justify-content-center">
+    <div class="main-container">
+        <div class="project-selector">
+            <div class="student-info">
+                <h1>Benjamin Niccum - Student ID: 09</h1>
+                <p class="lead">Cloud Computing & Big Data Analysis Projects</p>
+            </div>
+
+            <div class="row">
                 <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body text-center p-5">
-                            <h1 class="mb-4">Cloud Computing & Big Data</h1>
-                            <h5 class="mb-4 text-muted">Project Repository</h5>
-                            
-                            <div class="spinner mx-auto mb-4"></div>
-                            
-                            <p class="mb-4">Redirecting to Quiz Project...</p>
-                            
-                            <div class="progress mb-4">
-                                <div class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
-                            </div>
-                            
-                            <div class="d-grid gap-2">
-                                <a href="./real_Quiz2/" class="btn btn-primary btn-lg">
-                                    Go to Quiz Project Now
-                                </a>
-                                <a href="./real_Quiz2/firebase-search.html" class="btn btn-outline-secondary">
-                                    Firebase Search & Analysis
-                                </a>
-                                <a href="./real_Quiz2/templates/search.html" class="btn btn-outline-secondary">
-                                    Flask Search & Analysis
-                                </a>
-                            </div>
-                            
-                            <hr class="my-4">
-                            
-                            <div class="text-start">
-                                <h6>Available Projects:</h6>
-                                <ul class="list-unstyled">
-                                    <li>📊 <a href="./real_Quiz2/index.html" class="text-decoration-none">Data Analysis Quiz Project</a></li>
-                                    <li>🔍 <a href="./real_Quiz2/search.html" class="text-decoration-none">Search & Analysis Interface</a></li>
-                                </ul>
-                            </div>
+                    <a href="./Quiz2/" class="project-card">
+                        <div class="project-title">📊 Assignment Project</div>
+                        <div class="project-description">
+                            Complete earthquake data analysis application with Flask backend and comprehensive data management.
                         </div>
+                        <ul class="project-features">
+                            <li>✅ Flask Python Backend</li>
+                            <li>✅ SQLite Database Integration</li>
+                            <li>✅ CSV Data Upload & Processing</li>
+                            <li>✅ Advanced Search & Filtering</li>
+                            <li>✅ Data Visualization Tools</li>
+                            <li>✅ RESTful API Endpoints</li>
+                        </ul>
+                        <button class="launch-btn">Launch Assignment →</button>
+                    </a>
+                </div>
+
+                <div class="col-md-6">
+                    <a href="./real_Quiz2/" class="project-card">
+                        <div class="project-title">🔥 Quiz Project</div>
+                        <div class="project-description">
+                            Firebase-powered real-time data analysis application with live database operations and comprehensive quiz interface.
+                        </div>
+                        <ul class="project-features">
+                            <li>✅ Firebase Firestore Database</li>
+                            <li>✅ Real-time Data Operations</li>
+                            <li>✅ Complete Q10-Q16 Quiz Interface</li>
+                            <li>✅ 6-Service Search Platform</li>
+                            <li>✅ Live Update & CRUD Operations</li>
+                            <li>✅ Advanced Time Format Handling</li>
+                        </ul>
+                        <button class="launch-btn">Launch Quiz →</button>
+                    </a>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <h5>📋 Deployment Information</h5>
+                        <p><strong>Assignment URL:</strong> <code>https://benjination.github.io/Cloud-Computing-Big-Data/Quiz2/</code></p>
+                        <p><strong>Quiz URL:</strong> <code>https://benjination.github.io/Cloud-Computing-Big-Data/real_Quiz2/</code></p>
+                        <p class="mb-0"><em>Both projects are fully functional and ready for deployment with separate URLs.</em></p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        // Update progress bar
-        window.addEventListener('load', function() {
-            const progressBar = document.querySelector('.progress-bar');
-            progressBar.style.width = '100%';
-        });
-        
-        // Countdown timer
-        let countdown = 3;
-        const updateCountdown = () => {
-            const elements = document.querySelectorAll('.countdown');
-            elements.forEach(el => el.textContent = countdown);
-            
-            if (countdown <= 0) {
-                window.location.href = './real_Quiz2/index.html';
-            } else {
-                countdown--;
-                setTimeout(updateCountdown, 1000);
-            }
-        };
-        
-        // Start countdown after 1 second
-        setTimeout(updateCountdown, 1000);
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
