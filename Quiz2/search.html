@@ -264,10 +264,27 @@
     </div>
 
     <!-- Firebase SDK -->
+        <!-- Performance Analytics Dashboard -->
+    <div class="search-section">
+        <h2>📈 Performance Analytics</h2>
+        <div class="quick-links">
+            <button onclick="exportPerformanceData()" class="quick-link">
+                📊 Export Performance CSV
+            </button>
+            <button onclick="viewPerformanceStats()" class="quick-link">
+                📋 View Performance Stats
+            </button>
+            <button onclick="clearPerformanceLogs()" class="quick-link" style="background-color: #dc3545;">
+                🗑️ Clear Performance Logs
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, addDoc, query, where, orderBy, limit, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
                 // Firebase configuration - Updated with your project details
         const firebaseConfig = {
@@ -293,6 +310,26 @@
         // Make Firebase available globally
         window.db = db;
         window.firestore = { collection, getDocs, query, where, orderBy, limit };
+
+        // Performance logging function
+        window.logPerformance = async function(functionName, executionTime, resultCount = 0, additionalData = {}) {
+            try {
+                const performanceData = {
+                    function_name: functionName,
+                    execution_time_ms: executionTime,
+                    execution_time_s: executionTime / 1000,
+                    result_count: resultCount,
+                    timestamp: new Date(),
+                    browser: navigator.userAgent.substring(0, 100), // Truncate for storage
+                    ...additionalData
+                };
+                
+                await addDoc(collection(db, "performance_logs"), performanceData);
+                console.log(`📊 Performance logged: ${functionName} - ${executionTime.toFixed(3)}ms`);
+            } catch (error) {
+                console.error("Failed to log performance:", error);
+            }
+        };
 
         // Pagination variables - make them global
         window.allResults = [];
@@ -396,6 +433,12 @@
                 console.log(`⏱️  Search completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
                 console.log(`📊 Found ${results.length} earthquakes with magnitude > ${magnitude}`);
                 
+                // Log performance data to Firebase
+                await logPerformance('magnitude_greater', executionTime, results.length, {
+                    search_magnitude: magnitude,
+                    documents_processed: snapshot.size
+                });
+                
                 // Sort by magnitude descending
                 results.sort((a, b) => b.magnitude - a.magnitude);
                 
@@ -473,6 +516,13 @@
                 const executionTime = endTime - startTime;
                 console.log(`⏱️  Range search completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
                 console.log(`📊 Found ${results.length} earthquakes with magnitude ${minMag} - ${maxMag}`);
+                
+                // Log performance data to Firebase
+                await logPerformance('magnitude_range', executionTime, results.length, {
+                    min_magnitude: minMag,
+                    max_magnitude: maxMag,
+                    documents_processed: snapshot.size
+                });
                 
                 // Sort by magnitude descending
                 results.sort((a, b) => b.magnitude - a.magnitude);
@@ -552,6 +602,14 @@
                 const executionTime = endTime - startTime;
                 console.log(`⏱️  Location search completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
                 console.log(`📊 Found ${results.length} earthquakes within ${radius}km`);
+                
+                // Log performance data to Firebase
+                await logPerformance('location_search', executionTime, results.length, {
+                    search_latitude: searchLat,
+                    search_longitude: searchLng,
+                    search_radius_km: radius,
+                    documents_processed: snapshot.size
+                });
 
                 // Sort by distance
                 results.sort((a, b) => a.distance_km - b.distance_km);
@@ -641,6 +699,13 @@
                 const endTime = performance.now();
                 const executionTime = endTime - startTime;
                 console.log(`⏱️  Time patterns analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
+                
+                // Log performance data to Firebase
+                await logPerformance('time_patterns_analysis', executionTime, total, {
+                    day_count: dayCount,
+                    night_count: nightCount,
+                    night_percentage: nightPercentage.toFixed(1)
+                });
             } catch (error) {
                 hideLoading();
                 showError('Analysis failed: ' + error.message);
@@ -697,6 +762,13 @@
                 const endTime = performance.now();
                 const executionTime = endTime - startTime;
                 console.log(`⏱️  Weekend patterns analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
+                
+                // Log performance data to Firebase
+                await logPerformance('weekend_patterns_analysis', executionTime, total, {
+                    weekday_count: weekdayCount,
+                    weekend_count: weekendCount,
+                    weekend_percentage: weekendPercentage.toFixed(1)
+                });
             } catch (error) {
                 hideLoading();
                 showError('Analysis failed: ' + error.message);
@@ -765,6 +837,15 @@
                 const endTime = performance.now();
                 const executionTime = endTime - startTime;
                 console.log(`⏱️  Early morning analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
+                
+                // Log performance data to Firebase
+                await logPerformance('early_morning_analysis', executionTime, total, {
+                    early_morning_count: earlyMorningCount,
+                    morning_count: morningCount,
+                    afternoon_count: afternoonCount,
+                    evening_count: eveningCount,
+                    early_morning_percentage: earlyMorningPercentage.toFixed(1)
+                });
             } catch (error) {
                 hideLoading();
                 console.error("Early morning analysis error:", error);
@@ -852,6 +933,13 @@
                 const endTime = performance.now();
                 const executionTime = endTime - startTime;
                 console.log(`⏱️  Clusters analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
+                
+                // Log performance data to Firebase
+                await logPerformance('clusters_analysis', executionTime, earthquakes.length, {
+                    clusters_found: clusters.length,
+                    clustered_earthquakes: clusters.reduce((sum, c) => sum + c.count, 0),
+                    cluster_threshold_km: clusterThreshold
+                });
             } catch (error) {
                 hideLoading();
                 showError('Analysis failed: ' + error.message);
@@ -898,7 +986,10 @@
             if (currentResultsType === 'analysis') {
                 html += `<strong>Analysis:</strong> ${data.analysis}<br>`;
                 
-                if (data.day_count !== undefined && data.night_count !== undefined) {
+                // Handle custom HTML (for performance stats)
+                if (data.custom_html) {
+                    html += data.custom_html;
+                } else if (data.day_count !== undefined && data.night_count !== undefined) {
                     html += `Total: ${data.total_large_quakes}<br>`;
                     html += `Day: ${data.day_count} (${data.day_percentage}%)<br>`;
                     html += `Night: ${data.night_count} (${data.night_percentage}%)<br>`;
@@ -1011,6 +1102,163 @@
                 }
             });
         });
+
+        // Performance Analytics Functions
+        window.exportPerformanceData = async function() {
+            try {
+                showLoading();
+                const q = query(collection(db, "performance_logs"), orderBy("timestamp", "desc"));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    hideLoading();
+                    showError("No performance data found. Run some searches first!");
+                    return;
+                }
+                
+                // Convert to CSV format
+                const headers = ["timestamp", "function_name", "execution_time_ms", "execution_time_s", "result_count", "browser"];
+                let csvContent = headers.join(",") + "\\n";
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const row = [
+                        data.timestamp.toDate().toISOString(),
+                        data.function_name,
+                        data.execution_time_ms.toFixed(3),
+                        data.execution_time_s.toFixed(6),
+                        data.result_count,
+                        `"${data.browser || 'Unknown'}"`
+                    ];
+                    csvContent += row.join(",") + "\\n";
+                });
+                
+                // Download CSV file
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `earthquake_search_performance_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                hideLoading();
+                console.log(`📊 Exported ${snapshot.size} performance records to CSV`);
+            } catch (error) {
+                hideLoading();
+                console.error("Export failed:", error);
+                showError("Failed to export performance data: " + error.message);
+            }
+        };
+
+        window.viewPerformanceStats = async function() {
+            try {
+                showLoading();
+                const q = query(collection(db, "performance_logs"), orderBy("timestamp", "desc"));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    hideLoading();
+                    showError("No performance data found. Run some searches first!");
+                    return;
+                }
+                
+                // Calculate statistics by function
+                const stats = {};
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const funcName = data.function_name;
+                    
+                    if (!stats[funcName]) {
+                        stats[funcName] = {
+                            count: 0,
+                            times: [],
+                            totalResults: 0
+                        };
+                    }
+                    
+                    stats[funcName].count++;
+                    stats[funcName].times.push(data.execution_time_ms);
+                    stats[funcName].totalResults += data.result_count || 0;
+                });
+                
+                // Calculate averages and display
+                let statsHtml = `
+                    <h3>📈 Performance Statistics</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                        <tr style="background-color: #f8f9fa;">
+                            <th style="border: 1px solid #ddd; padding: 8px;">Function</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Executions</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Avg Time (ms)</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Min Time (ms)</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Max Time (ms)</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Total Results</th>
+                        </tr>
+                `;
+                
+                Object.entries(stats).forEach(([funcName, data]) => {
+                    const avgTime = data.times.reduce((a, b) => a + b, 0) / data.times.length;
+                    const minTime = Math.min(...data.times);
+                    const maxTime = Math.max(...data.times);
+                    
+                    statsHtml += `
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${funcName.replace(/_/g, ' ')}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${data.count}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${avgTime.toFixed(2)}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${minTime.toFixed(2)}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${maxTime.toFixed(2)}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${data.totalResults}</td>
+                        </tr>
+                    `;
+                });
+                
+                statsHtml += `</table><p><strong>Total Performance Records:</strong> ${snapshot.size}</p>`;
+                
+                hideLoading();
+                displayResults({
+                    status: 'success',
+                    analysis: 'Performance Statistics',
+                    count: snapshot.size,
+                    custom_html: statsHtml
+                });
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Stats failed:", error);
+                showError("Failed to load performance stats: " + error.message);
+            }
+        };
+
+        window.clearPerformanceLogs = async function() {
+            if (!confirm("Are you sure you want to delete all performance logs? This cannot be undone.")) {
+                return;
+            }
+            
+            try {
+                showLoading();
+                const q = query(collection(db, "performance_logs"));
+                const snapshot = await getDocs(q);
+                
+                const deletePromises = [];
+                snapshot.forEach(docSnapshot => {
+                    deletePromises.push(deleteDoc(doc(db, "performance_logs", docSnapshot.id)));
+                });
+                
+                await Promise.all(deletePromises);
+                
+                hideLoading();
+                console.log(`🗑️ Deleted ${snapshot.size} performance records`);
+                alert(`Deleted ${snapshot.size} performance records`);
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Clear failed:", error);
+                showError("Failed to clear performance logs: " + error.message);
+            }
+        };
 
         // Make functions available globally
         window.showError = showError;
