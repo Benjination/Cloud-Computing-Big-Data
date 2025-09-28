@@ -344,10 +344,14 @@
             }
 
             showLoading();
+            
+            // Start high-precision timing
+            const startTime = performance.now();
+            console.log(`🔍 Starting magnitude search > ${magnitude}`);
+            
             try {
                 // Since Firestore where() queries with numbers might fail due to type mismatch,
                 // we'll use client-side filtering which is more reliable
-                console.log(`Searching for magnitude > ${magnitude}`);
                 
                 const q = query(
                     collection(db, "earthquakes"),
@@ -388,7 +392,11 @@
                     }
                 });
                 
-                console.log(`Found ${results.length} earthquakes with magnitude > ${magnitude}`);
+                // End timing and log performance
+                const endTime = performance.now();
+                const executionTime = endTime - startTime;
+                console.log(`⏱️  Search completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
+                console.log(`📊 Found ${results.length} earthquakes with magnitude > ${magnitude}`);
                 
                 // Sort by magnitude descending
                 results.sort((a, b) => b.magnitude - a.magnitude);
@@ -417,9 +425,13 @@
             }
 
             showLoading();
+            
+            // Start high-precision timing
+            const startTime = performance.now();
+            console.log(`🔍 Starting magnitude range search ${minMag} - ${maxMag}`);
+            
             try {
                 // Use client-side filtering since Firebase stores magnitudes as strings
-                console.log(`Searching for magnitude ${minMag} - ${maxMag}`);
                 
                 const q = query(
                     collection(db, "earthquakes"),
@@ -458,7 +470,11 @@
                     }
                 });
                 
-                console.log(`Found ${results.length} earthquakes with magnitude ${minMag} - ${maxMag}`);
+                // End timing and log performance
+                const endTime = performance.now();
+                const executionTime = endTime - startTime;
+                console.log(`⏱️  Range search completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
+                console.log(`📊 Found ${results.length} earthquakes with magnitude ${minMag} - ${maxMag}`);
                 
                 // Sort by magnitude descending
                 results.sort((a, b) => b.magnitude - a.magnitude);
@@ -488,9 +504,13 @@
             }
 
             showLoading();
+            
+            // Start high-precision timing
+            const startTime = performance.now();
+            console.log(`🔍 Starting location search within ${radius}km of (${searchLat}, ${searchLng})`);
+            
             try {
                 // For better performance, limit the dataset for location searches
-                console.log(`Searching within ${radius}km of ${searchLat}, ${searchLng}`);
                 
                 const q = query(
                     collection(db, 'earthquakes'),
@@ -529,7 +549,11 @@
                     }
                 });
 
-                console.log(`Found ${results.length} earthquakes within ${radius}km`);
+                // End timing and log performance
+                const endTime = performance.now();
+                const executionTime = endTime - startTime;
+                console.log(`⏱️  Location search completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
+                console.log(`📊 Found ${results.length} earthquakes within ${radius}km`);
 
                 // Sort by distance
                 results.sort((a, b) => a.distance_km - b.distance_km);
@@ -558,6 +582,11 @@
         // Analysis Functions
         window.analyzeTimePatterns = async function() {
             showLoading();
+            
+            // Start high-precision timing
+            const startTime = performance.now();
+            console.log(`🔍 Starting time patterns analysis`);
+            
             try {
                 // Use client-side filtering since magnitude is stored as string
                 const q = query(
@@ -609,6 +638,11 @@
                     night_percentage: Math.round(nightPercentage * 10) / 10,
                     conclusion: `${nightPercentage.toFixed(1)}% of large earthquakes occur at night (6 PM - 6 AM)`
                 });
+                
+                // End timing and log performance
+                const endTime = performance.now();
+                const executionTime = endTime - startTime;
+                console.log(`⏱️  Time patterns analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
             } catch (error) {
                 hideLoading();
                 showError('Analysis failed: ' + error.message);
@@ -617,6 +651,11 @@
 
         window.analyzeWeekendPatterns = async function() {
             showLoading();
+            
+            // Start high-precision timing
+            const startTime = performance.now();
+            console.log(`🔍 Starting weekend patterns analysis`);
+            
             try {
                 const q = query(collection(db, 'earthquakes'));
                 const snapshot = await getDocs(q);
@@ -655,6 +694,11 @@
                     weekend_percentage: Math.round(weekendPercentage * 10) / 10,
                     conclusion: `${weekendPercentage.toFixed(1)}% of earthquakes occur on weekends (Sat-Sun)`
                 });
+                
+                // End timing and log performance
+                const endTime = performance.now();
+                const executionTime = endTime - startTime;
+                console.log(`⏱️  Weekend patterns analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
             } catch (error) {
                 hideLoading();
                 showError('Analysis failed: ' + error.message);
@@ -663,6 +707,11 @@
 
         window.analyzeEarlyMorning = async function() {
             showLoading();
+            
+            // Start high-precision timing
+            const startTime = performance.now();
+            console.log(`🔍 Starting early morning patterns analysis`);
+            
             try {
                 // Use a sample of data for fast analysis
                 const q = query(
@@ -713,6 +762,11 @@
                     early_morning_percentage: Math.round(earlyMorningPercentage * 10) / 10,
                     conclusion: `${earlyMorningPercentage.toFixed(1)}% of earthquakes occur in early morning (midnight-6 AM)`
                 });
+                
+                // End timing and log performance
+                const endTime = performance.now();
+                const executionTime = endTime - startTime;
+                console.log(`⏱️  Early morning analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
             } catch (error) {
                 hideLoading();
                 console.error("Early morning analysis error:", error);
@@ -722,6 +776,11 @@
 
         window.findClusters = async function() {
             showLoading();
+            
+            // Start high-precision timing
+            const startTime = performance.now();
+            console.log(`🔍 Starting earthquake clusters analysis`);
+            
             try {
                 const q = query(collection(db, 'earthquakes'));
                 const snapshot = await getDocs(q);
@@ -790,6 +849,11 @@
                     total_clustered_earthquakes: clusters.reduce((sum, c) => sum + c.count, 0),
                     conclusion: `Found ${clusters.length} clusters containing ${clusters.reduce((sum, c) => sum + c.count, 0)} earthquakes`
                 });
+                
+                // End timing and log performance
+                const endTime = performance.now();
+                const executionTime = endTime - startTime;
+                console.log(`⏱️  Clusters analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
             } catch (error) {
                 hideLoading();
                 showError('Analysis failed: ' + error.message);
