@@ -391,8 +391,7 @@
                 // we'll use client-side filtering which is more reliable
                 
                 const q = query(
-                    collection(db, "earthquakes"),
-                    limit(3000)  // Get a good sample for filtering
+                    collection(db, "earthquakes")
                 );
                 
                 const snapshot = await getDocs(q);
@@ -475,8 +474,7 @@
                 // Use client-side filtering since Firebase stores magnitudes as strings
                 
                 const q = query(
-                    collection(db, "earthquakes"),
-                    limit(3000)  // Get a good sample for filtering
+                    collection(db, "earthquakes")
                 );
                 
                 const snapshot = await getDocs(q);
@@ -561,8 +559,7 @@
                 // For better performance, limit the dataset for location searches
                 
                 const q = query(
-                    collection(db, 'earthquakes'),
-                    limit(5000)  // Limit for performance - can be adjusted based on needs
+                    collection(db, 'earthquakes')
                 );
                 const snapshot = await getDocs(q);
                 console.log(`Processing ${snapshot.size} documents for location search`);
@@ -646,8 +643,7 @@
             try {
                 // Use client-side filtering since magnitude is stored as string
                 const q = query(
-                    collection(db, 'earthquakes'),
-                    limit(5000)  // Sample for performance
+                    collection(db, 'earthquakes')
                 );
                 const snapshot = await getDocs(q);
                 
@@ -783,10 +779,9 @@
             console.log(`🔍 Starting early morning patterns analysis`);
             
             try {
-                // Use a sample of data for fast analysis
+                // Use all data for full accuracy
                 const q = query(
-                    collection(db, 'earthquakes'),
-                    limit(3000)  // Sample for performance
+                    collection(db, 'earthquakes')
                 );
                 const snapshot = await getDocs(q);
                 
