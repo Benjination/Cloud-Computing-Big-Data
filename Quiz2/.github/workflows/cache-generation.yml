@@ -1,0 +1,66 @@
+name: Generate Earthquake Cache
+
+# When this workflow runs
+on:
+  schedule:
+    # Every 6 hours (0 */6 * * * means: at minute 0 of every 6th hour)
+    - cron: '0 */6 * * *'
+  # Allow manual triggering from GitHub web interface
+  workflow_dispatch:
+  # Run when cache generation script changes
+  push:
+    paths:
+      - 'scripts/generate-cache.js'
+      - '.github/workflows/cache-generation.yml'
+
+jobs:
+  generate-cache:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Get the code from repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      # Step 2: Setup Node.js environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'scripts/package.json'
+          
+      # Step 3: Install dependencies for cache generation
+      - name: Install dependencies
+        run: |
+          cd scripts
+          npm install
+          
+      # Step 4: Generate cache files using our script
+      - name: Generate earthquake cache files
+        run: |
+          cd scripts
+          node generate-cache.js
+        env:
+          # These will be GitHub Secrets (we'll set these up)
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          
+      # Step 5: Commit the generated cache files back to repository
+      - name: Commit cache files
+        run: |
+          # Configure git with GitHub Actions bot identity
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Cache Generator"
+          
+          # Add all files in cache directory
+          git add cache/
+          
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No cache changes to commit"
+          else
+            git commit -m "🚀 Update earthquake cache files - $(date)"
+            git push
+          fi

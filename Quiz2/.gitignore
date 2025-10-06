@@ -1,0 +1,30 @@
+# Firebase Service Account Keys (NEVER COMMIT THESE!)
+*.json
+realquiz2-firebase-adminsdk-*.json
+
+# Node modules
+node_modules/
+scripts/node_modules/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Cache files
+.cache/
+.parcel-cache/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
