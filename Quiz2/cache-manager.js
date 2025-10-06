@@ -16,6 +16,10 @@ class EarthquakeCacheManager {
     
     // Register Service Worker for dynamic caching
     async registerServiceWorker() {
+        console.log('⚠️ Service Worker temporarily disabled for debugging');
+        this.serviceWorkerRegistered = false;
+        return;
+        
         if ('serviceWorker' in navigator) {
             try {
                 const registration = await navigator.serviceWorker.register('/sw.js');
