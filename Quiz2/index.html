@@ -163,8 +163,8 @@
     </div>
 
     <!-- Firebase SDK -->
-    <!-- Dynamic Cache Manager -->
-    <script src="cache-manager.js"></script>
+    <!-- Simple Cache Manager -->
+    <script src="simple-cache.js"></script>
     
     <script type="module">
         // Import Firebase modules
@@ -337,16 +337,15 @@
         // Cache management functions
         async function updateCacheStatus() {
             try {
-                if (window.earthquakeCacheManager) {
-                    const isActive = window.earthquakeCacheManager.isActive();
-                    document.getElementById('cacheStatus').textContent = isActive ? 
-                        '✅ Active' : '⏳ Initializing...';
+                if (window.simpleEarthquakeCache) {
+                    document.getElementById('cacheStatus').textContent = '✅ Active (Simple Cache)';
                     
-                    const statusText = await window.earthquakeCacheManager.displayCacheStatus();
+                    const stats = window.simpleEarthquakeCache.getStats();
+                    const statusText = `${stats.validEntries}/${stats.totalEntries} entries, TTL: ${stats.ttlMinutes}min`;
                     document.getElementById('cacheStats').textContent = statusText;
                 } else {
                     document.getElementById('cacheStatus').textContent = '❌ Not Available';
-                    document.getElementById('cacheStats').textContent = 'Cache manager not loaded';
+                    document.getElementById('cacheStats').textContent = 'Cache not loaded';
                 }
             } catch (error) {
                 document.getElementById('cacheStatus').textContent = '❌ Error';
@@ -356,12 +355,12 @@
         
         async function clearCache() {
             try {
-                if (window.earthquakeCacheManager) {
-                    await window.earthquakeCacheManager.clearCache();
+                if (window.simpleEarthquakeCache) {
+                    window.simpleEarthquakeCache.clear();
                     showSuccess('Cache cleared successfully!');
                     updateCacheStatus(); // Refresh status
                 } else {
-                    showError('Cache manager not available');
+                    showError('Cache not available');
                 }
             } catch (error) {
                 showError('Failed to clear cache: ' + error.message);

@@ -387,6 +387,20 @@
             console.log(`🔍 Starting magnitude search > ${magnitude}`);
             
             try {
+                // Check cache first
+                const cacheKey = { type: 'magnitude_greater', magnitude: magnitude };
+                const cachedResults = window.simpleEarthquakeCache?.get('magnitude_greater', cacheKey);
+                
+                if (cachedResults) {
+                    const endTime = performance.now();
+                    const executionTime = endTime - startTime;
+                    console.log(`⚡ Cache hit! Search completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
+                    
+                    hideLoading();
+                    displayResults(cachedResults);
+                    return;
+                }
+                
                 // Since Firestore where() queries with numbers might fail due to type mismatch,
                 // we'll use client-side filtering which is more reliable
                 
@@ -441,13 +455,20 @@
                 // Sort by magnitude descending
                 results.sort((a, b) => b.magnitude - a.magnitude);
                 
-                hideLoading();
-                displayResults({
+                const finalResults = {
                     status: "success",
                     query: `Magnitude > ${magnitude}`,
                     count: results.length,
                     earthquakes: results.slice(0, 500)  // Limit display for performance
-                });
+                };
+                
+                // Cache the results
+                if (window.simpleEarthquakeCache) {
+                    window.simpleEarthquakeCache.set('magnitude_greater', cacheKey, finalResults);
+                }
+                
+                hideLoading();
+                displayResults(finalResults);
             } catch (error) {
                 hideLoading();
                 console.error("Search error:", error);
@@ -1259,7 +1280,7 @@
         window.showError = showError;
     </script>
     
-    <!-- Dynamic Cache Manager -->
-    <script src="cache-manager.js"></script>
+    <!-- Simple Cache Manager -->
+    <script src="simple-cache.js"></script>
 </body>
 </html>
