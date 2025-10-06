@@ -119,13 +119,6 @@
                 <p><strong>Storage:</strong> Cloud Firestore</p>
                 <p><strong>Cost:</strong> Free Tier</p>
             </div>
-            
-            <div class="status-card">
-                <h3>⚡ Cache Status</h3>
-                <p><strong>Service Worker:</strong> <span id="cacheStatus">Checking...</span></p>
-                <p><strong>Cache Stats:</strong> <span id="cacheStats">Loading...</span></p>
-                <button onclick="clearCache()" class="btn" style="margin-top: 10px; padding: 5px 10px; font-size: 12px;">Clear Cache</button>
-            </div>
         </div>
 
         <div class="action-buttons">
@@ -163,8 +156,6 @@
     </div>
 
     <!-- Firebase SDK -->
-    <!-- Simple Cache Manager -->
-    <script src="simple-cache.js"></script>
     
     <script type="module">
         // Import Firebase modules
@@ -333,45 +324,6 @@
         // Make utility functions global
         window.showError = showError;
         window.showSuccess = showSuccess;
-        
-        // Cache management functions
-        async function updateCacheStatus() {
-            try {
-                if (window.simpleEarthquakeCache) {
-                    document.getElementById('cacheStatus').textContent = '✅ Active (Simple Cache)';
-                    
-                    const stats = window.simpleEarthquakeCache.getStats();
-                    const statusText = `${stats.validEntries}/${stats.totalEntries} entries, TTL: ${stats.ttlMinutes}min`;
-                    document.getElementById('cacheStats').textContent = statusText;
-                } else {
-                    document.getElementById('cacheStatus').textContent = '❌ Not Available';
-                    document.getElementById('cacheStats').textContent = 'Cache not loaded';
-                }
-            } catch (error) {
-                document.getElementById('cacheStatus').textContent = '❌ Error';
-                document.getElementById('cacheStats').textContent = error.message;
-            }
-        }
-        
-        async function clearCache() {
-            try {
-                if (window.simpleEarthquakeCache) {
-                    window.simpleEarthquakeCache.clear();
-                    showSuccess('Cache cleared successfully!');
-                    updateCacheStatus(); // Refresh status
-                } else {
-                    showError('Cache not available');
-                }
-            } catch (error) {
-                showError('Failed to clear cache: ' + error.message);
-            }
-        }
-        
-        // Update cache status periodically
-        setInterval(updateCacheStatus, 10000); // Every 10 seconds
-        
-        // Initial cache status update
-        setTimeout(updateCacheStatus, 2000); // After 2 seconds
     </script>
 
     <!-- Setup Instructions (shown when Firebase isn't configured) -->
