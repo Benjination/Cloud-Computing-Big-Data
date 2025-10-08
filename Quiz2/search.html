@@ -341,17 +341,17 @@
             }
         };
 
-        function showLoading() {
+        window.showLoading = function showLoading() {
             const loadingDiv = document.getElementById('loading');
             if (loadingDiv) loadingDiv.style.display = 'block';
         }
 
-        function hideLoading() {
+        window.hideLoading = function hideLoading() {
             const loadingDiv = document.getElementById('loading');
             if (loadingDiv) loadingDiv.style.display = 'none';
         }
 
-        function showSuccess(message) {
+        window.showSuccess = function showSuccess(message) {
             const successDiv = document.getElementById('success');
             if (successDiv) {
                 successDiv.textContent = message;
@@ -404,23 +404,6 @@
             } catch (error) {
                 showError('Error: ' + error.message);
             }
-        };
-
-        // Analysis function stubs - will be replaced by full implementations later in script
-        window.analyzeTimePatterns = function() {
-            showError('Time patterns analysis is loading. Please try again in a moment.');
-        };
-
-        window.analyzeWeekendPatterns = function() {
-            showError('Weekend patterns analysis is loading. Please try again in a moment.');
-        };
-
-        window.analyzeEarlyMorning = function() {
-            showError('Early morning analysis is loading. Please try again in a moment.');
-        };
-
-        window.findClusters = function() {
-            showError('Earthquake clusters analysis is loading. Please try again in a moment.');
         };
 
         // Search function stubs - will be replaced by full implementations
@@ -631,28 +614,7 @@
         window.totalPages = 1;
         window.currentResultsType = null;
 
-        // Utility Functions
-        function showLoading() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-        }
-
-        function hideLoading() {
-            document.getElementById('loading').style.display = 'none';
-        }
-
-        function showError(message) {
-            const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => errorDiv.style.display = 'none', 10000);
-        }
-
-        function formatDate(date) {
-            if (!date) return '';
-            if (date.toDate) date = date.toDate(); // Convert Firestore timestamp
-            return date.toISOString().split('T')[0];
-        }
+        // Utility Functions (kept only one instance to avoid duplicates)
 
         function haversineDistance(lat1, lon1, lat2, lon2) {
             const R = 6371; // Earth's radius in kilometers
@@ -743,159 +705,6 @@
             }
         };
 
-        window.searchMagnitudeRange = async function() {
-            const minMag = parseFloat(document.getElementById('magMin').value);
-            const maxMag = parseFloat(document.getElementById('magMax').value);
-            
-            if (isNaN(minMag) || isNaN(maxMag)) {
-                showError('Please enter valid magnitude values.');
-                return;
-            }
-
-            const cacheKey = `${minMag}-${maxMag}`;
-            
-            // Check cache first
-            if (window.searchCache.magnitudeRange.has(cacheKey)) {
-                const cacheEntry = window.searchCache.magnitudeRange.get(cacheKey);
-                if (isCacheValid(cacheEntry)) {
-                    console.log(`🚀 Using cached results for magnitude ${minMag}-${maxMag}`);
-                    displayResults({
-                        status: "success",
-                        query: `Magnitude ${minMag}-${maxMag} (Cached)`,
-                        count: cacheEntry.results.length,
-                        earthquakes: cacheEntry.results
-                    });
-                    return;
-                }
-            }
-
-            showLoading();
-            const startTime = performance.now();
-            console.log(`🔍 Searching Firebase for magnitude ${minMag}-${maxMag}`);
-            
-            try {
-                const q = query(
-                    collection(db, "earthquakes"),
-                    where("magnitude", ">=", minMag),
-                    where("magnitude", "<=", maxMag),
-                    orderBy("magnitude", "desc"),
-                    limit(500)
-                );
-                
-                const snapshot = await getDocs(q);
-                const results = [];
-                
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    results.push({
-                        id: doc.id,
-                        time: data.time,
-                        timeFormatted: formatDate(data.time),
-                        latitude: parseFloat(data.latitude) || 0,
-                        longitude: parseFloat(data.longitude) || 0,
-                        magnitude: data.magnitude || 0,
-                        place: data.place || ""
-                    });
-                });
-
-                // Cache the results
-                window.searchCache.magnitudeRange.set(cacheKey, {
-                    results: results,
-                    timestamp: Date.now()
-                });
-
-                const executionTime = performance.now() - startTime;
-                console.log(`✅ Found ${results.length} results in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
-                
-                hideLoading();
-                displayResults({
-                    status: "success",
-                    query: `Magnitude ${minMag}-${maxMag}`,
-                    count: results.length,
-                    earthquakes: results
-                });
-                
-            } catch (error) {
-                hideLoading();
-                console.error("Search error:", error);
-                showError("Search failed: " + error.message);
-            }
-        };
-
-        window.searchNearLocation = async function() {
-            console.log(`🔍 Starting cached magnitude range search ${minMag} - ${maxMag}`);
-            
-            try {
-                // Check memoization cache first
-                const cacheKey = generateCacheKey('magnitude_range', { minMag, maxMag });
-                if (window.searchCache.magnitudeRange.has(cacheKey)) {
-                    const cachedResults = window.searchCache.magnitudeRange.get(cacheKey);
-                    const endTime = performance.now();
-                    const executionTime = endTime - startTime;
-                    
-                    console.log(`⚡ Cache hit! Results retrieved in ${executionTime.toFixed(3)}ms`);
-                    
-                    hideLoading();
-                    displayResults({
-                        status: 'success',
-                        query: `Magnitude ${minMag} - ${maxMag} (cached)`,
-                        count: cachedResults.length,
-                        earthquakes: cachedResults.slice(0, 500)
-                    });
-                    
-                    await logPerformance('magnitude_range_cached', executionTime, cachedResults.length, {
-                        min_magnitude: minMag,
-                        max_magnitude: maxMag,
-                        cache_hit: true
-                    });
-                    return;
-                }
-                
-                // Filter from local cache - much faster than Firebase query
-                const results = window.earthquakeCache.allData.filter(entry => 
-                    !isNaN(entry.magnitude) && entry.magnitude >= minMag && entry.magnitude <= maxMag
-                ).map(entry => ({
-                    time: entry.timeFormatted,
-                    latitude: entry.latitude,
-                    longitude: entry.longitude,
-                    magnitude: entry.magnitude,
-                    place: entry.place,
-                    id: entry.id
-                }));
-                
-                // Cache the results for future use
-                window.searchCache.magnitudeRange.set(cacheKey, results);
-                
-                // End timing and log performance
-                const endTime = performance.now();
-                const executionTime = endTime - startTime;
-                console.log(`⏱️  Cached range search completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
-                console.log(`📊 Found ${results.length} earthquakes with magnitude ${minMag} - ${maxMag}`);
-                console.log(`🚀 Performance improvement: ~${(window.earthquakeCache.loadTime / executionTime).toFixed(1)}x faster than original`);
-                
-                // Log performance data to Firebase
-                await logPerformance('magnitude_range_optimized', executionTime, results.length, {
-                    min_magnitude: minMag,
-                    max_magnitude: maxMag,
-                    documents_processed: window.earthquakeCache.totalCount,
-                    cache_hit: false,
-                    performance_improvement_factor: Math.round(window.earthquakeCache.loadTime / executionTime * 10) / 10
-                });
-
-                hideLoading();
-                displayResults({
-                    status: 'success',
-                    query: `Magnitude ${minMag} - ${maxMag}`,
-                    count: results.length,
-                    earthquakes: results.slice(0, 500)  // Limit display for performance
-                });
-            } catch (error) {
-                hideLoading();
-                console.error("Magnitude range search error:", error);
-                showError('Search failed: ' + error.message);
-            }
-        };
-
         window.searchNearLocation = async function() {
             const searchLat = parseFloat(document.getElementById('searchLat').value);
             const searchLng = parseFloat(document.getElementById('searchLng').value);
@@ -906,19 +715,25 @@
                 return;
             }
 
-            // Ensure cache is loaded
-            if (!window.earthquakeCache.isLoaded) {
-                showLoading();
-                const success = await initializeCache();
-                if (!success) return;
-                hideLoading();
+            const cacheKey = `${searchLat},${searchLng},${radius}`;
+            
+            // Check cache first
+            if (window.searchCache.locationSearch.has(cacheKey)) {
+                const cacheEntry = window.searchCache.locationSearch.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log(`🚀 Using cached location results`);
+                    displayResults({
+                        status: "success",
+                        query: `Within ${radius}km of (${searchLat}, ${searchLng}) (Cached)`,
+                        count: cacheEntry.results.length,
+                        earthquakes: cacheEntry.results
+                    });
+                    return;
+                }
             }
 
             showLoading();
-            
-            // Start high-precision timing
-            const startTime = performance.now();
-            console.log(`🔍 Starting cached location search within ${radius}km of (${searchLat}, ${searchLng})`);
+            console.log(`🔍 Searching location within ${radius}km of (${searchLat}, ${searchLng})`);
             
             try {
                 // Check memoization cache first
@@ -1340,7 +1155,7 @@
             }
         };
 
-        window.analyzeEarlyMorning = async function() {
+        // Display and Pagination Functions
             // Ensure cache is loaded
             if (!window.earthquakeCache.isLoaded) {
                 showLoading();
@@ -1352,14 +1167,14 @@
             showLoading();
             
             // Start high-precision timing
-            const startTime = performance.now();
+            const startTimeEarlyMorning = performance.now();
             console.log(`🔍 Starting cached early morning patterns analysis`);
             
             try {
                 // Check if we have cached results
                 if (window.searchCache.earlyMorning !== null) {
                     const endTime = performance.now();
-                    const executionTime = endTime - startTime;
+                    const executionTime = endTime - startTimeEarlyMorning;
                     
                     console.log(`⚡ Cache hit! Early morning patterns retrieved in ${executionTime.toFixed(3)}ms`);
                     
@@ -1415,7 +1230,7 @@
                 
                 // End timing and log performance
                 const endTime = performance.now();
-                const executionTime = endTime - startTime;
+                const executionTime = endTime - startTimeEarlyMorning;
                 console.log(`⏱️  Cached early morning analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
                 console.log(`🚀 Performance improvement: ~${(window.earthquakeCache.loadTime / executionTime).toFixed(1)}x faster than original`);
                 
@@ -1434,128 +1249,6 @@
                 console.error("Early morning analysis error:", error);
                 showError('Analysis failed: ' + error.message);
             }
-        };
-
-        window.findClusters = async function() {
-            // Ensure cache is loaded
-            if (!window.earthquakeCache.isLoaded) {
-                showLoading();
-                const success = await initializeCache();
-                if (!success) return;
-                hideLoading();
-            }
-
-            showLoading();
-            
-            // Start high-precision timing
-            const startTime = performance.now();
-            console.log(`🔍 Starting cached earthquake clusters analysis`);
-            
-            try {
-                // Check if we have cached results
-                if (window.searchCache.clusters !== null) {
-                    const endTime = performance.now();
-                    const executionTime = endTime - startTime;
-                    
-                    console.log(`⚡ Cache hit! Clusters retrieved in ${executionTime.toFixed(3)}ms`);
-                    
-                    hideLoading();
-                    displayResults(window.searchCache.clusters);
-                    
-                    await logPerformance('clusters_analysis_cached', executionTime, 
-                        window.searchCache.clusters.count, { cache_hit: true });
-                    return;
-                }
-                
-                // Use cached data for clustering
-                const earthquakes = [];
-                for (const entry of window.earthquakeCache.allData) {
-                    if (entry.latitude && entry.longitude) {
-                        earthquakes.push({
-                            lat: entry.latitude,
-                            lon: entry.longitude,
-                            magnitude: entry.magnitude || 0,
-                            place: entry.place || ''
-                        });
-                    }
-                }
-
-                // Simple clustering algorithm
-                const clusterThreshold = 50; // km
-                const clusters = [];
-                const processed = new Set();
-                
-                for (let i = 0; i < earthquakes.length; i++) {
-                    if (processed.has(i)) continue;
-                    
-                    const cluster = [earthquakes[i]];
-                    processed.add(i);
-                    
-                    for (let j = 0; j < earthquakes.length; j++) {
-                        if (processed.has(j) || i === j) continue;
-                        
-                        const distance = haversineDistance(
-                            earthquakes[i].lat, earthquakes[i].lon,
-                            earthquakes[j].lat, earthquakes[j].lon
-                        );
-                        
-                        if (distance <= clusterThreshold) {
-                            cluster.push(earthquakes[j]);
-                            processed.add(j);
-                        }
-                    }
-                    
-                    if (cluster.length >= 5) {
-                        const avgLat = cluster.reduce((sum, eq) => sum + eq.lat, 0) / cluster.length;
-                        const avgLon = cluster.reduce((sum, eq) => sum + eq.lon, 0) / cluster.length;
-                        const avgMagnitude = cluster.reduce((sum, eq) => sum + eq.magnitude, 0) / cluster.length;
-                        
-                        clusters.push({
-                            count: cluster.length,
-                            center_lat: Math.round(avgLat * 1000) / 1000,
-                            center_lon: Math.round(avgLon * 1000) / 1000,
-                            avg_magnitude: Math.round(avgMagnitude * 100) / 100,
-                            sample_location: cluster[0].place
-                        });
-                    }
-                }
-
-                clusters.sort((a, b) => b.count - a.count);
-
-                const results = {
-                    status: 'success',
-                    analysis: `Earthquake clusters (within ${clusterThreshold}km, 5+ earthquakes)`,
-                    count: clusters.length,
-                    clusters: clusters.slice(0, 10),
-                    total_clustered_earthquakes: clusters.reduce((sum, c) => sum + c.count, 0),
-                    conclusion: `Found ${clusters.length} clusters containing ${clusters.reduce((sum, c) => sum + c.count, 0)} earthquakes`
-                };
-                
-                // Cache the results
-                window.searchCache.clusters = results;
-
-                hideLoading();
-                displayResults(results);
-                
-                // End timing and log performance
-                const endTime = performance.now();
-                const executionTime = endTime - startTime;
-                console.log(`⏱️  Cached clusters analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
-                console.log(`🚀 Performance improvement: ~${(window.earthquakeCache.loadTime / executionTime).toFixed(1)}x faster than original`);
-                
-                // Log performance data to Firebase
-                await logPerformance('clusters_analysis_optimized', executionTime, earthquakes.length, {
-                    clusters_found: clusters.length,
-                    clustered_earthquakes: clusters.reduce((sum, c) => sum + c.count, 0),
-                    cluster_threshold_km: clusterThreshold,
-                    cache_hit: false,
-                    performance_improvement_factor: Math.round(window.earthquakeCache.loadTime / executionTime * 10) / 10
-                });
-            } catch (error) {
-                hideLoading();
-                showError('Analysis failed: ' + error.message);
-            }
-        };
 
         // Display and Pagination Functions
         function displayResults(data) {
@@ -1917,46 +1610,7 @@
         </div>
     </div>
 
-    <script>
-        // Make functions available globally
-        window.showError = showError;
-    </script>
-
-    <script>
-        // Ensure critical functions are available globally
-        window.showError = function(message) {
-            const errorDiv = document.getElementById('error');
-            if (errorDiv) {
-                errorDiv.textContent = message;
-                errorDiv.style.display = 'block';
-                setTimeout(() => errorDiv.style.display = 'none', 10000);
-            } else {
-                alert('Error: ' + message);
-            }
-        };
-        
-        // Ensure other functions are available
-        if (typeof window.quickMagnitudeRange === 'undefined') {
-            window.quickMagnitudeRange = async function(minMag, maxMag) {
-                document.getElementById('magMin').value = minMag;
-                document.getElementById('magMax').value = maxMag;
-                if (typeof window.searchMagnitudeRange === 'function') {
-                    await window.searchMagnitudeRange();
-                } else {
-                    showError('Search function not available yet. Please try again.');
-                }
-            };
-        }
-        
-        // Placeholder functions if main script fails to load
-        ['analyzeTimePatterns', 'analyzeWeekendPatterns', 'analyzeEarlyMorning', 'findClusters'].forEach(funcName => {
-            if (typeof window[funcName] === 'undefined') {
-                window[funcName] = function() {
-                    showError(`${funcName} is loading. Please try again in a moment.`);
-                };
-            }
-        });
-    </script>
+    <!-- Note: All JavaScript functions are already declared in the main script block above -->
 
 </body>
 </html>
