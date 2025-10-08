@@ -275,62 +275,84 @@
                 console.log('CSV Headers:', headers);
                 console.log(`Total lines to process: ${lines.length - 1}`);
                 
-                const batchSize = 500; // Firebase batch write limit
-                let uploadedCount = 0;
-                let processedLines = 0;
-                
-                for (let i = 1; i < lines.length; i += batchSize) {
-                    const batch = writeBatch(db);
-                    const batchLines = lines.slice(i, Math.min(i + batchSize, lines.length));
-                    let batchCount = 0;
-                    
-                    for (const line of batchLines) {
-                        processedLines++;
-                        if (line.trim()) {
-                            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-                            const record = {};
-                            
-                            // Map CSV columns to Firestore document
-                            headers.forEach((header, index) => {
-                                if (values[index]) {
-                                    let value = values[index];
-                                    
-                                    // Convert data types
-                                    if (header === 'latitude' || header === 'longitude' || header === 'magnitude' || header === 'depth') {
-                                        value = parseFloat(value) || null;
-                                    } else if (header === 'time' || header === 'updated') {
-                                        value = value ? new Date(value) : null;
-                                    }
-                                    
-                                    record[header] = value;
+                // Parse all valid records first
+                const allRecords = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (line.trim()) {
+                        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                        const record = {};
+                        
+                        // Map CSV columns to Firestore document
+                        headers.forEach((header, index) => {
+                            if (values[index]) {
+                                let value = values[index];
+                                
+                                // Convert data types
+                                if (header === 'latitude' || header === 'longitude' || header === 'magnitude' || header === 'depth') {
+                                    value = parseFloat(value) || null;
+                                } else if (header === 'time' || header === 'updated') {
+                                    value = value ? new Date(value) : null;
                                 }
-                            });
-                            
-                            // Add to batch
-                            if (Object.keys(record).length > 0) {
-                                const docRef = doc(collection(db, 'earthquakes'));
-                                batch.set(docRef, {
-                                    ...record,
-                                    uploaded_at: new Date()
-                                });
-                                batchCount++;
+                                
+                                record[header] = value;
                             }
+                        });
+                        
+                        if (Object.keys(record).length > 0) {
+                            allRecords.push({
+                                ...record,
+                                uploaded_at: new Date()
+                            });
                         }
                     }
+                }
+                
+                console.log(`Parsed ${allRecords.length} valid records`);
+                
+                // Calculate batch strategy based on record count
+                const maxBatchSize = 500; // Firebase limit
+                const totalBatches = Math.ceil(allRecords.length / maxBatchSize);
+                const estimatedTimePerBatch = 2000; // 2 seconds per batch (estimated)
+                const totalEstimatedTime = totalBatches * estimatedTimePerBatch;
+                
+                console.log(`Upload strategy: ${totalBatches} batches of up to ${maxBatchSize} records each`);
+                console.log(`Estimated completion time: ${(totalEstimatedTime / 1000).toFixed(1)} seconds`);
+                
+                const startTime = Date.now();
+                let uploadedCount = 0;
+                
+                // Process in optimized batches
+                for (let i = 0; i < allRecords.length; i += maxBatchSize) {
+                    const batchStartTime = Date.now();
+                    const batch = writeBatch(db);
+                    const batchRecords = allRecords.slice(i, i + maxBatchSize);
                     
-                    // Commit the batch (up to 500 documents at once)
-                    if (batchCount > 0) {
-                        await batch.commit();
-                        uploadedCount += batchCount;
-                    }
+                    // Add all records to this batch
+                    batchRecords.forEach(record => {
+                        const docRef = doc(collection(db, 'earthquakes'));
+                        batch.set(docRef, record);
+                    });
                     
-                    // Update progress based on processed lines
-                    const percentage = Math.round((processedLines / (lines.length - 1)) * 100);
-                    uploadPercentage.textContent = Math.min(percentage, 100) + '%';
+                    // Commit the entire batch at once
+                    await batch.commit();
+                    uploadedCount += batchRecords.length;
+                    
+                    const batchTime = Date.now() - batchStartTime;
+                    const elapsedTime = Date.now() - startTime;
+                    const currentBatch = Math.floor(i / maxBatchSize) + 1;
+                    
+                    // Time-based progress calculation
+                    const estimatedProgress = Math.min((elapsedTime / totalEstimatedTime) * 100, 100);
+                    const actualProgress = (uploadedCount / allRecords.length) * 100;
+                    
+                    // Use the more conservative estimate
+                    const progressPercent = Math.min(estimatedProgress, actualProgress);
+                    
+                    uploadPercentage.textContent = Math.round(progressPercent) + '%';
                     recordsUploaded.textContent = uploadedCount;
                     
-                    // Log progress for debugging
-                    console.log(`Processed ${processedLines}/${lines.length - 1} lines, uploaded ${uploadedCount} records`);
+                    console.log(`Batch ${currentBatch}/${totalBatches} completed in ${batchTime}ms (${batchRecords.length} records)`);
                 }
                 
                 // Ensure progress shows 100% when complete
@@ -363,23 +385,68 @@
                     return;
                 }
                 
-                const batchSize = 500;
-                let deletedCount = 0;
                 const docs = snapshot.docs;
+                const totalDocs = docs.length;
+                const maxBatchSize = 500; // Firebase limit
+                const totalBatches = Math.ceil(totalDocs / maxBatchSize);
+                const estimatedTimePerBatch = 1500; // 1.5 seconds per batch (faster than upload)
+                const totalEstimatedTime = totalBatches * estimatedTimePerBatch;
                 
-                // Process in batches of 500 (Firebase batch limit)
-                for (let i = 0; i < docs.length; i += batchSize) {
+                console.log(`Delete strategy: ${totalBatches} batches of up to ${maxBatchSize} deletions each`);
+                console.log(`Estimated completion time: ${(totalEstimatedTime / 1000).toFixed(1)} seconds`);
+                
+                // Show progress if we have upload progress elements
+                const uploadProgress = document.getElementById('uploadProgress');
+                const uploadPercentage = document.getElementById('uploadPercentage');
+                const recordsUploaded = document.getElementById('recordsUploaded');
+                
+                if (uploadProgress) {
+                    uploadProgress.style.display = 'block';
+                    uploadPercentage.textContent = '0%';
+                    recordsUploaded.textContent = '0 deleted';
+                }
+                
+                const startTime = Date.now();
+                let deletedCount = 0;
+                
+                // Process in optimized batches
+                for (let i = 0; i < docs.length; i += maxBatchSize) {
+                    const batchStartTime = Date.now();
                     const batch = writeBatch(db);
-                    const batchDocs = docs.slice(i, i + batchSize);
+                    const batchDocs = docs.slice(i, i + maxBatchSize);
                     
+                    // Add all deletions to this batch
                     batchDocs.forEach(document => {
                         batch.delete(document.ref);
                     });
                     
+                    // Commit the entire batch at once
                     await batch.commit();
                     deletedCount += batchDocs.length;
                     
-                    console.log(`Deleted ${deletedCount} of ${docs.length} records...`);
+                    const batchTime = Date.now() - batchStartTime;
+                    const elapsedTime = Date.now() - startTime;
+                    const currentBatch = Math.floor(i / maxBatchSize) + 1;
+                    
+                    // Time-based progress calculation
+                    const estimatedProgress = Math.min((elapsedTime / totalEstimatedTime) * 100, 100);
+                    const actualProgress = (deletedCount / totalDocs) * 100;
+                    
+                    // Use the more conservative estimate
+                    const progressPercent = Math.min(estimatedProgress, actualProgress);
+                    
+                    if (uploadProgress) {
+                        uploadPercentage.textContent = Math.round(progressPercent) + '%';
+                        recordsUploaded.textContent = `${deletedCount} deleted`;
+                    }
+                    
+                    console.log(`Delete batch ${currentBatch}/${totalBatches} completed in ${batchTime}ms (${batchDocs.length} records)`);
+                }
+                
+                // Hide progress and show completion
+                if (uploadProgress) {
+                    uploadPercentage.textContent = '100%';
+                    setTimeout(() => uploadProgress.style.display = 'none', 2000);
                 }
                 
                 showSuccess(`Successfully deleted ${deletedCount} earthquake records from Firebase!`);
