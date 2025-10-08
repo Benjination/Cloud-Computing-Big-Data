@@ -148,6 +148,7 @@
             <input type="file" id="csvFile" accept=".csv" style="margin: 10px 0;">
             <br>
             <button onclick="uploadCSV()" class="btn">Upload CSV to Firebase</button>
+            <button onclick="clearDatabase()" class="btn" style="background-color: #dc3545; margin-left: 10px;">🗑️ Clear Database</button>
             <div id="uploadProgress" style="margin-top: 10px; display: none;">
                 <div>Progress: <span id="uploadPercentage">0%</span></div>
                 <div>Records uploaded: <span id="recordsUploaded">0</span></div>
@@ -160,7 +161,7 @@
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, addDoc, query, where, orderBy, limit, writeBatch, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, addDoc, query, where, orderBy, limit, writeBatch, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         // Firebase configuration (you'll need to replace with your config)
         // Firebase configuration - Updated with your project details
@@ -246,21 +247,24 @@
             
             try {
                 const text = await file.text();
-                const lines = text.split('\n');
+                const lines = text.split('\n').filter(line => line.trim()); // Remove empty lines
                 const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
                 
                 console.log('CSV Headers:', headers);
+                console.log(`Total lines to process: ${lines.length - 1}`);
                 
                 const batchSize = 500; // Firebase batch write limit
                 let uploadedCount = 0;
+                let processedLines = 0;
                 
                 for (let i = 1; i < lines.length; i += batchSize) {
                     const batch = writeBatch(db);
-                    const batchLines = lines.slice(i, i + batchSize);
+                    const batchLines = lines.slice(i, Math.min(i + batchSize, lines.length));
                     let batchCount = 0;
                     
                     for (const line of batchLines) {
-                        if (line.trim() && batchCount < batchSize) {
+                        processedLines++;
+                        if (line.trim()) {
                             const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
                             const record = {};
                             
@@ -298,11 +302,17 @@
                         uploadedCount += batchCount;
                     }
                     
-                    // Update progress
-                    const percentage = Math.round((i / lines.length) * 100);
-                    uploadPercentage.textContent = percentage + '%';
+                    // Update progress based on processed lines
+                    const percentage = Math.round((processedLines / (lines.length - 1)) * 100);
+                    uploadPercentage.textContent = Math.min(percentage, 100) + '%';
                     recordsUploaded.textContent = uploadedCount;
+                    
+                    // Log progress for debugging
+                    console.log(`Processed ${processedLines}/${lines.length - 1} lines, uploaded ${uploadedCount} records`);
                 }
+                
+                // Ensure progress shows 100% when complete
+                uploadPercentage.textContent = '100%';
                 
                 showSuccess(`Successfully uploaded ${uploadedCount} earthquake records to Firebase!`);
                 
@@ -314,6 +324,50 @@
             } catch (error) {
                 console.error('Upload error:', error);
                 showError('Upload failed: ' + error.message);
+            }
+        };
+
+        window.clearDatabase = async function() {
+            if (!confirm('Are you sure you want to delete ALL earthquake records? This cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const earthquakesRef = collection(db, 'earthquakes');
+                const snapshot = await getDocs(earthquakesRef);
+                
+                if (snapshot.empty) {
+                    showError('Database is already empty.');
+                    return;
+                }
+                
+                const batchSize = 500;
+                let deletedCount = 0;
+                const docs = snapshot.docs;
+                
+                // Process in batches of 500 (Firebase batch limit)
+                for (let i = 0; i < docs.length; i += batchSize) {
+                    const batch = writeBatch(db);
+                    const batchDocs = docs.slice(i, i + batchSize);
+                    
+                    batchDocs.forEach(document => {
+                        batch.delete(document.ref);
+                    });
+                    
+                    await batch.commit();
+                    deletedCount += batchDocs.length;
+                    
+                    console.log(`Deleted ${deletedCount} of ${docs.length} records...`);
+                }
+                
+                showSuccess(`Successfully deleted ${deletedCount} earthquake records from Firebase!`);
+                
+                // Update record count
+                document.getElementById('recordCount').textContent = '0';
+                
+            } catch (error) {
+                console.error('Clear database error:', error);
+                showError('Failed to clear database: ' + error.message);
             }
         };
 
