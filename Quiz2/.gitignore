@@ -18,6 +18,7 @@ scripts/node_modules/
 # IDE files
 .vscode/
 .idea/
+firebaseConfig.js
 *.swp
 *.swo
 

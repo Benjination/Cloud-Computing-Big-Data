@@ -286,15 +286,11 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, addDoc, query, where, orderBy, limit, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-                // Firebase configuration - Updated with your project details
-        const firebaseConfig = {
-            apiKey: "AIzaSyAMi3WqHNglhWH90Gs12AqtA-M3jXAtNu0",
-            authDomain: "realquiz2.firebaseapp.com",
-            projectId: "realquiz2",
-            storageBucket: "realquiz2.firebasestorage.app",
-            messagingSenderId: "398095361234",
-            appId: "1:398095361234:web:742aaef6fb951a551b390b"
-        };
+            // Load Firebase config from external file
+            let firebaseConfig;
+            await import('./firebaseConfig.js').then(module => {
+                firebaseConfig = module.firebaseConfig;
+            });
 
         // Initialize Firebase
         let app, db;
