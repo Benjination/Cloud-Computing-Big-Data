@@ -286,11 +286,16 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, addDoc, query, where, orderBy, limit, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-            // Load Firebase config from external file
-            let firebaseConfig;
-            await import('./firebaseConfig.js').then(module => {
-                firebaseConfig = module.firebaseConfig;
-            });
+        // Firebase configuration - Updated with new project details
+        const firebaseConfig = {
+            apiKey: "AIzaSyDIZ3GOpAbRX1vc39WOgDpQiYe27HNEVuI",
+            authDomain: "assignment3-30ac7.firebaseapp.com",
+            projectId: "assignment3-30ac7",
+            storageBucket: "assignment3-30ac7.firebasestorage.app",
+            messagingSenderId: "372305109147",
+            appId: "1:372305109147:web:b8ceab0059242441aee63e",
+            measurementId: "G-3VPTP8B4Q2"
+        };
 
         // Initialize Firebase
         let app, db;
