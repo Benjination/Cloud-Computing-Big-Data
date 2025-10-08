@@ -844,49 +844,50 @@
 
         // Analysis Functions with Cache Optimization
         window.analyzeTimePatterns = async function() {
-            // Ensure cache is loaded
-            if (!window.earthquakeCache.isLoaded) {
-                showLoading();
-                const success = await initializeCache();
-                if (!success) return;
-                hideLoading();
-            }
-
-            showLoading();
+            const cacheKey = 'time_patterns_analysis';
             
-            // Start high-precision timing
-            const startTime = performance.now();
-            console.log(`🔍 Starting cached time patterns analysis`);
-            
-            try {
-                // Check if we have cached results
-                if (window.searchCache.timePatterns !== null) {
-                    const endTime = performance.now();
-                    const executionTime = endTime - startTime;
-                    
-                    console.log(`⚡ Cache hit! Time patterns retrieved in ${executionTime.toFixed(3)}ms`);
-                    
-                    hideLoading();
-                    displayResults(window.searchCache.timePatterns);
-                    
-                    await logPerformance('time_patterns_analysis_cached', executionTime, 
-                        window.searchCache.timePatterns.total_large_quakes, { cache_hit: true });
+            // Check cache first
+            if (window.searchCache.timePatterns.has(cacheKey)) {
+                const cacheEntry = window.searchCache.timePatterns.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached time patterns analysis');
+                    displayResults(cacheEntry.results);
                     return;
                 }
+            }
+
+            // Perform Firebase query for day/night analysis
+            showLoading();
+            const startTime = performance.now();
+            console.log('🔍 Analyzing time patterns from Firebase');
+            
+            try {
+                // Query significant earthquakes (magnitude > 4.0)
+                const q = query(
+                    collection(db, "earthquakes"),
+                    where("magnitude", ">", 4.0),
+                    limit(1000) // Limit for performance
+                );
                 
-                // Use cached data - only analyze significant earthquakes (magnitude > 4.0)
+                const snapshot = await getDocs(q);
                 let dayCount = 0;
                 let nightCount = 0;
                 
-                for (const entry of window.earthquakeCache.allData) {
-                    if (!isNaN(entry.magnitude) && entry.magnitude > 4.0 && entry.dateObj) {
-                        if (entry.isNight) {
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const dateObj = data.time?.toDate ? data.time.toDate() : new Date(data.time);
+                    
+                    if (dateObj) {
+                        const hour = dateObj.getHours();
+                        const isNight = hour >= 18 || hour < 6;
+                        
+                        if (isNight) {
                             nightCount++;
                         } else {
                             dayCount++;
                         }
                     }
-                }
+                });
 
                 const total = dayCount + nightCount;
                 const nightPercentage = total > 0 ? (nightCount / total * 100) : 0;
@@ -898,55 +899,112 @@
                     count: total,
                     day_count: dayCount,
                     night_count: nightCount,
-                    total_large_quakes: total,
-                    day_percentage: Math.round(dayPercentage * 10) / 10,
-                    night_percentage: Math.round(nightPercentage * 10) / 10,
-                    conclusion: `${nightPercentage.toFixed(1)}% of large earthquakes occur at night (6 PM - 6 AM)`
+                    day_percentage: dayPercentage.toFixed(1),
+                    night_percentage: nightPercentage.toFixed(1),
+                    pattern: nightCount > dayCount ? 'More earthquakes occur at night' : 'More earthquakes occur during day',
+                    reads_used: snapshot.size
                 };
-                
-                // Cache the results
-                window.searchCache.timePatterns = results;
 
+                // Cache the results
+                window.searchCache.timePatterns.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+
+                const executionTime = performance.now() - startTime;
+                console.log(`✅ Time analysis completed in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
+                
                 hideLoading();
                 displayResults(results);
                 
-                // End timing and log performance
-                const endTime = performance.now();
-                const executionTime = endTime - startTime;
-                console.log(`⏱️  Cached time patterns analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
-                console.log(`🚀 Performance improvement: ~${(window.earthquakeCache.loadTime / executionTime).toFixed(1)}x faster than original`);
-                
-                // Log performance data to Firebase
-                await logPerformance('time_patterns_analysis_optimized', executionTime, total, {
-                    day_count: dayCount,
-                    night_count: nightCount,
-                    night_percentage: nightPercentage.toFixed(1),
-                    cache_hit: false,
-                    performance_improvement_factor: Math.round(window.earthquakeCache.loadTime / executionTime * 10) / 10
-                });
             } catch (error) {
                 hideLoading();
-                showError('Analysis failed: ' + error.message);
+                console.error("Time analysis error:", error);
+                showError("Time analysis failed: " + error.message);
             }
         };
 
         window.analyzeWeekendPatterns = async function() {
-            // Ensure cache is loaded
-            if (!window.earthquakeCache.isLoaded) {
-                showLoading();
-                const success = await initializeCache();
-                if (!success) return;
-                hideLoading();
+            const cacheKey = 'weekend_patterns_analysis';
+            
+            // Check cache first
+            if (window.searchCache.timePatterns.has(cacheKey)) {
+                const cacheEntry = window.searchCache.timePatterns.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached weekend patterns analysis');
+                    displayResults(cacheEntry.results);
+                    return;
+                }
             }
 
+            // Perform Firebase query for weekend analysis
             showLoading();
-            
-            // Start high-precision timing
-            const startTime = performance.now();
-            console.log(`🔍 Starting cached weekend patterns analysis`);
+            const startTimeWeekend = performance.now();
+            console.log('🔍 Analyzing weekend patterns from Firebase');
             
             try {
-                // Check if we have cached results
+                // Query significant earthquakes (magnitude > 4.0)
+                const q = query(
+                    collection(db, "earthquakes"),
+                    where("magnitude", ">", 4.0),
+                    limit(1000)
+                );
+                
+                const snapshot = await getDocs(q);
+                let weekendCount = 0;
+                let weekdayCount = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const dateObj = data.time?.toDate ? data.time.toDate() : new Date(data.time);
+                    
+                    if (dateObj) {
+                        const dayOfWeek = dateObj.getDay();
+                        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                        
+                        if (isWeekend) {
+                            weekendCount++;
+                        } else {
+                            weekdayCount++;
+                        }
+                    }
+                });
+
+                const total = weekendCount + weekdayCount;
+                const weekendPercentage = total > 0 ? (weekendCount / total * 100) : 0;
+                const weekdayPercentage = total > 0 ? (weekdayCount / total * 100) : 0;
+
+                const results = {
+                    status: 'success',
+                    analysis: 'Large earthquakes (>4.0) - Weekend vs Weekday',
+                    count: total,
+                    weekend_count: weekendCount,
+                    weekday_count: weekdayCount,
+                    weekend_percentage: weekendPercentage.toFixed(1),
+                    weekday_percentage: weekdayPercentage.toFixed(1),
+                    pattern: weekendCount > weekdayCount ? 'More earthquakes occur on weekends' : 'More earthquakes occur on weekdays',
+                    reads_used: snapshot.size
+                };
+
+                // Cache the results
+                window.searchCache.timePatterns.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+
+                const executionTime = performance.now() - startTimeWeekend;
+                console.log(`✅ Weekend analysis completed in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
+                
+                hideLoading();
+                displayResults(results);
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Weekend analysis error:", error);
+                showError("Weekend analysis failed: " + error.message);
+        };
+
+        window.analyzeEarlyMorning = async function() {
                 if (window.searchCache.weekendPatterns !== null) {
                     const endTime = performance.now();
                     const executionTime = endTime - startTime;
