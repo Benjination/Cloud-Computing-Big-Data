@@ -312,25 +312,21 @@
         window.db = db;
         window.firestore = { collection, getDocs, query, where, orderBy, limit };
 
-        // Local cache system for optimization
-        window.earthquakeCache = {
-            isLoaded: false,
-            allData: [], // Array of all earthquake entries
-            totalCount: 0,
-            loadTime: 0,
-            lastUpdated: null
-        };
-
-        // Memoization cache for search results
+        // Simple query-specific cache - stores only searched results
         window.searchCache = {
-            magnitudeGreater: new Map(),
-            magnitudeRange: new Map(),
-            locationSearch: new Map(),
-            timePatterns: null,
-            weekendPatterns: null,
-            earlyMorning: null,
-            clusters: null
+            magnitudeGreater: new Map(),     // Key: magnitude, Value: {results, timestamp}
+            magnitudeRange: new Map(),       // Key: "min-max", Value: {results, timestamp}
+            locationSearch: new Map(),       // Key: "lat,lon,radius", Value: {results, timestamp}
+            timePatterns: new Map(),         // Key: pattern type, Value: {results, timestamp}
         };
+        
+        // Cache expiration time (5 minutes)
+        const CACHE_EXPIRY_MS = 5 * 60 * 1000;
+
+        // Helper function to check if cache entry is still valid
+        function isCacheValid(cacheEntry) {
+            return cacheEntry && (Date.now() - cacheEntry.timestamp) < CACHE_EXPIRY_MS;
+        }
 
         // Initialize local cache - load all data once when first search is performed
         window.initializeCache = async function() {
@@ -485,7 +481,7 @@
             return R * c;
         }
 
-        // Search Functions with Cache Optimization
+        // Search Functions with Simple Query-Specific Caching
         window.searchMagnitudeGreater = async function() {
             const magnitude = parseFloat(document.getElementById("magGreater").value);
             if (isNaN(magnitude)) {
@@ -493,109 +489,34 @@
                 return;
             }
 
-            // Option 1: Use cache if available
-            if (window.earthquakeCache.isLoaded) {
-                console.log('🚀 Using cached data for search');
-                performCachedMagnitudeSearch(magnitude);
-                return;
-            }
-
-            // Option 2: Direct Firebase query (more efficient for single searches)
-            console.log('🔍 Performing direct Firebase query');
-            await performDirectMagnitudeSearch(magnitude);
-        };
-
-        // Cached search (fast but requires all data loaded)
-        async function performCachedMagnitudeSearch(magnitude) {
-            showLoading();
+            const cacheKey = magnitude.toString();
             
-            // Start high-precision timing
-            const startTime = performance.now();
-            console.log(`🔍 Starting cached magnitude search > ${magnitude}`);
-            
-            try {
-                // Check memoization cache first
-                const cacheKey = generateCacheKey('magnitude_greater', { magnitude });
-                if (window.searchCache.magnitudeGreater.has(cacheKey)) {
-                    const cachedResults = window.searchCache.magnitudeGreater.get(cacheKey);
-                    const endTime = performance.now();
-                    const executionTime = endTime - startTime;
-                    
-                    console.log(`⚡ Cache hit! Results retrieved in ${executionTime.toFixed(3)}ms`);
-                    
-                    hideLoading();
+            // Check cache first
+            if (window.searchCache.magnitudeGreater.has(cacheKey)) {
+                const cacheEntry = window.searchCache.magnitudeGreater.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log(`🚀 Using cached results for magnitude > ${magnitude}`);
                     displayResults({
                         status: "success",
-                        query: `Magnitude > ${magnitude} (cached)`,
-                        count: cachedResults.length,
-                        earthquakes: cachedResults.slice(0, 500)
-                    });
-                    
-                    await logPerformance('magnitude_greater_cached', executionTime, cachedResults.length, {
-                        search_magnitude: magnitude,
-                        cache_hit: true
+                        query: `Magnitude > ${magnitude} (Cached)`,
+                        count: cacheEntry.results.length,
+                        earthquakes: cacheEntry.results
                     });
                     return;
                 }
-                
-                // Filter from local cache - much faster than Firebase query
-                const results = window.earthquakeCache.allData.filter(entry => 
-                    !isNaN(entry.magnitude) && entry.magnitude > magnitude
-                ).map(entry => ({
-                    time: entry.timeFormatted,
-                    latitude: entry.latitude,
-                    longitude: entry.longitude,
-                    magnitude: entry.magnitude,
-                    place: entry.place,
-                    id: entry.id
-                }));
-                
-                // Cache the results for future use
-                window.searchCache.magnitudeGreater.set(cacheKey, results);
-                
-                // End timing and log performance
-                const endTime = performance.now();
-                const executionTime = endTime - startTime;
-                console.log(`⏱️  Cached search completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
-                console.log(`📊 Found ${results.length} earthquakes with magnitude > ${magnitude}`);
-                console.log(`🚀 Performance improvement: ~${(window.earthquakeCache.loadTime / executionTime).toFixed(1)}x faster than original`);
-                
-                // Log performance data to Firebase
-                await logPerformance('magnitude_greater_optimized', executionTime, results.length, {
-                    search_magnitude: magnitude,
-                    documents_processed: window.earthquakeCache.totalCount,
-                    cache_hit: false,
-                    performance_improvement_factor: Math.round(window.earthquakeCache.loadTime / executionTime * 10) / 10
-                });
-                
-                hideLoading();
-                displayResults({
-                    status: "success",
-                    query: `Magnitude > ${magnitude}`,
-                    count: results.length,
-                    earthquakes: results.slice(0, 500)  // Limit display for performance
-                });
-            } catch (error) {
-                hideLoading();
-                console.error("Search error:", error);
-                showError("Search failed: " + error.message);
             }
-        }
 
-        // Direct Firebase search (efficient for single queries)
-        async function performDirectMagnitudeSearch(magnitude) {
+            // Perform Firebase query
             showLoading();
-            
             const startTime = performance.now();
-            console.log(`🔍 Starting direct Firebase magnitude search > ${magnitude}`);
+            console.log(`🔍 Searching Firebase for magnitude > ${magnitude}`);
             
             try {
-                // Direct Firestore query - only reads matching documents
                 const q = query(
                     collection(db, "earthquakes"),
                     where("magnitude", ">", magnitude),
                     orderBy("magnitude", "desc"),
-                    limit(500)  // Limit to prevent excessive reads
+                    limit(500)
                 );
                 
                 const snapshot = await getDocs(q);
@@ -614,25 +535,29 @@
                     });
                 });
 
+                // Cache the results
+                window.searchCache.magnitudeGreater.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+
                 const executionTime = performance.now() - startTime;
-                console.log(`✅ Direct search completed in ${executionTime.toFixed(3)}ms, found ${results.length} results using ${snapshot.size} reads`);
+                console.log(`✅ Found ${results.length} results in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
                 
                 hideLoading();
                 displayResults({
                     status: "success",
-                    query: `Magnitude > ${magnitude} (Direct Query)`,
+                    query: `Magnitude > ${magnitude}`,
                     count: results.length,
-                    earthquakes: results,
-                    searchType: "direct",
-                    reads: snapshot.size
+                    earthquakes: results
                 });
                 
             } catch (error) {
                 hideLoading();
-                console.error("Direct search error:", error);
+                console.error("Search error:", error);
                 showError("Search failed: " + error.message);
             }
-        }
+        };
 
         window.searchMagnitudeRange = async function() {
             const minMag = parseFloat(document.getElementById('magMin').value);
@@ -643,7 +568,82 @@
                 return;
             }
 
-            // Ensure cache is loaded
+            const cacheKey = `${minMag}-${maxMag}`;
+            
+            // Check cache first
+            if (window.searchCache.magnitudeRange.has(cacheKey)) {
+                const cacheEntry = window.searchCache.magnitudeRange.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log(`🚀 Using cached results for magnitude ${minMag}-${maxMag}`);
+                    displayResults({
+                        status: "success",
+                        query: `Magnitude ${minMag}-${maxMag} (Cached)`,
+                        count: cacheEntry.results.length,
+                        earthquakes: cacheEntry.results
+                    });
+                    return;
+                }
+            }
+            
+            if (isNaN(minMag) || isNaN(maxMag)) {
+                showError('Please enter valid magnitude values.');
+                return;
+            }
+
+            const cacheKey = `${minMag}-${maxMag}`;
+            
+            showLoading();
+            const startTime = performance.now();
+            console.log(`🔍 Searching Firebase for magnitude ${minMag}-${maxMag}`);
+            
+            try {
+                const q = query(
+                    collection(db, "earthquakes"),
+                    where("magnitude", ">=", minMag),
+                    where("magnitude", "<=", maxMag),
+                    orderBy("magnitude", "desc"),
+                    limit(500)
+                );
+                
+                const snapshot = await getDocs(q);
+                const results = [];
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    results.push({
+                        id: doc.id,
+                        time: data.time,
+                        timeFormatted: formatDate(data.time),
+                        latitude: parseFloat(data.latitude) || 0,
+                        longitude: parseFloat(data.longitude) || 0,
+                        magnitude: data.magnitude || 0,
+                        place: data.place || ""
+                    });
+                });
+
+                // Cache the results
+                window.searchCache.magnitudeRange.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+
+                const executionTime = performance.now() - startTime;
+                console.log(`✅ Found ${results.length} results in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
+                
+                hideLoading();
+                displayResults({
+                    status: "success",
+                    query: `Magnitude ${minMag}-${maxMag}`,
+                    count: results.length,
+                    earthquakes: results
+                });
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Search error:", error);
+                showError("Search failed: " + error.message);
+            }
+        };
             if (!window.earthquakeCache.isLoaded) {
                 showLoading();
                 const success = await initializeCache();
