@@ -161,7 +161,7 @@
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, addDoc, query, where, orderBy, limit, writeBatch, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, addDoc, query, where, orderBy, limit, writeBatch, doc, deleteDoc, getCountFromServer } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         // Firebase configuration (you'll need to replace with your config)
         // Firebase configuration - Updated with your project details
@@ -196,10 +196,12 @@
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
                 
-                // Test connection and get record count
+                // Test connection and get record count efficiently
                 const earthquakesRef = collection(db, 'earthquakes');
-                const snapshot = await getDocs(earthquakesRef);
-                const recordCount = snapshot.size;
+                
+                // Use count aggregation instead of downloading all documents
+                const countSnapshot = await getCountFromServer(earthquakesRef);
+                const recordCount = countSnapshot.data().count;
                 
                 document.getElementById('recordCount').textContent = recordCount.toLocaleString();
                 document.getElementById('connectionStatus').textContent = 'Connected ✅';
@@ -245,7 +247,11 @@
                 const snapshot = await getDocs(query(earthquakesRef, limit(1)));
                 
                 if (!snapshot.empty) {
-                    const proceed = confirm(`⚠️ COST WARNING: Database already contains data!\n\nUploading will cost approximately ${Math.ceil((await getDocs(earthquakesRef)).size / 500)} + ${Math.ceil(file.size / (1024 * 20))} Firebase write transactions.\n\nDo you want to clear the existing data first, or cancel this upload?`);
+                    // Get count efficiently for cost calculation
+                    const countSnapshot = await getCountFromServer(earthquakesRef);
+                    const existingCount = countSnapshot.data().count;
+                    
+                    const proceed = confirm(`⚠️ COST WARNING: Database already contains data!\n\nUploading will cost approximately ${Math.ceil(existingCount / 500)} + ${Math.ceil(file.size / (1024 * 20))} Firebase write transactions.\n\nDo you want to clear the existing data first, or cancel this upload?`);
                     
                     if (!proceed) {
                         showError('Upload cancelled by user.');
