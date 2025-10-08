@@ -584,14 +584,7 @@
                     return;
                 }
             }
-            
-            if (isNaN(minMag) || isNaN(maxMag)) {
-                showError('Please enter valid magnitude values.');
-                return;
-            }
 
-            const cacheKey = `${minMag}-${maxMag}`;
-            
             showLoading();
             const startTime = performance.now();
             console.log(`🔍 Searching Firebase for magnitude ${minMag}-${maxMag}`);
@@ -1818,6 +1811,42 @@
     <script>
         // Make functions available globally
         window.showError = showError;
+    </script>
+
+    <script>
+        // Ensure critical functions are available globally
+        window.showError = function(message) {
+            const errorDiv = document.getElementById('error');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => errorDiv.style.display = 'none', 10000);
+            } else {
+                alert('Error: ' + message);
+            }
+        };
+        
+        // Ensure other functions are available
+        if (typeof window.quickMagnitudeRange === 'undefined') {
+            window.quickMagnitudeRange = async function(minMag, maxMag) {
+                document.getElementById('magMin').value = minMag;
+                document.getElementById('magMax').value = maxMag;
+                if (typeof window.searchMagnitudeRange === 'function') {
+                    await window.searchMagnitudeRange();
+                } else {
+                    showError('Search function not available yet. Please try again.');
+                }
+            };
+        }
+        
+        // Placeholder functions if main script fails to load
+        ['analyzeTimePatterns', 'analyzeWeekendPatterns', 'analyzeEarlyMorning', 'findClusters'].forEach(funcName => {
+            if (typeof window[funcName] === 'undefined') {
+                window[funcName] = function() {
+                    showError(`${funcName} is loading. Please try again in a moment.`);
+                };
+            }
+        });
     </script>
 
 </body>
