@@ -406,6 +406,23 @@
             }
         };
 
+        // Analysis function stubs - will be replaced by full implementations later in script
+        window.analyzeTimePatterns = function() {
+            showError('Time patterns analysis is loading. Please try again in a moment.');
+        };
+
+        window.analyzeWeekendPatterns = function() {
+            showError('Weekend patterns analysis is loading. Please try again in a moment.');
+        };
+
+        window.analyzeEarlyMorning = function() {
+            showError('Early morning analysis is loading. Please try again in a moment.');
+        };
+
+        window.findClusters = function() {
+            showError('Earthquake clusters analysis is loading. Please try again in a moment.');
+        };
+
         // Initialize local cache - load all data once when first search is performed
         window.initializeCache = async function() {
             if (window.earthquakeCache.isLoaded) {
