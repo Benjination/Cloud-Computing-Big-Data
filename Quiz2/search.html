@@ -1002,12 +1002,175 @@
                 hideLoading();
                 console.error("Weekend analysis error:", error);
                 showError("Weekend analysis failed: " + error.message);
+            }
         };
 
         window.analyzeEarlyMorning = async function() {
-                if (window.searchCache.weekendPatterns !== null) {
-                    const endTime = performance.now();
-                    const executionTime = endTime - startTime;
+            const cacheKey = 'early_morning_analysis';
+            
+            // Check cache first
+            if (window.searchCache.timePatterns.has(cacheKey)) {
+                const cacheEntry = window.searchCache.timePatterns.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached early morning analysis');
+                    displayResults(cacheEntry.results);
+                    return;
+                }
+            }
+
+            // Perform Firebase query for early morning analysis
+            showLoading();
+            const startTimeEarly = performance.now();
+            console.log('🔍 Analyzing early morning patterns from Firebase');
+            
+            try {
+                // Query significant earthquakes (magnitude > 4.0)
+                const q = query(
+                    collection(db, "earthquakes"),
+                    where("magnitude", ">", 4.0),
+                    limit(1000)
+                );
+                
+                const snapshot = await getDocs(q);
+                let earlyMorningCount = 0;
+                let otherTimeCount = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const dateObj = data.time?.toDate ? data.time.toDate() : new Date(data.time);
+                    
+                    if (dateObj) {
+                        const hour = dateObj.getHours();
+                        const isEarlyMorning = hour >= 0 && hour < 6;
+                        
+                        if (isEarlyMorning) {
+                            earlyMorningCount++;
+                        } else {
+                            otherTimeCount++;
+                        }
+                    }
+                });
+
+                const total = earlyMorningCount + otherTimeCount;
+                const earlyMorningPercentage = total > 0 ? (earlyMorningCount / total * 100) : 0;
+
+                const results = {
+                    status: 'success',
+                    analysis: 'Large earthquakes (>4.0) - Early Morning (12AM-6AM)',
+                    count: total,
+                    early_morning_count: earlyMorningCount,
+                    other_time_count: otherTimeCount,
+                    early_morning_percentage: earlyMorningPercentage.toFixed(1),
+                    pattern: `${earlyMorningPercentage.toFixed(1)}% of large earthquakes occur in early morning hours`,
+                    reads_used: snapshot.size
+                };
+
+                // Cache the results
+                window.searchCache.timePatterns.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+
+                const executionTime = performance.now() - startTimeEarly;
+                console.log(`✅ Early morning analysis completed in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
+                
+                hideLoading();
+                displayResults(results);
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Early morning analysis error:", error);
+                showError("Early morning analysis failed: " + error.message);
+            }
+        };
+
+        window.findClusters = async function() {
+            const cacheKey = 'earthquake_clusters';
+            
+            // Check cache first
+            if (window.searchCache.timePatterns.has(cacheKey)) {
+                const cacheEntry = window.searchCache.timePatterns.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached earthquake clusters analysis');
+                    displayResults(cacheEntry.results);
+                    return;
+                }
+            }
+
+            // Perform Firebase query for clustering analysis
+            showLoading();
+            const startTimeClusters = performance.now();
+            console.log('🔍 Finding earthquake clusters from Firebase');
+            
+            try {
+                // Query significant earthquakes (magnitude > 5.0) for clustering
+                const q = query(
+                    collection(db, "earthquakes"),
+                    where("magnitude", ">", 5.0),
+                    limit(500)
+                );
+                
+                const snapshot = await getDocs(q);
+                const earthquakes = [];
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    earthquakes.push({
+                        id: doc.id,
+                        latitude: parseFloat(data.latitude) || 0,
+                        longitude: parseFloat(data.longitude) || 0,
+                        magnitude: data.magnitude || 0,
+                        place: data.place || ""
+                    });
+                });
+
+                // Simple clustering by geographic regions (this is a basic implementation)
+                const regions = {
+                    'California': earthquakes.filter(eq => eq.latitude >= 32 && eq.latitude <= 42 && eq.longitude >= -125 && eq.longitude <= -114),
+                    'Alaska': earthquakes.filter(eq => eq.latitude >= 54 && eq.latitude <= 72 && eq.longitude >= -180 && eq.longitude <= -130),
+                    'Pacific Ring': earthquakes.filter(eq => eq.latitude >= -45 && eq.latitude <= 45 && (eq.longitude <= -120 || eq.longitude >= 120)),
+                    'Other': []
+                };
+
+                // Put remaining earthquakes in "Other"
+                regions.Other = earthquakes.filter(eq => 
+                    !regions.California.includes(eq) && 
+                    !regions.Alaska.includes(eq) && 
+                    !regions['Pacific Ring'].includes(eq)
+                );
+
+                const results = {
+                    status: 'success',
+                    analysis: 'Large earthquakes (>5.0) - Geographic Clusters',
+                    count: earthquakes.length,
+                    clusters: {
+                        California: regions.California.length,
+                        Alaska: regions.Alaska.length,
+                        'Pacific Ring': regions['Pacific Ring'].length,
+                        Other: regions.Other.length
+                    },
+                    earthquakes: earthquakes.slice(0, 100), // Show top 100 for display
+                    reads_used: snapshot.size
+                };
+
+                // Cache the results
+                window.searchCache.timePatterns.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+
+                const executionTime = performance.now() - startTimeClusters;
+                console.log(`✅ Cluster analysis completed in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
+                
+                hideLoading();
+                displayResults(results);
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Cluster analysis error:", error);
+                showError("Cluster analysis failed: " + error.message);
+            }
+        };
                     
                     console.log(`⚡ Cache hit! Weekend patterns retrieved in ${executionTime.toFixed(3)}ms`);
                     
