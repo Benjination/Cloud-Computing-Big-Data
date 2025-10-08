@@ -332,11 +332,19 @@
             clusters: null
         };
 
-        // Initialize local cache - load all data once at startup
+        // Initialize local cache - load all data once when first search is performed
         window.initializeCache = async function() {
             if (window.earthquakeCache.isLoaded) {
                 console.log('📦 Cache already loaded');
-                return;
+                return true;
+            }
+
+            // Ask user before loading all data
+            const userConfirm = confirm('🔄 Load all earthquake data into cache?\n\nThis will download ~10,000 records for faster searches.\nThis action will use Firebase reads.\n\nAlternatively, you can search without cache (slower but uses fewer reads).');
+            
+            if (!userConfirm) {
+                console.log('User cancelled cache loading');
+                return false;
             }
 
             console.log('🚀 Initializing earthquake data cache...');
@@ -485,14 +493,20 @@
                 return;
             }
 
-            // Ensure cache is loaded
-            if (!window.earthquakeCache.isLoaded) {
-                showLoading();
-                const success = await initializeCache();
-                if (!success) return;
-                hideLoading();
+            // Option 1: Use cache if available
+            if (window.earthquakeCache.isLoaded) {
+                console.log('🚀 Using cached data for search');
+                performCachedMagnitudeSearch(magnitude);
+                return;
             }
 
+            // Option 2: Direct Firebase query (more efficient for single searches)
+            console.log('🔍 Performing direct Firebase query');
+            await performDirectMagnitudeSearch(magnitude);
+        };
+
+        // Cached search (fast but requires all data loaded)
+        async function performCachedMagnitudeSearch(magnitude) {
             showLoading();
             
             // Start high-precision timing
@@ -566,7 +580,59 @@
                 console.error("Search error:", error);
                 showError("Search failed: " + error.message);
             }
-        };
+        }
+
+        // Direct Firebase search (efficient for single queries)
+        async function performDirectMagnitudeSearch(magnitude) {
+            showLoading();
+            
+            const startTime = performance.now();
+            console.log(`🔍 Starting direct Firebase magnitude search > ${magnitude}`);
+            
+            try {
+                // Direct Firestore query - only reads matching documents
+                const q = query(
+                    collection(db, "earthquakes"),
+                    where("magnitude", ">", magnitude),
+                    orderBy("magnitude", "desc"),
+                    limit(500)  // Limit to prevent excessive reads
+                );
+                
+                const snapshot = await getDocs(q);
+                const results = [];
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    results.push({
+                        id: doc.id,
+                        time: data.time,
+                        timeFormatted: formatDate(data.time),
+                        latitude: parseFloat(data.latitude) || 0,
+                        longitude: parseFloat(data.longitude) || 0,
+                        magnitude: data.magnitude || 0,
+                        place: data.place || ""
+                    });
+                });
+
+                const executionTime = performance.now() - startTime;
+                console.log(`✅ Direct search completed in ${executionTime.toFixed(3)}ms, found ${results.length} results using ${snapshot.size} reads`);
+                
+                hideLoading();
+                displayResults({
+                    status: "success",
+                    query: `Magnitude > ${magnitude} (Direct Query)`,
+                    count: results.length,
+                    earthquakes: results,
+                    searchType: "direct",
+                    reads: snapshot.size
+                });
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Direct search error:", error);
+                showError("Search failed: " + error.message);
+            }
+        }
 
         window.searchMagnitudeRange = async function() {
             const minMag = parseFloat(document.getElementById('magMin').value);
@@ -1482,11 +1548,11 @@
             }
         };
 
-        // Auto-initialize cache when page loads
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🌟 Page loaded, starting cache initialization...');
-            await initializeCache();
-        });
+        // Auto-initialize cache when page loads - DISABLED to prevent excessive Firebase reads
+        // document.addEventListener('DOMContentLoaded', async function() {
+        //     console.log('🌟 Page loaded, starting cache initialization...');
+        //     await initializeCache();
+        // });
 
         // Add cache status display
         window.showCacheStatus = function() {
