@@ -423,6 +423,95 @@
             showError('Earthquake clusters analysis is loading. Please try again in a moment.');
         };
 
+        // Search function stubs - will be replaced by full implementations
+        window.searchMagnitudeGreater = async function() {
+            const magnitude = parseFloat(document.getElementById("magGreater").value);
+            if (isNaN(magnitude)) {
+                showError("Please enter a valid magnitude value.");
+                return;
+            }
+            showError('Magnitude search is loading. Please try again in a moment.');
+        };
+
+        window.searchMagnitudeRange = async function() {
+            const minMag = parseFloat(document.getElementById('magMin').value);
+            const maxMag = parseFloat(document.getElementById('magMax').value);
+            
+            if (isNaN(minMag) || isNaN(maxMag)) {
+                showError('Please enter valid magnitude values.');
+                return;
+            }
+            
+            // Simple working implementation for now
+            showLoading();
+            try {
+                const cacheKey = `${minMag}-${maxMag}`;
+                
+                // Check cache first
+                if (window.searchCache.magnitudeRange.has(cacheKey)) {
+                    const cacheEntry = window.searchCache.magnitudeRange.get(cacheKey);
+                    if (isCacheValid(cacheEntry)) {
+                        console.log(`🚀 Using cached results for magnitude ${minMag}-${maxMag}`);
+                        hideLoading();
+                        
+                        // Simple results display
+                        const resultsDiv = document.getElementById('results');
+                        if (resultsDiv) {
+                            resultsDiv.innerHTML = `<h3>Cached Results</h3><p>Found ${cacheEntry.results.length} earthquakes with magnitude ${minMag}-${maxMag}</p>`;
+                            resultsDiv.style.display = 'block';
+                        }
+                        return;
+                    }
+                }
+
+                // Direct Firebase query
+                const q = query(
+                    collection(db, "earthquakes"),
+                    where("magnitude", ">=", minMag),
+                    where("magnitude", "<=", maxMag),
+                    orderBy("magnitude", "desc"),
+                    limit(500)
+                );
+                
+                const snapshot = await getDocs(q);
+                const results = [];
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    results.push({
+                        id: doc.id,
+                        time: data.time,
+                        latitude: parseFloat(data.latitude) || 0,
+                        longitude: parseFloat(data.longitude) || 0,
+                        magnitude: data.magnitude || 0,
+                        place: data.place || ""
+                    });
+                });
+
+                // Cache the results
+                window.searchCache.magnitudeRange.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+
+                console.log(`✅ Found ${results.length} results using ${snapshot.size} Firebase reads`);
+                
+                hideLoading();
+                
+                // Display results
+                const resultsDiv = document.getElementById('results');
+                if (resultsDiv) {
+                    resultsDiv.innerHTML = `<h3>Search Results</h3><p>Found ${results.length} earthquakes with magnitude ${minMag}-${maxMag}</p><p>Firebase reads used: ${snapshot.size}</p>`;
+                    resultsDiv.style.display = 'block';
+                }
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Search error:", error);
+                showError("Search failed: " + error.message);
+            }
+        };
+
         // Initialize local cache - load all data once when first search is performed
         window.initializeCache = async function() {
             if (window.earthquakeCache.isLoaded) {
@@ -1248,72 +1337,6 @@
                 hideLoading();
                 console.error("Cluster analysis error:", error);
                 showError("Cluster analysis failed: " + error.message);
-            }
-        };
-                    
-                    console.log(`⚡ Cache hit! Weekend patterns retrieved in ${executionTime.toFixed(3)}ms`);
-                    
-                    hideLoading();
-                    displayResults(window.searchCache.weekendPatterns);
-                    
-                    await logPerformance('weekend_patterns_analysis_cached', executionTime, 
-                        window.searchCache.weekendPatterns.total_earthquakes, { cache_hit: true });
-                    return;
-                }
-                
-                // Use cached data with pre-computed weekend flags
-                let weekdayCount = 0;
-                let weekendCount = 0;
-                
-                for (const entry of window.earthquakeCache.allData) {
-                    if (entry.dateObj) {
-                        if (entry.isWeekend) {
-                            weekendCount++;
-                        } else {
-                            weekdayCount++;
-                        }
-                    }
-                }
-
-                const total = weekdayCount + weekendCount;
-                const weekendPercentage = total > 0 ? (weekendCount / total * 100) : 0;
-                const weekdayPercentage = total > 0 ? (weekdayCount / total * 100) : 0;
-
-                const results = {
-                    status: 'success',
-                    analysis: 'Earthquake frequency - Weekday vs Weekend',
-                    count: total,
-                    weekday_count: weekdayCount,
-                    weekend_count: weekendCount,
-                    total_earthquakes: total,
-                    weekday_percentage: Math.round(weekdayPercentage * 10) / 10,
-                    weekend_percentage: Math.round(weekendPercentage * 10) / 10,
-                    conclusion: `${weekendPercentage.toFixed(1)}% of earthquakes occur on weekends (Sat-Sun)`
-                };
-                
-                // Cache the results
-                window.searchCache.weekendPatterns = results;
-
-                hideLoading();
-                displayResults(results);
-                
-                // End timing and log performance
-                const endTime = performance.now();
-                const executionTime = endTime - startTime;
-                console.log(`⏱️  Cached weekend patterns analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
-                console.log(`🚀 Performance improvement: ~${(window.earthquakeCache.loadTime / executionTime).toFixed(1)}x faster than original`);
-                
-                // Log performance data to Firebase
-                await logPerformance('weekend_patterns_analysis_optimized', executionTime, total, {
-                    weekday_count: weekdayCount,
-                    weekend_count: weekendCount,
-                    weekend_percentage: weekendPercentage.toFixed(1),
-                    cache_hit: false,
-                    performance_improvement_factor: Math.round(window.earthquakeCache.loadTime / executionTime * 10) / 10
-                });
-            } catch (error) {
-                hideLoading();
-                showError('Analysis failed: ' + error.message);
             }
         };
 
