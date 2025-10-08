@@ -239,6 +239,28 @@
                 return;
             }
 
+            // Check if data already exists in database
+            try {
+                const earthquakesRef = collection(db, 'earthquakes');
+                const snapshot = await getDocs(query(earthquakesRef, limit(1)));
+                
+                if (!snapshot.empty) {
+                    const proceed = confirm(`⚠️ COST WARNING: Database already contains data!\n\nUploading will cost approximately ${Math.ceil((await getDocs(earthquakesRef)).size / 500)} + ${Math.ceil(file.size / (1024 * 20))} Firebase write transactions.\n\nDo you want to clear the existing data first, or cancel this upload?`);
+                    
+                    if (!proceed) {
+                        showError('Upload cancelled by user.');
+                        return;
+                    }
+                    
+                    const clearFirst = confirm('Clear existing data first? (Recommended to avoid duplicates)\n\nClick OK to clear first, or Cancel to upload anyway.');
+                    if (clearFirst) {
+                        await clearDatabase();
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking existing data:', error);
+            }
+
             const uploadProgress = document.getElementById('uploadProgress');
             const uploadPercentage = document.getElementById('uploadPercentage');
             const recordsUploaded = document.getElementById('recordsUploaded');
