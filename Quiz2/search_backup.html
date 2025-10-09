@@ -391,7 +391,30 @@
             return date.toISOString().split('T')[0];
         };
 
-    // Quick magnitude range function is defined once below
+        // Quick magnitude range function
+        window.quickMagnitudeRange = async function(minMag, maxMag) {
+            try {
+                document.getElementById('magMin').value = minMag;
+                document.getElementById('magMax').value = maxMag;
+                if (typeof window.searchMagnitudeRange === 'function') {
+                    await window.searchMagnitudeRange();
+                } else {
+                    showError('Search function loading. Please wait a moment and try again.');
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            }
+        };
+
+        // Search function stubs - will be replaced by full implementations
+        window.searchMagnitudeGreater = async function() {
+            const magnitude = parseFloat(document.getElementById("magGreater").value);
+            if (isNaN(magnitude)) {
+                showError("Please enter a valid magnitude value.");
+                return;
+            }
+            showError('Magnitude search is loading. Please try again in a moment.');
+        };
 
         window.searchMagnitudeRange = async function() {
             const minMag = parseFloat(document.getElementById('magMin').value);
@@ -413,12 +436,13 @@
                     if (isCacheValid(cacheEntry)) {
                         console.log(`🚀 Using cached results for magnitude ${minMag}-${maxMag}`);
                         hideLoading();
-                        displayResults({
-                            status: 'success',
-                            query: `Magnitude ${minMag}-${maxMag} (Cached)`,
-                            count: cacheEntry.results.length,
-                            earthquakes: cacheEntry.results
-                        });
+                        
+                        // Simple results display
+                        const resultsDiv = document.getElementById('results');
+                        if (resultsDiv) {
+                            resultsDiv.innerHTML = `<h3>Cached Results</h3><p>Found ${cacheEntry.results.length} earthquakes with magnitude ${minMag}-${maxMag}</p>`;
+                            resultsDiv.style.display = 'block';
+                        }
                         return;
                     }
                 }
@@ -456,12 +480,13 @@
                 console.log(`✅ Found ${results.length} results using ${snapshot.size} Firebase reads`);
                 
                 hideLoading();
-                displayResults({
-                    status: 'success',
-                    query: `Magnitude ${minMag}-${maxMag}`,
-                    count: results.length,
-                    earthquakes: results
-                });
+                
+                // Display results
+                const resultsDiv = document.getElementById('results');
+                if (resultsDiv) {
+                    resultsDiv.innerHTML = `<h3>Search Results</h3><p>Found ${results.length} earthquakes with magnitude ${minMag}-${maxMag}</p><p>Firebase reads used: ${snapshot.size}</p>`;
+                    resultsDiv.style.display = 'block';
+                }
                 
             } catch (error) {
                 hideLoading();
@@ -689,22 +714,12 @@
                 showError('Please enter valid location values.');
                 return;
             }
-            
-            // Ensure local cache is loaded (required for location search)
-            if (!window.earthquakeCache || !window.earthquakeCache.isLoaded) {
-                const proceed = await window.initializeCache?.();
-                if (!proceed) {
-                    showError('Location search requires cached data. Please load the cache first.');
-                    return;
-                }
-            }
 
-            const startTime = performance.now();
-            const simpleKey = `${searchLat},${searchLng},${radius}`;
+            const cacheKey = `${searchLat},${searchLng},${radius}`;
             
             // Check cache first
-            if (window.searchCache.locationSearch.has(simpleKey)) {
-                const cacheEntry = window.searchCache.locationSearch.get(simpleKey);
+            if (window.searchCache.locationSearch.has(cacheKey)) {
+                const cacheEntry = window.searchCache.locationSearch.get(cacheKey);
                 if (isCacheValid(cacheEntry)) {
                     console.log(`🚀 Using cached location results`);
                     displayResults({
@@ -722,9 +737,9 @@
             
             try {
                 // Check memoization cache first
-                const memoKey = generateCacheKey('location_search', { searchLat, searchLng, radius });
-                if (window.searchCache.locationSearch.has(memoKey)) {
-                    const cachedResults = window.searchCache.locationSearch.get(memoKey);
+                const cacheKey = generateCacheKey('location_search', { searchLat, searchLng, radius });
+                if (window.searchCache.locationSearch.has(cacheKey)) {
+                    const cachedResults = window.searchCache.locationSearch.get(cacheKey);
                     const endTime = performance.now();
                     const executionTime = endTime - startTime;
                     
@@ -770,7 +785,7 @@
                 results.sort((a, b) => a.distance_km - b.distance_km);
                 
                 // Cache the results for future use
-                window.searchCache.locationSearch.set(memoKey, results);
+                window.searchCache.locationSearch.set(cacheKey, results);
 
                 // End timing and log performance
                 const endTime = performance.now();
@@ -1140,7 +1155,102 @@
             }
         };
 
-        // Display and Pagination Functions (single, correct implementation)
+        // Display and Pagination Functions
+            // Ensure cache is loaded
+            if (!window.earthquakeCache.isLoaded) {
+                showLoading();
+                const success = await initializeCache();
+                if (!success) return;
+                hideLoading();
+            }
+
+            showLoading();
+            
+            // Start high-precision timing
+            const startTimeEarlyMorning = performance.now();
+            console.log(`🔍 Starting cached early morning patterns analysis`);
+            
+            try {
+                // Check if we have cached results
+                if (window.searchCache.earlyMorning !== null) {
+                    const endTime = performance.now();
+                    const executionTime = endTime - startTimeEarlyMorning;
+                    
+                    console.log(`⚡ Cache hit! Early morning patterns retrieved in ${executionTime.toFixed(3)}ms`);
+                    
+                    hideLoading();
+                    displayResults(window.searchCache.earlyMorning);
+                    
+                    await logPerformance('early_morning_analysis_cached', executionTime, 
+                        window.searchCache.earlyMorning.total_earthquakes, { cache_hit: true });
+                    return;
+                }
+                
+                // Use cached data with pre-computed hour properties
+                let earlyMorningCount = 0; // 0-6 AM
+                let morningCount = 0;      // 6-12 PM  
+                let afternoonCount = 0;    // 12-6 PM
+                let eveningCount = 0;      // 6 PM-midnight
+                
+                for (const entry of window.earthquakeCache.allData) {
+                    if (entry.dateObj && !isNaN(entry.hour)) {
+                        if (entry.hour >= 0 && entry.hour < 6) {
+                            earlyMorningCount++;
+                        } else if (entry.hour >= 6 && entry.hour < 12) {
+                            morningCount++;
+                        } else if (entry.hour >= 12 && entry.hour < 18) {
+                            afternoonCount++;
+                        } else {
+                            eveningCount++;
+                        }
+                    }
+                }
+
+                const total = earlyMorningCount + morningCount + afternoonCount + eveningCount;
+                const earlyMorningPercentage = total > 0 ? (earlyMorningCount / total * 100) : 0;
+
+                const results = {
+                    status: 'success',
+                    analysis: `Earthquake distribution by time of day (${total} earthquakes)`,
+                    count: total,
+                    early_morning_count: earlyMorningCount,
+                    morning_count: morningCount,
+                    afternoon_count: afternoonCount,
+                    evening_count: eveningCount,
+                    total_earthquakes: total,
+                    early_morning_percentage: Math.round(earlyMorningPercentage * 10) / 10,
+                    conclusion: `${earlyMorningPercentage.toFixed(1)}% of earthquakes occur in early morning (midnight-6 AM)`
+                };
+                
+                // Cache the results
+                window.searchCache.earlyMorning = results;
+
+                hideLoading();
+                displayResults(results);
+                
+                // End timing and log performance
+                const endTime = performance.now();
+                const executionTime = endTime - startTimeEarlyMorning;
+                console.log(`⏱️  Cached early morning analysis completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
+                console.log(`🚀 Performance improvement: ~${(window.earthquakeCache.loadTime / executionTime).toFixed(1)}x faster than original`);
+                
+                // Log performance data to Firebase
+                await logPerformance('early_morning_analysis_optimized', executionTime, total, {
+                    early_morning_count: earlyMorningCount,
+                    morning_count: morningCount,
+                    afternoon_count: afternoonCount,
+                    evening_count: eveningCount,
+                    early_morning_percentage: earlyMorningPercentage.toFixed(1),
+                    cache_hit: false,
+                    performance_improvement_factor: Math.round(window.earthquakeCache.loadTime / executionTime * 10) / 10
+                });
+            } catch (error) {
+                hideLoading();
+                console.error("Early morning analysis error:", error);
+                showError('Analysis failed: ' + error.message);
+            }
+
+        // Display and Pagination Functions
         function displayResults(data) {
             const resultsDiv = document.getElementById('results');
             const contentDiv = document.getElementById('resultsContent');
