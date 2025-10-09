@@ -379,43 +379,26 @@
             showError('Export function not yet implemented');
         };
 
-        window.viewPerformanceStats = function() {
-            showError('Performance stats view not yet implemented');
-        };
-
-        // Essential stub functions to prevent errors
+        // Utility: safe date formatting
         window.formatDate = function(date) {
             if (!date) return '';
-            if (date.toDate) date = date.toDate(); // Convert Firestore timestamp
+            if (date.toDate) date = date.toDate();
             if (typeof date === 'string') date = new Date(date);
             return date.toISOString().split('T')[0];
         };
 
-    // Quick magnitude range function is defined once below
-
+        // Magnitude range: query Firestore (first time) then cache for instant repeats
         window.searchMagnitudeRange = async function() {
             const minMag = parseFloat(document.getElementById('magMin').value);
             const maxMag = parseFloat(document.getElementById('magMax').value);
-            
             if (isNaN(minMag) || isNaN(maxMag)) {
                 showError('Please enter valid magnitude values.');
                 return;
-            }
-            
-            // Ensure local cache is loaded to correctly compare numeric magnitudes
-            if (!window.earthquakeCache || !window.earthquakeCache.isLoaded) {
-                const proceed = await window.initializeCache?.();
-                if (!proceed) {
-                    showError('Magnitude search requires cached data. Please load the cache first.');
-                    return;
-                }
             }
 
             showLoading();
             try {
                 const cacheKey = `${minMag}-${maxMag}`;
-                
-                // Check cache first
                 if (window.searchCache.magnitudeRange.has(cacheKey)) {
                     const cacheEntry = window.searchCache.magnitudeRange.get(cacheKey);
                     if (isCacheValid(cacheEntry)) {
@@ -431,26 +414,35 @@
                     }
                 }
 
-                // Filter locally from cached data (magnitude already normalized to number during cache load)
-                const results = window.earthquakeCache.allData
-                    .filter(e => typeof e.magnitude === 'number' && e.magnitude >= minMag && e.magnitude <= maxMag)
-                    .map(e => ({
-                        id: e.id,
-                        time: e.time,
-                        latitude: e.latitude,
-                        longitude: e.longitude,
-                        magnitude: e.magnitude,
-                        place: e.place
-                    }));
-
-                // Cache the results
-                window.searchCache.magnitudeRange.set(cacheKey, {
-                    results: results,
-                    timestamp: Date.now()
+                // Query Firestore by magnitude stored as string; filter numerically client-side
+                const q = query(
+                    collection(db, 'earthquakes'),
+                    where('magnitude', '>=', String(minMag)),
+                    where('magnitude', '<=', String(maxMag)),
+                    orderBy('magnitude'),
+                    limit(1000)
+                );
+                const snapshot = await getDocs(q);
+                const results = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const mag = parseFloat(data.magnitude ?? data.mag);
+                    if (!isNaN(mag) && mag >= minMag && mag <= maxMag) {
+                        results.push({
+                            id: docSnap.id,
+                            time: data.time,
+                            timeFormatted: formatDate(data.time),
+                            latitude: parseFloat(data.latitude) || 0,
+                            longitude: parseFloat(data.longitude) || 0,
+                            magnitude: mag,
+                            place: data.place || ''
+                        });
+                    }
                 });
+                console.log(`✅ Found ${results.length} results using ${snapshot.size} Firebase reads`);
 
-                console.log(`✅ Found ${results.length} results using 0 Firebase reads (local cache)`);
-                
+                window.searchCache.magnitudeRange.set(cacheKey, { results, timestamp: Date.now() });
+
                 hideLoading();
                 displayResults({
                     status: 'success',
@@ -458,11 +450,10 @@
                     count: results.length,
                     earthquakes: results
                 });
-                
             } catch (error) {
                 hideLoading();
-                console.error("Search error:", error);
-                showError("Search failed: " + error.message);
+                console.error('Search error:', error);
+                showError('Search failed: ' + error.message);
             }
         };
 
@@ -623,31 +614,34 @@
                 }
             }
 
-            // Ensure local cache is loaded
-            if (!window.earthquakeCache || !window.earthquakeCache.isLoaded) {
-                const proceed = await window.initializeCache?.();
-                if (!proceed) {
-                    showError('Magnitude search requires cached data. Please load the cache first.');
-                    return;
-                }
-            }
-
             showLoading();
             const startTime = performance.now();
-            console.log(`🔍 Filtering local cache for magnitude > ${magnitude}`);
+            console.log(`🔍 Querying Firebase for magnitude > ${magnitude}`);
 
             try {
-                const results = window.earthquakeCache.allData
-                    .filter(e => typeof e.magnitude === 'number' && e.magnitude > magnitude)
-                    .map(e => ({
-                        id: e.id,
-                        time: e.time,
-                        timeFormatted: e.timeFormatted,
-                        latitude: e.latitude,
-                        longitude: e.longitude,
-                        magnitude: e.magnitude,
-                        place: e.place
-                    }));
+                const q = query(
+                    collection(db, 'earthquakes'),
+                    where('magnitude', '>', String(magnitude)),
+                    orderBy('magnitude'),
+                    limit(1000)
+                );
+                const snapshot = await getDocs(q);
+                const results = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const mag = parseFloat(data.magnitude ?? data.mag);
+                    if (!isNaN(mag) && mag > magnitude) {
+                        results.push({
+                            id: docSnap.id,
+                            time: data.time,
+                            timeFormatted: formatDate(data.time),
+                            latitude: parseFloat(data.latitude) || 0,
+                            longitude: parseFloat(data.longitude) || 0,
+                            magnitude: mag,
+                            place: data.place || ''
+                        });
+                    }
+                });
 
                 // Cache the results
                 window.searchCache.magnitudeGreater.set(cacheKey, {
@@ -656,7 +650,7 @@
                 });
 
                 const executionTime = performance.now() - startTime;
-                console.log(`✅ Found ${results.length} results in ${executionTime.toFixed(3)}ms using 0 Firebase reads (local cache)`);
+                console.log(`✅ Found ${results.length} results in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
                 
                 hideLoading();
                 displayResults({
@@ -677,31 +671,20 @@
             const searchLat = parseFloat(document.getElementById('searchLat').value);
             const searchLng = parseFloat(document.getElementById('searchLng').value);
             const radius = parseFloat(document.getElementById('searchRadius').value);
-            
             if (isNaN(searchLat) || isNaN(searchLng) || isNaN(radius)) {
                 showError('Please enter valid location values.');
                 return;
             }
-            
-            // Ensure local cache is loaded (required for location search)
-            if (!window.earthquakeCache || !window.earthquakeCache.isLoaded) {
-                const proceed = await window.initializeCache?.();
-                if (!proceed) {
-                    showError('Location search requires cached data. Please load the cache first.');
-                    return;
-                }
-            }
 
             const startTime = performance.now();
             const simpleKey = `${searchLat},${searchLng},${radius}`;
-            
-            // Check cache first
+            // Cache check (simple key)
             if (window.searchCache.locationSearch.has(simpleKey)) {
                 const cacheEntry = window.searchCache.locationSearch.get(simpleKey);
                 if (isCacheValid(cacheEntry)) {
-                    console.log(`🚀 Using cached location results`);
+                    console.log('🚀 Using cached location results');
                     displayResults({
-                        status: "success",
+                        status: 'success',
                         query: `Within ${radius}km of (${searchLat}, ${searchLng}) (Cached)`,
                         count: cacheEntry.results.length,
                         earthquakes: cacheEntry.results
@@ -712,74 +695,106 @@
 
             showLoading();
             console.log(`🔍 Searching location within ${radius}km of (${searchLat}, ${searchLng})`);
-            
+
             try {
-                // Check memoization cache first
                 const memoKey = generateCacheKey('location_search', { searchLat, searchLng, radius });
                 if (window.searchCache.locationSearch.has(memoKey)) {
-                    const cachedResults = window.searchCache.locationSearch.get(memoKey);
-                    const endTime = performance.now();
-                    const executionTime = endTime - startTime;
-                    
-                    console.log(`⚡ Cache hit! Results retrieved in ${executionTime.toFixed(3)}ms`);
-                    
-                    hideLoading();
-                    displayResults({
-                        status: 'success',
-                        query: `Within ${radius}km of (${searchLat}, ${searchLng}) (cached)`,
-                        count: cachedResults.length,
-                        earthquakes: cachedResults.slice(0, 200)
-                    });
-                    
-                    await logPerformance('location_search_cached', executionTime, cachedResults.length, {
-                        search_latitude: searchLat,
-                        search_longitude: searchLng,
-                        search_radius_km: radius,
-                        cache_hit: true
-                    });
-                    return;
-                }
-                
-                // Filter from local cache using pre-loaded data
-                const results = [];
-                for (const entry of window.earthquakeCache.allData) {
-                    if (entry.latitude && entry.longitude) {
-                        const distance = haversineDistance(searchLat, searchLng, entry.latitude, entry.longitude);
-                        if (distance <= radius) {
-                            results.push({
-                                time: entry.timeFormatted,
-                                latitude: entry.latitude,
-                                longitude: entry.longitude,
-                                magnitude: entry.magnitude || 0,
-                                place: entry.place,
-                                distance_km: Math.round(distance * 100) / 100,
-                                id: entry.id
-                            });
-                        }
+                    const entry = window.searchCache.locationSearch.get(memoKey);
+                    if (isCacheValid(entry)) {
+                        const endTime = performance.now();
+                        const executionTime = endTime - startTime;
+                        console.log(`⚡ Cache hit! Results retrieved in ${executionTime.toFixed(3)}ms`);
+                        hideLoading();
+                        displayResults({
+                            status: 'success',
+                            query: `Within ${radius}km of (${searchLat}, ${searchLng}) (Cached)`,
+                            count: entry.results.length,
+                            earthquakes: entry.results.slice(0, 200)
+                        });
+                        await logPerformance('location_search_cached', executionTime, entry.results.length, {
+                            search_latitude: searchLat,
+                            search_longitude: searchLng,
+                            search_radius_km: radius,
+                            cache_hit: true
+                        });
+                        return;
                     }
                 }
 
+                // Compute bounding box in degrees
+                const latDelta = radius / 111.0; // ~111 km per degree latitude
+                const lonDelta = radius / (111.0 * Math.cos(searchLat * Math.PI / 180));
+                const minLat = searchLat - latDelta;
+                const maxLat = searchLat + latDelta;
+                const minLng = searchLng - lonDelta;
+                const maxLng = searchLng + lonDelta;
+
+                // Try numeric latitude query first
+                let snapshot;
+                try {
+                    const qNum = query(
+                        collection(db, 'earthquakes'),
+                        where('latitude', '>=', minLat),
+                        where('latitude', '<=', maxLat),
+                        orderBy('latitude'),
+                        limit(2000)
+                    );
+                    snapshot = await getDocs(qNum);
+                } catch (e) {
+                    console.warn('Numeric latitude query failed, falling back to string comparison:', e.message);
+                    const qStr = query(
+                        collection(db, 'earthquakes'),
+                        where('latitude', '>=', String(minLat)),
+                        where('latitude', '<=', String(maxLat)),
+                        orderBy('latitude'),
+                        limit(2000)
+                    );
+                    snapshot = await getDocs(qStr);
+                }
+
+                const results = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const lat = parseFloat(data.latitude);
+                    const lng = parseFloat(data.longitude);
+                    if (isNaN(lat) || isNaN(lng)) return;
+                    // First filter by longitude bounding box
+                    if (lng < minLng || lng > maxLng) return;
+                    const dist = haversineDistance(searchLat, searchLng, lat, lng);
+                    if (dist <= radius) {
+                        results.push({
+                            id: docSnap.id,
+                            time: formatDate(data.time),
+                            latitude: lat,
+                            longitude: lng,
+                            magnitude: parseFloat(data.magnitude ?? data.mag) || 0,
+                            place: data.place || '',
+                            distance_km: Math.round(dist * 100) / 100
+                        });
+                    }
+                });
+
                 // Sort by distance
                 results.sort((a, b) => a.distance_km - b.distance_km);
-                
-                // Cache the results for future use
-                window.searchCache.locationSearch.set(memoKey, results);
 
-                // End timing and log performance
+                // Cache both keys for future use
+                const cacheObj = { results, timestamp: Date.now() };
+                window.searchCache.locationSearch.set(memoKey, cacheObj);
+                window.searchCache.locationSearch.set(simpleKey, cacheObj);
+
                 const endTime = performance.now();
                 const executionTime = endTime - startTime;
-                console.log(`⏱️  Cached location search completed in ${executionTime.toFixed(3)}ms (${(executionTime/1000).toFixed(6)}s)`);
-                console.log(`📊 Found ${results.length} earthquakes within ${radius}km`);
-                console.log(`🚀 Performance improvement: ~${(window.earthquakeCache.loadTime / executionTime).toFixed(1)}x faster than original`);
-                
-                // Log performance data to Firebase
-                await logPerformance('location_search_optimized', executionTime, results.length, {
+                console.log(`✅ Location search returned ${results.length} results in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
+
+                await logPerformance('location_search_bounding_box', executionTime, results.length, {
                     search_latitude: searchLat,
                     search_longitude: searchLng,
                     search_radius_km: radius,
-                    documents_processed: window.earthquakeCache.totalCount,
-                    cache_hit: false,
-                    performance_improvement_factor: Math.round(window.earthquakeCache.loadTime / executionTime * 10) / 10
+                    bounding_min_lat: minLat,
+                    bounding_max_lat: maxLat,
+                    bounding_min_lng: minLng,
+                    bounding_max_lng: maxLng,
+                    firebase_reads: snapshot.size
                 });
 
                 hideLoading();
@@ -787,11 +802,11 @@
                     status: 'success',
                     query: `Within ${radius}km of (${searchLat}, ${searchLng})`,
                     count: results.length,
-                    earthquakes: results.slice(0, 200)  // Limit display for performance
+                    earthquakes: results.slice(0, 200)
                 });
             } catch (error) {
                 hideLoading();
-                console.error("Location search error:", error);
+                console.error('Location search error:', error);
                 showError('Search failed: ' + error.message);
             }
         };
