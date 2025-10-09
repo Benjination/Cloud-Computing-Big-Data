@@ -414,11 +414,11 @@
                     }
                 }
 
-                // Query Firestore by magnitude stored as string; filter numerically client-side
+                // Query Firestore by numeric magnitude
                 const q = query(
                     collection(db, 'earthquakes'),
-                    where('magnitude', '>=', String(minMag)),
-                    where('magnitude', '<=', String(maxMag)),
+                    where('magnitude', '>=', minMag),
+                    where('magnitude', '<=', maxMag),
                     orderBy('magnitude'),
                     limit(1000)
                 );
@@ -426,7 +426,7 @@
                 const results = [];
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
-                    const mag = parseFloat(data.magnitude ?? data.mag);
+                    const mag = typeof data.magnitude === 'number' ? data.magnitude : parseFloat(data.magnitude ?? data.mag);
                     if (!isNaN(mag) && mag >= minMag && mag <= maxMag) {
                         results.push({
                             id: docSnap.id,
@@ -621,7 +621,7 @@
             try {
                 const q = query(
                     collection(db, 'earthquakes'),
-                    where('magnitude', '>', String(magnitude)),
+                    where('magnitude', '>', magnitude),
                     orderBy('magnitude'),
                     limit(1000)
                 );

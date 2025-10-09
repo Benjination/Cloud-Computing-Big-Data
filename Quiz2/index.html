@@ -291,17 +291,24 @@
                         
                         // Map CSV columns to Firestore document
                         headers.forEach((header, index) => {
-                            if (values[index]) {
-                                let value = values[index];
-                                
-                                // Convert data types
-                                if (header === 'latitude' || header === 'longitude' || header === 'magnitude' || header === 'depth') {
-                                    value = parseFloat(value) || null;
+                            if (values[index] !== undefined) {
+                                const raw = values[index];
+                                // Normalize and convert types
+                                if (header === 'mag' || header === 'magnitude') {
+                                    const n = parseFloat(raw);
+                                    const num = Number.isFinite(n) ? n : null;
+                                    // Standardize on numeric 'magnitude'
+                                    record.magnitude = num;
+                                    // Keep original 'mag' as numeric for reference/compatibility
+                                    record.mag = num;
+                                } else if (header === 'latitude' || header === 'longitude' || header === 'depth') {
+                                    const n = parseFloat(raw);
+                                    record[header] = Number.isFinite(n) ? n : null;
                                 } else if (header === 'time' || header === 'updated') {
-                                    value = value ? new Date(value) : null;
+                                    record[header] = raw ? new Date(raw) : null;
+                                } else {
+                                    record[header] = raw;
                                 }
-                                
-                                record[header] = value;
                             }
                         });
                         
