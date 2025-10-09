@@ -397,18 +397,27 @@
             }
 
             showLoading();
+            const startTime = performance.now();
             try {
                 const cacheKey = `${minMag}-${maxMag}`;
                 if (window.searchCache.magnitudeRange.has(cacheKey)) {
                     const cacheEntry = window.searchCache.magnitudeRange.get(cacheKey);
                     if (isCacheValid(cacheEntry)) {
                         console.log(`🚀 Using cached results for magnitude ${minMag}-${maxMag}`);
+                        const executionTime = performance.now() - startTime;
                         hideLoading();
                         displayResults({
                             status: 'success',
                             query: `Magnitude ${minMag}-${maxMag} (Cached)`,
                             count: cacheEntry.results.length,
                             earthquakes: cacheEntry.results
+                        });
+                        // Log cached performance
+                        await logPerformance('magnitude_range_cached', executionTime, cacheEntry.results.length, {
+                            min_magnitude: minMag,
+                            max_magnitude: maxMag,
+                            query_key: cacheKey,
+                            cache_hit: true
                         });
                         return;
                     }
@@ -442,6 +451,16 @@
                 console.log(`✅ Found ${results.length} results using ${snapshot.size} Firebase reads`);
 
                 window.searchCache.magnitudeRange.set(cacheKey, { results, timestamp: Date.now() });
+
+                const executionTime = performance.now() - startTime;
+                // Log fresh performance
+                await logPerformance('magnitude_range', executionTime, results.length, {
+                    min_magnitude: minMag,
+                    max_magnitude: maxMag,
+                    query_key: cacheKey,
+                    cache_hit: false,
+                    firebase_reads: snapshot.size
+                });
 
                 hideLoading();
                 displayResults({
@@ -598,17 +617,24 @@
             }
 
             const cacheKey = magnitude.toString();
+            const cacheStart = performance.now();
             
             // Check cache first
             if (window.searchCache.magnitudeGreater.has(cacheKey)) {
                 const cacheEntry = window.searchCache.magnitudeGreater.get(cacheKey);
                 if (isCacheValid(cacheEntry)) {
                     console.log(`🚀 Using cached results for magnitude > ${magnitude}`);
+                    const executionTime = performance.now() - cacheStart;
                     displayResults({
                         status: "success",
                         query: `Magnitude > ${magnitude} (Cached)`,
                         count: cacheEntry.results.length,
                         earthquakes: cacheEntry.results
+                    });
+                    await logPerformance('magnitude_greater_cached', executionTime, cacheEntry.results.length, {
+                        min_magnitude: magnitude,
+                        query_key: `gt:${cacheKey}`,
+                        cache_hit: true
                     });
                     return;
                 }
@@ -651,6 +677,12 @@
 
                 const executionTime = performance.now() - startTime;
                 console.log(`✅ Found ${results.length} results in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
+                await logPerformance('magnitude_greater', executionTime, results.length, {
+                    min_magnitude: magnitude,
+                    query_key: `gt:${cacheKey}`,
+                    cache_hit: false,
+                    firebase_reads: snapshot.size
+                });
                 
                 hideLoading();
                 displayResults({
@@ -715,7 +747,8 @@
                             search_latitude: searchLat,
                             search_longitude: searchLng,
                             search_radius_km: radius,
-                            cache_hit: true
+                            cache_hit: true,
+                            query_key: simpleKey
                         });
                         return;
                     }
@@ -794,7 +827,9 @@
                     bounding_max_lat: maxLat,
                     bounding_min_lng: minLng,
                     bounding_max_lng: maxLng,
-                    firebase_reads: snapshot.size
+                    firebase_reads: snapshot.size,
+                    cache_hit: false,
+                    query_key: simpleKey
                 });
 
                 hideLoading();
@@ -1242,7 +1277,7 @@
                 
                 html += `<p><em>Showing ${startIndex + 1}-${endIndex} of ${data.earthquakes.length} results</em></p>`;
                 
-                html += '<table><tr><th>Date</th><th>Location</th><th>Magnitude</th><th>Place</th>';
+                html += '<table><tr><th>ID</th><th>Location</th><th>Magnitude</th><th>Place</th>';
                 if (data.earthquakes[0] && data.earthquakes[0].distance_km !== undefined) {
                     html += '<th>Distance (km)</th>';
                 }
@@ -1250,7 +1285,7 @@
                 
                 pageResults.forEach(record => {
                     html += `<tr>
-                        <td>${record.time}</td>
+                        <td>${record.id || ''}</td>
                         <td>${record.latitude.toFixed(3)}, ${record.longitude.toFixed(3)}</td>
                         <td><strong>${record.magnitude}</strong></td>
                         <td>${record.place}</td>`;
@@ -1393,13 +1428,26 @@
                         stats[funcName] = {
                             count: 0,
                             times: [],
-                            totalResults: 0
+                            totalResults: 0,
+                            byQuery: {}
                         };
                     }
                     
                     stats[funcName].count++;
                     stats[funcName].times.push(data.execution_time_ms);
                     stats[funcName].totalResults += data.result_count || 0;
+
+                    // Group by query_key and cache_hit when available
+                    const qkey = data.query_key || 'n/a';
+                    const cacheHit = !!data.cache_hit;
+                    if (!stats[funcName].byQuery[qkey]) {
+                        stats[funcName].byQuery[qkey] = { first: [], cached: [] };
+                    }
+                    if (cacheHit) {
+                        stats[funcName].byQuery[qkey].cached.push(data.execution_time_ms);
+                    } else {
+                        stats[funcName].byQuery[qkey].first.push(data.execution_time_ms);
+                    }
                 });
                 
                 // Calculate averages and display
@@ -1431,6 +1479,52 @@
                             <td style="border: 1px solid #ddd; padding: 8px;">${data.totalResults}</td>
                         </tr>
                     `;
+
+                    // Add a nested table for First vs Cached by query
+                    const rows = Object.entries(data.byQuery);
+                    if (rows.length) {
+                        statsHtml += `
+                            <tr>
+                                <td colspan="6" style="border: 1px solid #ddd; padding: 8px;">
+                                    <div style="font-weight: bold; margin: 6px 0;">Breakdown by Query (First vs Cached)</div>
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <tr style="background-color: #f1f3f5;">
+                                            <th style="border: 1px solid #ddd; padding: 6px;">Query Key</th>
+                                            <th style="border: 1px solid #ddd; padding: 6px;">First Avg (ms)</th>
+                                            <th style="border: 1px solid #ddd; padding: 6px;">First Min/Max</th>
+                                            <th style="border: 1px solid #ddd; padding: 6px;">Cached Avg (ms)</th>
+                                            <th style="border: 1px solid #ddd; padding: 6px;">Cached Min/Max</th>
+                                            <th style="border: 1px solid #ddd; padding: 6px;">Counts (First/Cached)</th>
+                                            <th style="border: 1px solid #ddd; padding: 6px;">Speedup (x)</th>
+                                        </tr>`;
+
+                        rows.forEach(([qkey, buckets]) => {
+                            const first = buckets.first;
+                            const cached = buckets.cached;
+                            const fAvgNum = first.length ? (first.reduce((a,b)=>a+b,0)/first.length) : null;
+                            const fAvg = fAvgNum !== null ? fAvgNum.toFixed(2) : '-';
+                            const fMin = first.length ? Math.min(...first).toFixed(2) : '-';
+                            const fMax = first.length ? Math.max(...first).toFixed(2) : '-';
+                            const cAvgNum = cached.length ? (cached.reduce((a,b)=>a+b,0)/cached.length) : null;
+                            const cAvg = cAvgNum !== null ? cAvgNum.toFixed(2) : '-';
+                            const cMin = cached.length ? Math.min(...cached).toFixed(2) : '-';
+                            const cMax = cached.length ? Math.max(...cached).toFixed(2) : '-';
+                            const speedup = (fAvgNum !== null && cAvgNum !== null && cAvgNum > 0) ? (fAvgNum / cAvgNum).toFixed(2) : '-';
+                            statsHtml += `
+                                <tr>
+                                    <td style="border: 1px solid #ddd; padding: 6px;">${qkey}</td>
+                                    <td style="border: 1px solid #ddd; padding: 6px;">${fAvg}</td>
+                                    <td style="border: 1px solid #ddd; padding: 6px;">${fMin} / ${fMax}</td>
+                                    <td style="border: 1px solid #ddd; padding: 6px;">${cAvg}</td>
+                                    <td style="border: 1px solid #ddd; padding: 6px;">${cMin} / ${cMax}</td>
+                                    <td style="border: 1px solid #ddd; padding: 6px;">${first.length} / ${cached.length}</td>
+                                    <td style="border: 1px solid #ddd; padding: 6px;">${speedup}</td>
+                                </tr>
+                            `;
+                        });
+
+                        statsHtml += `</table></td></tr>`;
+                    }
                 });
                 
                 statsHtml += `</table><p><strong>Total Performance Records:</strong> ${snapshot.size}</p>`;
