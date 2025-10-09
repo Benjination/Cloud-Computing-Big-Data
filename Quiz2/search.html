@@ -402,7 +402,15 @@
                 return;
             }
             
-            // Simple working implementation for now
+            // Ensure local cache is loaded to correctly compare numeric magnitudes
+            if (!window.earthquakeCache || !window.earthquakeCache.isLoaded) {
+                const proceed = await window.initializeCache?.();
+                if (!proceed) {
+                    showError('Magnitude search requires cached data. Please load the cache first.');
+                    return;
+                }
+            }
+
             showLoading();
             try {
                 const cacheKey = `${minMag}-${maxMag}`;
@@ -423,29 +431,17 @@
                     }
                 }
 
-                // Direct Firebase query
-                const q = query(
-                    collection(db, "earthquakes"),
-                    where("magnitude", ">=", minMag),
-                    where("magnitude", "<=", maxMag),
-                    orderBy("magnitude", "desc"),
-                    limit(500)
-                );
-                
-                const snapshot = await getDocs(q);
-                const results = [];
-                
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    results.push({
-                        id: doc.id,
-                        time: data.time,
-                        latitude: parseFloat(data.latitude) || 0,
-                        longitude: parseFloat(data.longitude) || 0,
-                        magnitude: data.magnitude || 0,
-                        place: data.place || ""
-                    });
-                });
+                // Filter locally from cached data (magnitude already normalized to number during cache load)
+                const results = window.earthquakeCache.allData
+                    .filter(e => typeof e.magnitude === 'number' && e.magnitude >= minMag && e.magnitude <= maxMag)
+                    .map(e => ({
+                        id: e.id,
+                        time: e.time,
+                        latitude: e.latitude,
+                        longitude: e.longitude,
+                        magnitude: e.magnitude,
+                        place: e.place
+                    }));
 
                 // Cache the results
                 window.searchCache.magnitudeRange.set(cacheKey, {
@@ -453,7 +449,7 @@
                     timestamp: Date.now()
                 });
 
-                console.log(`✅ Found ${results.length} results using ${snapshot.size} Firebase reads`);
+                console.log(`✅ Found ${results.length} results using 0 Firebase reads (local cache)`);
                 
                 hideLoading();
                 displayResults({
@@ -472,7 +468,7 @@
 
         // Initialize local cache - load all data once when first search is performed
         window.initializeCache = async function() {
-            if (window.earthquakeCache.isLoaded) {
+            if (window.earthquakeCache && window.earthquakeCache.isLoaded) {
                 console.log('📦 Cache already loaded');
                 return true;
             }
@@ -627,34 +623,31 @@
                 }
             }
 
-            // Perform Firebase query
+            // Ensure local cache is loaded
+            if (!window.earthquakeCache || !window.earthquakeCache.isLoaded) {
+                const proceed = await window.initializeCache?.();
+                if (!proceed) {
+                    showError('Magnitude search requires cached data. Please load the cache first.');
+                    return;
+                }
+            }
+
             showLoading();
             const startTime = performance.now();
-            console.log(`🔍 Searching Firebase for magnitude > ${magnitude}`);
-            
+            console.log(`🔍 Filtering local cache for magnitude > ${magnitude}`);
+
             try {
-                const q = query(
-                    collection(db, "earthquakes"),
-                    where("magnitude", ">", magnitude),
-                    orderBy("magnitude", "desc"),
-                    limit(500)
-                );
-                
-                const snapshot = await getDocs(q);
-                const results = [];
-                
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    results.push({
-                        id: doc.id,
-                        time: data.time,
-                        timeFormatted: formatDate(data.time),
-                        latitude: parseFloat(data.latitude) || 0,
-                        longitude: parseFloat(data.longitude) || 0,
-                        magnitude: data.magnitude || 0,
-                        place: data.place || ""
-                    });
-                });
+                const results = window.earthquakeCache.allData
+                    .filter(e => typeof e.magnitude === 'number' && e.magnitude > magnitude)
+                    .map(e => ({
+                        id: e.id,
+                        time: e.time,
+                        timeFormatted: e.timeFormatted,
+                        latitude: e.latitude,
+                        longitude: e.longitude,
+                        magnitude: e.magnitude,
+                        place: e.place
+                    }));
 
                 // Cache the results
                 window.searchCache.magnitudeGreater.set(cacheKey, {
@@ -663,7 +656,7 @@
                 });
 
                 const executionTime = performance.now() - startTime;
-                console.log(`✅ Found ${results.length} results in ${executionTime.toFixed(3)}ms using ${snapshot.size} Firebase reads`);
+                console.log(`✅ Found ${results.length} results in ${executionTime.toFixed(3)}ms using 0 Firebase reads (local cache)`);
                 
                 hideLoading();
                 displayResults({
@@ -812,6 +805,10 @@
 
         // Analysis Functions with Cache Optimization
         window.analyzeTimePatterns = async function() {
+            // Ensure cache map exists
+            if (!window.searchCache.timePatterns || typeof window.searchCache.timePatterns.has !== 'function') {
+                window.searchCache.timePatterns = new Map();
+            }
             const cacheKey = 'time_patterns_analysis';
             
             // Check cache first
@@ -893,6 +890,10 @@
         };
 
         window.analyzeWeekendPatterns = async function() {
+            // Ensure cache map exists
+            if (!window.searchCache.timePatterns || typeof window.searchCache.timePatterns.has !== 'function') {
+                window.searchCache.timePatterns = new Map();
+            }
             const cacheKey = 'weekend_patterns_analysis';
             
             // Check cache first
@@ -974,6 +975,10 @@
         };
 
         window.analyzeEarlyMorning = async function() {
+            // Ensure cache map exists
+            if (!window.searchCache.timePatterns || typeof window.searchCache.timePatterns.has !== 'function') {
+                window.searchCache.timePatterns = new Map();
+            }
             const cacheKey = 'early_morning_analysis';
             
             // Check cache first
@@ -1053,6 +1058,10 @@
         };
 
         window.findClusters = async function() {
+            // Ensure cache map exists
+            if (!window.searchCache.timePatterns || typeof window.searchCache.timePatterns.has !== 'function') {
+                window.searchCache.timePatterns = new Map();
+            }
             const cacheKey = 'earthquake_clusters';
             
             // Check cache first
@@ -1491,7 +1500,7 @@
             <button onclick="initializeCache()" class="quick-link" style="background-color: #17a2b8;">
                 🔄 Reload Cache
             </button>
-            <button onclick="window.searchCache = { magnitudeGreater: new Map(), magnitudeRange: new Map(), locationSearch: new Map(), timePatterns: null, weekendPatterns: null, earlyMorning: null, clusters: null }; alert('Search cache cleared!');" class="quick-link" style="background-color: #ffc107;">
+            <button onclick="window.searchCache = { magnitudeGreater: new Map(), magnitudeRange: new Map(), locationSearch: new Map(), timePatterns: new Map() }; alert('Search cache cleared!');" class="quick-link" style="background-color: #ffc107;">
                 🧹 Clear Search Cache
             </button>
         </div>
