@@ -72,6 +72,81 @@
         </div>
     </div>
 
+    <!-- 🌍 EARTHQUAKE-SPECIFIC SEARCH CONTROLS -->
+    <div class="container">
+        <h2>🌍 Earthquake-Specific Searches</h2>
+        
+        <!-- Quick Earthquake Searches -->
+        <div class="search-row">
+            <button onclick="quickMagnitudeSearch()" style="background: #e74c3c;">
+                🔍 Quick Magnitude Search
+            </button>
+            <button onclick="quickMagnitudeRangeSearch()" style="background: #e67e22;">
+                📊 Magnitude Range Search
+            </button>
+            <button onclick="quickNetworkSearch()" style="background: #9b59b6;">
+                🌐 Network Search
+            </button>
+        </div>
+
+        <!-- Common Magnitude Ranges -->
+        <div class="search-row">
+            <label>Common Magnitude Ranges:</label>
+            <button onclick="searchMagnitudeRange(1.0, 3.0)" style="background: #27ae60;">
+                Minor (1.0-3.0)
+            </button>
+            <button onclick="searchMagnitudeRange(3.0, 5.0)" style="background: #f39c12;">
+                Moderate (3.0-5.0)
+            </button>
+            <button onclick="searchMagnitudeRange(5.0, 7.0)" style="background: #e74c3c;">
+                Major (5.0-7.0)
+            </button>
+            <button onclick="searchMagnitudeRange(7.0, 10.0)" style="background: #8e44ad;">
+                Great (7.0+)
+            </button>
+        </div>
+
+        <!-- Common Networks -->
+        <div class="search-row">
+            <label>Common Networks:</label>
+            <button onclick="searchByNetwork('us')" style="background: #3498db;">
+                US Geological Survey
+            </button>
+            <button onclick="searchByNetwork('ci')" style="background: #2ecc71;">
+                California
+            </button>
+            <button onclick="searchByNetwork('nc')" style="background: #e67e22;">
+                Northern California
+            </button>
+            <button onclick="searchByNetwork('ak')" style="background: #9b59b6;">
+                Alaska
+            </button>
+        </div>
+    </div>
+
+    <!-- 📈 PERFORMANCE ANALYTICS DASHBOARD -->
+    <div class="container">
+        <h2>📈 Earthquake Search Performance Analytics</h2>
+        <div class="search-row">
+            <button onclick="exportEarthquakePerformanceData()" style="background: #28a745;">
+                📊 Export Performance CSV
+            </button>
+            <button onclick="showEarthquakeCacheStatus()" style="background: #17a2b8;">
+                📋 View Cache Status
+            </button>
+            <button onclick="clearEarthquakeCache()" style="background: #ffc107; color: #333;">
+                🧹 Clear Cache
+            </button>
+            <button onclick="testCache()" style="background: #6c757d;">
+                🧪 Test Cache System
+            </button>
+        </div>
+        <p><small>
+            Performance analytics track search times and cache effectiveness. 
+            First-time searches hit Firebase; repeat searches use cache for instant results.
+        </small></p>
+    </div>
+
     <div class="container">
         <h2>Results</h2>
         <div id="resultsCount"></div>
@@ -113,7 +188,7 @@
         console.log("✅ Firebase configuration loaded for project:", firebaseConfig.projectId);
 
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js';
-        import { getFirestore, collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+        import { getFirestore, collection, query, where, orderBy, limit, getDocs, doc, getDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -133,6 +208,51 @@
 
         let availableFields = [];
         let numericFields = [];
+
+        // 🚀 EARTHQUAKE DATA CACHE SYSTEM
+        window.earthquakeCache = {
+            magnitudeRange: new Map(),        // Key: "min-max", Value: {results, timestamp}
+            magnitudeGreater: new Map(),      // Key: magnitude, Value: {results, timestamp}
+            locationSearch: new Map(),        // Key: "lat,long,radius", Value: {results, timestamp}
+            timeFilters: new Map(),           // Key: time range, Value: {results, timestamp}
+            networkFilters: new Map(),        // Key: network code, Value: {results, timestamp}
+            fieldSearches: new Map(),         // Key: "field_operator_value", Value: {results, timestamp}
+            rangeSearches: new Map()          // Key: "field_min_max", Value: {results, timestamp}
+        };
+
+        // Cache expiration time (5 minutes)
+        const CACHE_EXPIRY_MS = 5 * 60 * 1000;
+
+        // Helper function to check if cache entry is still valid
+        function isCacheValid(cacheEntry) {
+            return cacheEntry && (Date.now() - cacheEntry.timestamp) < CACHE_EXPIRY_MS;
+        }
+
+        // Performance logging for earthquake search performance (with error handling)
+        window.logEarthquakePerformance = async function(functionName, executionTime, resultCount = 0, additionalData = {}) {
+            try {
+                console.log(`📊 Performance: ${functionName} - ${executionTime.toFixed(3)}ms - ${resultCount} results`);
+                
+                const performanceData = {
+                    function_name: functionName,
+                    execution_time_ms: executionTime,
+                    execution_time_s: executionTime / 1000,
+                    result_count: resultCount,
+                    timestamp: new Date(),
+                    data_type: 'earthquake',
+                    browser: navigator.userAgent.substring(0, 100),
+                    ...additionalData
+                };
+                
+                // Try to log to Firebase, but don't fail if it doesn't work
+                await addDoc(collection(db, "earthquake_performance_logs"), performanceData);
+                console.log(`✅ Performance logged to Firebase`);
+            } catch (error) {
+                console.warn("Failed to log performance to Firebase (continuing anyway):", error);
+                // Still log to console even if Firebase fails
+                console.log(`📊 Performance: ${functionName} - ${executionTime.toFixed(3)}ms - ${resultCount} results (Firebase logging failed)`);
+            }
+        };
 
         // Initialize page
         async function initializePage() {
@@ -184,8 +304,9 @@
             });
         }
 
-        // Search functions
+        // Search functions with caching
         window.searchData = async function() {
+            const startTime = performance.now();
             const field = document.getElementById('searchField').value;
             const value = document.getElementById('searchValue').value;
             const operator = document.getElementById('searchOperator').value;
@@ -193,6 +314,32 @@
             if (!field || !value) {
                 alert('Please select a field and enter a value');
                 return;
+            }
+            
+            // Create cache key for this search
+            const cacheKey = `${field}_${operator}_${value}`;
+            
+            // 1. Check cache first
+            if (window.earthquakeCache.fieldSearches.has(cacheKey)) {
+                const cacheEntry = window.earthquakeCache.fieldSearches.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached field search results');
+                    const executionTime = performance.now() - startTime;
+                    
+                    // Display cached results
+                    window.currentResults = cacheEntry.results;
+                    window.currentPage = 1;
+                    displayResults();
+                    
+                    // Log cached performance
+                    await logEarthquakePerformance('field_search_cached', executionTime, cacheEntry.results.length, {
+                        field: field,
+                        operator: operator,
+                        value: value,
+                        cache_hit: true
+                    });
+                    return;
+                }
             }
             
             try {
@@ -227,6 +374,23 @@
                     );
                 }
                 
+                // 2. Cache the results
+                window.earthquakeCache.fieldSearches.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+                
+                const executionTime = performance.now() - startTime;
+                
+                // Log fresh performance
+                await logEarthquakePerformance('field_search', executionTime, results.length, {
+                    field: field,
+                    operator: operator,
+                    value: value,
+                    cache_hit: false,
+                    firebase_reads: snapshot.size
+                });
+                
                 window.currentResults = results;
                 window.currentPage = 1;
                 displayResults();
@@ -238,6 +402,7 @@
         };
 
         window.rangeSearch = async function() {
+            const startTime = performance.now();
             const field = document.getElementById('rangeField').value;
             const minValue = parseFloat(document.getElementById('minValue').value);
             const maxValue = parseFloat(document.getElementById('maxValue').value);
@@ -245,6 +410,32 @@
             if (!field || isNaN(minValue) || isNaN(maxValue)) {
                 alert('Please select a numeric field and enter valid min/max values');
                 return;
+            }
+            
+            // Create cache key for this range search
+            const cacheKey = `${field}_${minValue}_${maxValue}`;
+            
+            // 1. Check cache first
+            if (window.earthquakeCache.rangeSearches.has(cacheKey)) {
+                const cacheEntry = window.earthquakeCache.rangeSearches.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached range search results');
+                    const executionTime = performance.now() - startTime;
+                    
+                    // Display cached results
+                    window.currentResults = cacheEntry.results;
+                    window.currentPage = 1;
+                    displayResults();
+                    
+                    // Log cached performance
+                    await logEarthquakePerformance('range_search_cached', executionTime, cacheEntry.results.length, {
+                        field: field,
+                        min_value: minValue,
+                        max_value: maxValue,
+                        cache_hit: true
+                    });
+                    return;
+                }
             }
             
             try {
@@ -255,7 +446,26 @@
                 );
                 
                 const snapshot = await getDocs(q);
-                window.currentResults = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                // 2. Cache the results
+                window.earthquakeCache.rangeSearches.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+                
+                const executionTime = performance.now() - startTime;
+                
+                // Log fresh performance
+                await logEarthquakePerformance('range_search', executionTime, results.length, {
+                    field: field,
+                    min_value: minValue,
+                    max_value: maxValue,
+                    cache_hit: false,
+                    firebase_reads: snapshot.size
+                });
+                
+                window.currentResults = results;
                 window.currentPage = 1;
                 displayResults();
                 
@@ -468,6 +678,310 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
+
+        // 🌍 EARTHQUAKE-SPECIFIC SEARCH FUNCTIONS WITH CACHING
+
+        // Enhanced Magnitude Range Search
+        window.searchMagnitudeRange = async function(minMag, maxMag) {
+            console.log(`🚀 searchMagnitudeRange called: ${minMag} - ${maxMag}`);
+            const startTime = performance.now();
+            const cacheKey = `${minMag}-${maxMag}`;
+            
+            // 1. Check cache first
+            console.log(`🔍 Checking cache for key: ${cacheKey}`);
+            if (window.earthquakeCache.magnitudeRange.has(cacheKey)) {
+                const cacheEntry = window.earthquakeCache.magnitudeRange.get(cacheKey);
+                console.log(`📦 Cache entry found, checking validity...`);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached magnitude range results');
+                    const executionTime = performance.now() - startTime;
+                    
+                    // Display cached results
+                    window.currentResults = cacheEntry.results;
+                    window.currentPage = 1;
+                    displayResults();
+                    
+                    // Log cached performance
+                    await logEarthquakePerformance('magnitude_range_cached', executionTime, cacheEntry.results.length, {
+                        min_magnitude: minMag,
+                        max_magnitude: maxMag,
+                        cache_hit: true
+                    });
+                    return cacheEntry.results;
+                } else {
+                    console.log('❌ Cache entry expired');
+                }
+            } else {
+                console.log('❌ No cache entry found');
+            }
+            
+            // 2. Query Firebase (first time)
+            try {
+                console.log(`🔍 Searching for magnitude ${minMag} - ${maxMag} from Firebase`);
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    limit(2000) // reasonable limit for earthquake data
+                );
+                const snapshot = await getDocs(q);
+                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase`);
+                
+                // Client-side filtering for magnitude range
+                const results = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const mag = parseFloat(data.mag);
+                    
+                    if (!isNaN(mag) && mag >= minMag && mag <= maxMag) {
+                        results.push({
+                            id: docSnap.id,
+                            time: data.time,
+                            lat: parseFloat(data.lat) || 0,
+                            long: parseFloat(data.long) || 0,
+                            mag: mag,
+                            net: data.net || '',
+                            nst: data.nst || 0,
+                            original_id: data.id || ''
+                        });
+                    }
+                });
+                
+                console.log(`🎯 Filtered to ${results.length} results in magnitude range ${minMag}-${maxMag}`);
+                
+                // 3. Cache the results
+                window.earthquakeCache.magnitudeRange.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+                console.log(`💾 Results cached with key: ${cacheKey}`);
+                
+                const executionTime = performance.now() - startTime;
+                
+                // Log fresh performance
+                await logEarthquakePerformance('magnitude_range', executionTime, results.length, {
+                    min_magnitude: minMag,
+                    max_magnitude: maxMag,
+                    cache_hit: false,
+                    firebase_reads: snapshot.size
+                });
+                
+                window.currentResults = results;
+                window.currentPage = 1;
+                displayResults();
+                return results;
+                
+            } catch (error) {
+                console.error('❌ Magnitude range search error:', error);
+                alert('Magnitude search failed: ' + error.message);
+                return [];
+            }
+        };
+
+        // Network-Based Search
+        window.searchByNetwork = async function(networkCode) {
+            const startTime = performance.now();
+            const cacheKey = networkCode.toLowerCase();
+            
+            // Check cache first
+            if (window.earthquakeCache.networkFilters.has(cacheKey)) {
+                const cacheEntry = window.earthquakeCache.networkFilters.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached network search results');
+                    const executionTime = performance.now() - startTime;
+                    
+                    window.currentResults = cacheEntry.results;
+                    window.currentPage = 1;
+                    displayResults();
+                    
+                    await logEarthquakePerformance('network_search_cached', executionTime, cacheEntry.results.length, {
+                        network_code: networkCode,
+                        cache_hit: true
+                    });
+                    return cacheEntry.results;
+                }
+            }
+            
+            try {
+                console.log(`🔍 Searching for network ${networkCode} from Firebase`);
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    where('net', '==', networkCode),
+                    limit(1000)
+                );
+                const snapshot = await getDocs(q);
+                
+                const results = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    results.push({
+                        id: docSnap.id,
+                        time: data.time,
+                        lat: parseFloat(data.lat) || 0,
+                        long: parseFloat(data.long) || 0,
+                        mag: parseFloat(data.mag) || 0,
+                        net: data.net || '',
+                        nst: data.nst || 0,
+                        original_id: data.id || ''
+                    });
+                });
+                
+                // Cache the results
+                window.earthquakeCache.networkFilters.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+                
+                const executionTime = performance.now() - startTime;
+                
+                await logEarthquakePerformance('network_search', executionTime, results.length, {
+                    network_code: networkCode,
+                    cache_hit: false,
+                    firebase_reads: snapshot.size
+                });
+                
+                window.currentResults = results;
+                window.currentPage = 1;
+                displayResults();
+                return results;
+                
+            } catch (error) {
+                console.error('Network search error:', error);
+                alert('Network search failed: ' + error.message);
+                return [];
+            }
+        };
+
+        // 💾 CACHE MANAGEMENT FUNCTIONS
+
+        // View earthquake cache status
+        window.showEarthquakeCacheStatus = function() {
+            const totalCached = 
+                window.earthquakeCache.magnitudeRange.size +
+                window.earthquakeCache.magnitudeGreater.size +
+                window.earthquakeCache.locationSearch.size +
+                window.earthquakeCache.timeFilters.size +
+                window.earthquakeCache.networkFilters.size +
+                window.earthquakeCache.fieldSearches.size +
+                window.earthquakeCache.rangeSearches.size;
+            
+            const cacheInfo = `🌍 Earthquake Data Cache Status: ✅ Active\n` +
+                             `Cache Expiry: 5 minutes\n\n` +
+                             `Cache Contents:\n` +
+                             `- Magnitude Ranges: ${window.earthquakeCache.magnitudeRange.size} queries\n` +
+                             `- Magnitude Greater: ${window.earthquakeCache.magnitudeGreater.size} queries\n` +
+                             `- Location Searches: ${window.earthquakeCache.locationSearch.size} queries\n` +
+                             `- Time Filters: ${window.earthquakeCache.timeFilters.size} queries\n` +
+                             `- Network Filters: ${window.earthquakeCache.networkFilters.size} queries\n` +
+                             `- Field Searches: ${window.earthquakeCache.fieldSearches.size} queries\n` +
+                             `- Range Searches: ${window.earthquakeCache.rangeSearches.size} queries\n\n` +
+                             `Total Cached Queries: ${totalCached}`;
+            
+            alert(cacheInfo);
+        };
+
+        // Clear earthquake cache
+        window.clearEarthquakeCache = function() {
+            window.earthquakeCache = {
+                magnitudeRange: new Map(),
+                magnitudeGreater: new Map(),
+                locationSearch: new Map(),
+                timeFilters: new Map(),
+                networkFilters: new Map(),
+                fieldSearches: new Map(),
+                rangeSearches: new Map()
+            };
+            alert('🌍 Earthquake data cache cleared!');
+        };
+
+        // 📊 PERFORMANCE ANALYTICS FUNCTIONS
+
+        // Export performance data
+        window.exportEarthquakePerformanceData = async function() {
+            try {
+                console.log('🔍 Fetching performance data...');
+                const q = query(collection(db, "earthquake_performance_logs"), orderBy("timestamp", "desc"));
+                const snapshot = await getDocs(q);
+                
+                // Convert to CSV format
+                const headers = ["timestamp", "function_name", "execution_time_ms", "execution_time_s", "result_count", "cache_hit", "field", "network_code", "min_magnitude", "max_magnitude"];
+                let csvContent = headers.join(",") + "\n";
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const row = [
+                        data.timestamp.toDate().toISOString(),
+                        data.function_name,
+                        data.execution_time_ms.toFixed(3),
+                        data.execution_time_s.toFixed(6),
+                        data.result_count,
+                        data.cache_hit || false,
+                        data.field || 'n/a',
+                        data.network_code || 'n/a',
+                        data.min_magnitude || 'n/a',
+                        data.max_magnitude || 'n/a'
+                    ];
+                    csvContent += row.join(",") + "\n";
+                });
+                
+                // Download CSV file
+                downloadFile(csvContent, `earthquake_performance_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+                
+            } catch (error) {
+                alert("Export failed: " + error.message);
+            }
+        };
+
+        // Quick access functions for common earthquake searches
+        window.quickMagnitudeSearch = function() {
+            const magnitude = prompt("Enter minimum magnitude (e.g., 5.0):");
+            if (magnitude && !isNaN(parseFloat(magnitude))) {
+                document.getElementById('rangeField').value = 'mag';
+                document.getElementById('minValue').value = magnitude;
+                document.getElementById('maxValue').value = '10';
+                rangeSearch();
+            }
+        };
+
+        window.quickNetworkSearch = function() {
+            const network = prompt("Enter network code (e.g., us, ci, nc, ak):");
+            if (network) {
+                searchByNetwork(network);
+            }
+        };
+
+        window.quickMagnitudeRangeSearch = function() {
+            const range = prompt("Enter magnitude range (format: 5.0-7.0):");
+            if (range && range.includes('-')) {
+                const [min, max] = range.split('-').map(x => parseFloat(x.trim()));
+                if (!isNaN(min) && !isNaN(max)) {
+                    searchMagnitudeRange(min, max);
+                }
+            }
+        };
+
+        // Debug function to test cache
+        window.testCache = function() {
+            console.log("🧪 Testing cache system...");
+            console.log("Cache object:", window.earthquakeCache);
+            console.log("Is cache valid function:", typeof isCacheValid);
+            
+            // Test cache with dummy data
+            const testKey = "test-5.0-7.0";
+            const testData = {
+                results: [{id: "test", mag: 6.0}],
+                timestamp: Date.now()
+            };
+            
+            window.earthquakeCache.magnitudeRange.set(testKey, testData);
+            console.log("✅ Test data added to cache");
+            
+            const retrieved = window.earthquakeCache.magnitudeRange.get(testKey);
+            console.log("Retrieved from cache:", retrieved);
+            
+            const isValid = isCacheValid(retrieved);
+            console.log("Is cache entry valid?", isValid);
+            
+            alert("Cache test completed - check console for details");
+        };
 
         // Initialize page when loaded
         window.addEventListener('load', function() {

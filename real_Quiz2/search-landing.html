@@ -278,7 +278,7 @@
     <div class="container">
         <div class="search-section">
             <h3>5. ✏️ Update Earthquake Record</h3>
-            <p><strong>Service:</strong> Find earthquake by net ID or time, then modify any attributes</p>
+            <p><strong>Service:</strong> Find earthquake by net ID, then modify any attributes</p>
             
             <!-- Search Section -->
             <div class="form-group" style="border: 2px solid #3498db; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
@@ -288,50 +288,6 @@
                         <label>Search by Net ID:</label>
                         <input type="text" id="updateSearchNetId" value="ci40994743" placeholder="e.g., ci40994743, nc75195896">
                         <button onclick="findRecordByNetId()">🔍 Find by Net ID</button>
-                    </div>
-                    <div>
-                        <label>Or Search by Time:</label>
-                        <div style="display: flex; gap: 5px; align-items: center;">
-                            <select id="searchHour">
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                                <option value="6">6</option>
-                                <option value="7">7</option>
-                                <option value="8" selected>8</option>
-                                <option value="9">9</option>
-                                <option value="10">10</option>
-                                <option value="11">11</option>
-                                <option value="12">12</option>
-                            </select>
-                            <span>:</span>
-                            <select id="searchMinute">
-                                <option value="00">00</option>
-                                <option value="01" selected>01</option>
-                                <option value="05">05</option>
-                                <option value="10">10</option>
-                                <option value="15">15</option>
-                                <option value="30">30</option>
-                                <option value="45">45</option>
-                            </select>
-                            <span>:</span>
-                            <select id="searchSecond">
-                                <option value="00" selected>00</option>
-                                <option value="01">01</option>
-                                <option value="05">05</option>
-                                <option value="10">10</option>
-                                <option value="15">15</option>
-                                <option value="30">30</option>
-                                <option value="45">45</option>
-                            </select>
-                            <select id="searchAmPm">
-                                <option value="AM">AM</option>
-                                <option value="PM" selected>PM</option>
-                            </select>
-                        </div>
-                        <button onclick="findRecordByTime()">🔍 Find by Time</button>
                     </div>
                 </div>
             </div>
@@ -459,6 +415,56 @@
         </div>
     </div>
 
+    <!-- 🚀 CACHE TESTING & PERFORMANCE ANALYTICS -->
+    <div class="container">
+        <h2>🚀 Cache Testing & Performance Analytics</h2>
+        <div class="search-form">
+            <div class="form-group">
+                <button onclick="test1000RandomTuples()" style="background: #dc3545;">
+                    🚀 Test 1000 Random Tuples
+                </button>
+                <button onclick="resetBulkTestCache()" style="background: #fd7e14;">
+                    🔄 Reset Bulk Test Cache
+                </button>
+                <button onclick="showEarthquakeCacheStatus()" style="background: #17a2b8;">
+                    📊 View Cache Status
+                </button>
+                <button onclick="clearEarthquakeCache()" style="background: #ffc107; color: #333;">
+                    🧹 Clear Cache
+                </button>
+            </div>
+            <div class="form-group">
+                <button onclick="viewEarthquakePerformanceData()" style="background: #28a745;">
+                    � View Performance Data
+                </button>
+            </div>
+            <div id="bulkTestResults" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; display: none;">
+                <h3>📊 Bulk Test Performance Results</h3>
+                <div id="bulkTestContent"></div>
+            </div>
+            <div id="performanceDataResults" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; display: none;">
+                <h3>📊 Performance Data History</h3>
+                <div style="margin-bottom: 10px;">
+                    <button onclick="hidePerformanceData()" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 3px;">
+                        ✖️ Close
+                    </button>
+                    <button onclick="exportCurrentPerformanceData()" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-left: 10px;">
+                        💾 Export to CSV
+                    </button>
+                    <button onclick="clearPerformanceData()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-left: 10px;">
+                        🗑️ Clear All Data
+                    </button>
+                </div>
+                <div id="performanceDataContent"></div>
+            </div>
+            <p><small>
+                <strong>Cache System Active:</strong> Repeat searches use cached results for instant performance. 
+                Client-side data: <span id="dataCount">Loading...</span> earthquake records loaded.
+                Cache expires after 5 minutes.
+            </small></p>
+        </div>
+    </div>
+
     <div class="container results-container">
         <h2>📊 Search Results</h2>
         <div id="searchStatus"></div>
@@ -479,7 +485,7 @@
         };
 
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, orderBy, deleteDoc, doc, addDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, limit, deleteDoc, doc, addDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -499,27 +505,70 @@
 
         // Load all data on page load for client-side searching
         let earthquakeData = [];
-        
-        async function loadEarthquakeData() {
-            try {
-                const querySnapshot = await getDocs(collection(db, window.COLLECTION_NAME));
-                earthquakeData = [];
-                querySnapshot.forEach((doc) => {
-                    earthquakeData.push({id: doc.id, ...doc.data()});
-                });
-                console.log(`Loaded ${earthquakeData.length} earthquake records`);
-            } catch (error) {
-                console.error('Error loading data:', error);
-                document.getElementById('searchStatus').innerHTML = 
-                    '<div class="status error">❌ Error loading earthquake data</div>';
-            }
+
+        // 🚀 EARTHQUAKE DATA CACHE SYSTEM
+        window.earthquakeCache = {
+            magnitudeRange: new Map(),        // Key: "min-max", Value: {results, timestamp}
+            magnitudeGreater: new Map(),      // Key: magnitude, Value: {results, timestamp}
+            locationSearch: new Map(),        // Key: "lat,long,radius", Value: {results, timestamp}
+            timeFilters: new Map(),           // Key: time range, Value: {results, timestamp}
+            networkFilters: new Map(),        // Key: network code, Value: {results, timestamp}
+            fieldSearches: new Map(),         // Key: "field_operator_value", Value: {results, timestamp}
+            rangeSearches: new Map()          // Key: "field_min_max", Value: {results, timestamp}
+        };
+
+        // Cache expiration time (5 minutes)
+        const CACHE_EXPIRY_MS = 5 * 60 * 1000;
+
+        // Helper function to check if cache entry is still valid
+        function isCacheValid(cacheEntry) {
+            return cacheEntry && (Date.now() - cacheEntry.timestamp) < CACHE_EXPIRY_MS;
         }
 
-        // Load data when page loads
-        loadEarthquakeData();
+        // Performance logging for earthquake search performance (with error handling)
+        window.logEarthquakePerformance = async function(functionName, executionTime, resultCount = 0, additionalData = {}) {
+            try {
+                console.log(`📊 Performance: ${functionName} - ${executionTime.toFixed(3)}ms - ${resultCount} results`);
+                
+                const performanceData = {
+                    function_name: functionName,
+                    execution_time_ms: executionTime,
+                    execution_time_s: executionTime / 1000,
+                    result_count: resultCount,
+                    timestamp: new Date(),
+                    data_type: 'earthquake',
+                    browser: navigator.userAgent.substring(0, 100),
+                    ...additionalData
+                };
+                
+                // Try to log to Firebase, but don't fail if it doesn't work
+                await addDoc(collection(db, "earthquake_performance_logs"), performanceData);
+                console.log(`✅ Performance logged to Firebase`);
+            } catch (error) {
+                console.warn("Failed to log performance to Firebase (continuing anyway):", error);
+                // Still log to console even if Firebase fails
+                console.log(`📊 Performance: ${functionName} - ${executionTime.toFixed(3)}ms - ${resultCount} results (Firebase logging failed)`);
+            }
+        };
+        
+        // 🚀 ON-DEMAND FIREBASE SEARCH FUNCTIONS (No bulk loading)
+        // We'll query Firebase only when needed and cache the specific results
+        
+        // Remove auto-loading - we'll query on-demand instead
+        // earthquakeData is no longer used for bulk storage
+        
+        // Initialize page without loading all data
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update data count display to show on-demand mode
+            const dataCountElement = document.getElementById('dataCount');
+            if (dataCountElement) {
+                dataCountElement.textContent = 'On-demand (Firebase queries cached)';
+            }
+        });
 
         // Make functions available globally
         window.searchByMagnitudeThreshold = async function() {
+            const startTime = performance.now();
             const operator = document.getElementById('magnitudeOperator').value;
             const threshold = parseFloat(document.getElementById('magnitudeThreshold').value);
             
@@ -528,19 +577,116 @@
                 return;
             }
             
-            showStatus('loading', 'Searching earthquakes...');
+            // Create cache key for this search
+            const cacheKey = `${operator}_${threshold}`;
             
-            let results;
-            if (operator === 'over') {
-                results = earthquakeData.filter(eq => parseFloat(eq.mag) >= threshold);
+            // 1. Check cache first
+            console.log(`🔍 Checking cache for magnitude threshold: ${cacheKey}`);
+            if (window.earthquakeCache.magnitudeGreater.has(cacheKey)) {
+                const cacheEntry = window.earthquakeCache.magnitudeGreater.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached magnitude threshold results');
+                    const executionTime = performance.now() - startTime;
+                    
+                    // Display cached results
+                    displayResults(cacheEntry.results, `Magnitude ${operator} ${threshold} (Cached)`);
+                    
+                    // Log cached performance
+                    await logEarthquakePerformance('magnitude_threshold_cached', executionTime, cacheEntry.results.length, {
+                        operator: operator,
+                        threshold: threshold,
+                        cache_hit: true
+                    });
+                    return;
+                } else {
+                    console.log('❌ Cache entry expired');
+                }
             } else {
-                results = earthquakeData.filter(eq => parseFloat(eq.mag) < threshold);
+                console.log('❌ No cache entry found');
             }
             
-            displayResults(results, `Magnitude ${operator} ${threshold}`);
+            // 2. Query Firebase on-demand
+            showStatus('loading', 'Searching Firebase for earthquakes...');
+            console.log(`🔍 Querying Firebase for magnitude ${operator} ${threshold}`);
+            
+            try {
+                // Use Firebase where clause for efficient querying when possible
+                let q;
+                if (operator === 'over') {
+                    // For "greater than" we can use Firebase's where clause efficiently
+                    q = query(
+                        collection(db, window.COLLECTION_NAME),
+                        where('mag', '>=', threshold),
+                        limit(1000)
+                    );
+                } else {
+                    // For "under" we need to get more data and filter client-side
+                    q = query(
+                        collection(db, window.COLLECTION_NAME),
+                        limit(2000)
+                    );
+                }
+                
+                const snapshot = await getDocs(q);
+                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase`);
+                
+                let results = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const mag = parseFloat(data.mag);
+                    
+                    // Apply the correct filter based on operator
+                    let matches = false;
+                    if (operator === 'over' && !isNaN(mag) && mag >= threshold) {
+                        matches = true;
+                    } else if (operator === 'under' && !isNaN(mag) && mag < threshold) {
+                        matches = true;
+                    }
+                    
+                    if (matches) {
+                        results.push({
+                            id: docSnap.id,
+                            time: data.time,
+                            lat: parseFloat(data.lat) || 0,
+                            long: parseFloat(data.long) || 0,
+                            mag: mag,
+                            net: data.net || '',
+                            nst: data.nst || 0,
+                            original_id: data.id || ''
+                        });
+                    }
+                });
+                
+                console.log(`🎯 Filtered to ${results.length} results for magnitude ${operator} ${threshold}`);
+                
+                // 3. Cache the results
+                window.earthquakeCache.magnitudeGreater.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+                console.log(`💾 Results cached with key: ${cacheKey} (${results.length} results)`);
+                
+                const executionTime = performance.now() - startTime;
+                
+                // Log fresh performance
+                await logEarthquakePerformance('magnitude_threshold', executionTime, results.length, {
+                    operator: operator,
+                    threshold: threshold,
+                    cache_hit: false,
+                    firebase_reads: snapshot.size,
+                    data_source: 'firebase_on_demand'
+                });
+                
+                displayResults(results, `Magnitude ${operator} ${threshold}`);
+                
+            } catch (error) {
+                console.error('❌ Firebase query error:', error);
+                showStatus('error', 'Search failed: ' + error.message);
+            }
         };
 
         window.searchByMagnitudeRange = async function() {
+            const startTime = performance.now();
             const minMag = parseFloat(document.getElementById('magnitudeMin').value);
             const maxMag = parseFloat(document.getElementById('magnitudeMax').value);
             
@@ -553,15 +699,94 @@
                 showStatus('error', 'Minimum magnitude must be less than maximum magnitude');
                 return;
             }
+
+            // Create cache key for this search
+            const cacheKey = `${minMag}-${maxMag}`;
             
-            showStatus('loading', 'Searching magnitude range...');
+            // 1. Check cache first
+            console.log(`🔍 Checking cache for magnitude range: ${cacheKey}`);
+            if (window.earthquakeCache.magnitudeRange.has(cacheKey)) {
+                const cacheEntry = window.earthquakeCache.magnitudeRange.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached magnitude range results');
+                    const executionTime = performance.now() - startTime;
+                    
+                    // Display cached results
+                    displayResults(cacheEntry.results, `Magnitude between ${minMag} and ${maxMag} (Cached)`);
+                    
+                    // Log cached performance
+                    await logEarthquakePerformance('magnitude_range_cached', executionTime, cacheEntry.results.length, {
+                        min_magnitude: minMag,
+                        max_magnitude: maxMag,
+                        cache_hit: true
+                    });
+                    return;
+                } else {
+                    console.log('❌ Cache entry expired');
+                }
+            } else {
+                console.log('❌ No cache entry found');
+            }
             
-            const results = earthquakeData.filter(eq => {
-                const mag = parseFloat(eq.mag);
-                return mag >= minMag && mag <= maxMag;
-            });
+            // 2. Query Firebase on-demand
+            showStatus('loading', 'Searching Firebase for magnitude range...');
+            console.log(`🔍 Querying Firebase for magnitude ${minMag}-${maxMag}`);
             
-            displayResults(results, `Magnitude between ${minMag} and ${maxMag}`);
+            try {
+                // Query Firebase with filters and client-side filtering for precise range
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    limit(2000) // reasonable limit to prevent huge downloads
+                );
+                const snapshot = await getDocs(q);
+                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase`);
+                
+                // Client-side filtering for magnitude range
+                const results = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const mag = parseFloat(data.mag);
+                    
+                    if (!isNaN(mag) && mag >= minMag && mag <= maxMag) {
+                        results.push({
+                            id: docSnap.id,
+                            time: data.time,
+                            lat: parseFloat(data.lat) || 0,
+                            long: parseFloat(data.long) || 0,
+                            mag: mag,
+                            net: data.net || '',
+                            nst: data.nst || 0,
+                            original_id: data.id || ''
+                        });
+                    }
+                });
+                
+                console.log(`🎯 Filtered to ${results.length} results in magnitude range ${minMag}-${maxMag}`);
+                
+                // 3. Cache the results
+                window.earthquakeCache.magnitudeRange.set(cacheKey, {
+                    results: results,
+                    timestamp: Date.now()
+                });
+                console.log(`💾 Results cached with key: ${cacheKey} (${results.length} results)`);
+                
+                const executionTime = performance.now() - startTime;
+                
+                // Log fresh performance
+                await logEarthquakePerformance('magnitude_range', executionTime, results.length, {
+                    min_magnitude: minMag,
+                    max_magnitude: maxMag,
+                    cache_hit: false,
+                    firebase_reads: snapshot.size,
+                    data_source: 'firebase_on_demand'
+                });
+                
+                displayResults(results, `Magnitude between ${minMag} and ${maxMag}`);
+                
+            } catch (error) {
+                console.error('❌ Firebase query error:', error);
+                showStatus('error', 'Search failed: ' + error.message);
+            }
         };
 
         window.searchByProximity = async function() {
@@ -858,74 +1083,7 @@
             }
         };
 
-        window.findRecordByTime = async function() {
-            const hour = document.getElementById('searchHour').value;
-            const minute = document.getElementById('searchMinute').value;
-            const second = document.getElementById('searchSecond').value;
-            const ampm = document.getElementById('searchAmPm').value;
-            
-            const time = convertTimeToDatabase(hour, minute, second, ampm);
-            
-            if (isNaN(time)) {
-                showStatus('error', 'Please select a valid time');
-                return;
-            }
 
-            try {
-                showStatus('info', 'Searching for earthquake by time...');
-                document.getElementById('updateResults').innerHTML = '';
-                
-                const q = query(
-                    collection(db, window.COLLECTION_NAME),
-                    where('time', '==', time)
-                );
-                
-                const querySnapshot = await getDocs(q);
-                
-                if (querySnapshot.empty) {
-                    document.getElementById('updateResults').innerHTML = `
-                        <div class="result-item">
-                            <strong>No Results:</strong> No earthquake found with time "${time}"
-                        </div>
-                    `;
-                    showStatus('error', `No earthquake found with time "${time}"`);
-                    document.getElementById('updateFormSection').style.display = 'none';
-                    return;
-                }
-                
-                const docSnapshot = querySnapshot.docs[0];
-                const earthquake = docSnapshot.data();
-                currentRecordDocId = docSnapshot.id;
-                
-                // Populate update form with current values
-                const timeData2 = convertDatabaseToTime(earthquake.time || 81000);
-                document.getElementById('updateHour').value = timeData2.hour;
-                document.getElementById('updateMinute').value = timeData2.minute;
-                document.getElementById('updateSecond').value = timeData2.second;
-                document.getElementById('updateAmPm').value = timeData2.ampm;
-                document.getElementById('updateLat').value = earthquake.lat || '';
-                document.getElementById('updateLong').value = earthquake.long || '';
-                document.getElementById('updateMag').value = earthquake.mag || '';
-                document.getElementById('updateNst').value = earthquake.nst !== null ? earthquake.nst : '';
-                document.getElementById('updateNet').value = earthquake.net || '';
-                document.getElementById('updateId').value = earthquake.id || '';
-                
-                document.getElementById('updateResults').innerHTML = `
-                    <div class="result-item">
-                        <strong>Found Record:</strong> Time ${time} (ID: ${earthquake.id})<br>
-                        <strong>Current values loaded into form below. Modify any fields and click Update.</strong>
-                    </div>
-                `;
-                
-                document.getElementById('updateFormSection').style.display = 'block';
-                showStatus('success', `Found earthquake with time "${time}". Ready to update.`);
-                console.log(`Update Search: Found earthquake with time="${time}"`, earthquake);
-                
-            } catch (error) {
-                console.error('Error searching by time:', error);
-                showStatus('error', 'Error searching by time: ' + error.message);
-            }
-        };
 
         window.updateRecord = async function() {
             if (!currentRecordDocId) {
@@ -1092,6 +1250,462 @@
                         <strong>Error:</strong> Failed to add earthquake - ${error.message}
                     </div>
                 `;
+            }
+        };
+
+        // 💾 CACHE MANAGEMENT FUNCTIONS
+
+        // View earthquake cache status
+        window.showEarthquakeCacheStatus = function() {
+            const totalCached = 
+                window.earthquakeCache.magnitudeRange.size +
+                window.earthquakeCache.magnitudeGreater.size +
+                window.earthquakeCache.locationSearch.size +
+                window.earthquakeCache.timeFilters.size +
+                window.earthquakeCache.networkFilters.size +
+                window.earthquakeCache.fieldSearches.size +
+                window.earthquakeCache.rangeSearches.size;
+            
+            const cacheInfo = `🌍 Earthquake Data Cache Status: ✅ Active\n` +
+                             `Cache Expiry: 5 minutes\n\n` +
+                             `Cache Contents:\n` +
+                             `- Magnitude Ranges: ${window.earthquakeCache.magnitudeRange.size} queries\n` +
+                             `- Magnitude Thresholds: ${window.earthquakeCache.magnitudeGreater.size} queries\n` +
+                             `- Location Searches: ${window.earthquakeCache.locationSearch.size} queries\n` +
+                             `- Time Filters: ${window.earthquakeCache.timeFilters.size} queries\n` +
+                             `- Network Filters: ${window.earthquakeCache.networkFilters.size} queries\n` +
+                             `- Field Searches: ${window.earthquakeCache.fieldSearches.size} queries\n` +
+                             `- Range Searches: ${window.earthquakeCache.rangeSearches.size} queries\n\n` +
+                             `Total Cached Queries: ${totalCached}\n\n` +
+                             `Data Source: Client-side (${earthquakeData.length} records loaded)`;
+            
+            alert(cacheInfo);
+        };
+
+        // Clear earthquake cache
+        window.clearEarthquakeCache = function() {
+            window.earthquakeCache = {
+                magnitudeRange: new Map(),
+                magnitudeGreater: new Map(),
+                locationSearch: new Map(),
+                timeFilters: new Map(),
+                networkFilters: new Map(),
+                fieldSearches: new Map(),
+                rangeSearches: new Map()
+            };
+            alert('🌍 Earthquake data cache cleared!');
+        };
+
+        // Debug function to test cache
+        window.testCache = function() {
+            console.log("🧪 Testing on-demand cache system...");
+            console.log("Cache object:", window.earthquakeCache);
+            console.log("Is cache valid function:", typeof isCacheValid);
+            console.log("Mode: On-demand Firebase queries with caching");
+            
+            // Test cache with dummy data
+            const testKey = "test-5.0-7.0";
+            const testData = {
+                results: [{id: "test", mag: 6.0, lat: 34.0, long: -118.0}],
+                timestamp: Date.now()
+            };
+            
+            window.earthquakeCache.magnitudeRange.set(testKey, testData);
+            console.log("✅ Test data added to cache");
+            
+            const retrieved = window.earthquakeCache.magnitudeRange.get(testKey);
+            console.log("Retrieved from cache:", retrieved);
+            
+            const isValid = isCacheValid(retrieved);
+            console.log("Is cache entry valid?", isValid);
+            
+            alert("Cache test completed - check console for details\n\nMode: On-demand Firebase queries with 5-minute caching\nNo bulk data loading - queries Firebase only when needed!");
+        };
+
+        // Comprehensive bulk testing system
+        window.test1000RandomTuples = async function() {
+            const bulkTestKey = "bulk_test_1000_random";
+            const resultsDiv = document.getElementById('bulkTestResults');
+            const contentDiv = document.getElementById('bulkTestContent');
+            
+            try {
+                showStatus('info', '🚀 Starting 1000 random tuple performance test...');
+                resultsDiv.style.display = 'block';
+                contentDiv.innerHTML = '<p>⏳ Testing in progress... Please wait</p>';
+                
+                console.log('🚀 === BULK PERFORMANCE TEST: 1000 Random Tuples ===');
+                
+                // Step 1: Check if we have cached bulk test data
+                let cachedBulkData = window.earthquakeCache.fieldSearches.get(bulkTestKey);
+                let cacheHit = false;
+                let cacheTime = 0;
+                
+                if (cachedBulkData && isCacheValid(cachedBulkData)) {
+                    console.log('✅ Found valid cached bulk test data');
+                    const cacheStart = performance.now();
+                    const cachedResults = cachedBulkData.results;
+                    cacheTime = performance.now() - cacheStart;
+                    cacheHit = true;
+                    
+                    console.log(`⚡ Cache retrieval: ${cacheTime.toFixed(3)}ms for ${cachedResults.length} records`);
+                    
+                    // Display cache results
+                    contentDiv.innerHTML = `
+                        <div style="background: #d4edda; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                            <h4>🎯 Cache Performance Test Results</h4>
+                            <p><strong>Cache Hit:</strong> ✅ YES</p>
+                            <p><strong>Cache Retrieval Time:</strong> ${cacheTime.toFixed(3)} ms</p>
+                            <p><strong>Records Retrieved:</strong> ${cachedResults.length}</p>
+                            <p><strong>Performance:</strong> ${(cachedResults.length / cacheTime * 1000).toFixed(0)} records/second</p>
+                            <p><strong>Status:</strong> Data served instantly from cache!</p>
+                            <p><em>Click "🚀 Test 1000 Random Tuples" again to compare Firebase vs Cache, or click "🔄 Reset Bulk Test Cache" to clear and retest from Firebase.</em></p>
+                        </div>
+                    `;
+                    
+                    showStatus('success', `Cache test completed: ${cachedResults.length} records in ${cacheTime.toFixed(3)}ms`);
+                    return;
+                }
+                
+                // Step 2: No cache or expired - fetch random tuples from Firebase (FAST!)
+                console.log('📡 No valid cache found - fetching 1000 random tuples from Firebase...');
+                const firebaseStart = performance.now();
+                
+                // Simple approach: Just get first 1000 records (fastest possible query)
+                console.log('🎲 Fetching 1000 random earthquake records (no filters for maximum speed)...');
+                
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    limit(1000) // Simple limit query - fastest possible
+                );
+                
+                contentDiv.innerHTML = '<p>⏳ Fetching 1000 records from Firebase...</p>';
+                
+                const querySnapshot = await getDocs(q);
+                const testResults = [];
+                
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    testResults.push({
+                        id: doc.id,
+                        ...data
+                    });
+                });
+                
+                const firebaseTime = performance.now() - firebaseStart;
+                console.log(`📡 Firebase fetch: ${firebaseTime.toFixed(3)}ms for ${testResults.length} records`);
+                
+                // Step 3: Cache the results
+                window.earthquakeCache.fieldSearches.set(bulkTestKey, {
+                    results: testResults,
+                    timestamp: Date.now(),
+                    query_info: `Bulk test: Single query for ${testResults.length} records`
+                });
+                
+                // Step 4: Test cache retrieval
+                console.log('⚡ Testing cache retrieval speed...');
+                const cacheStart = performance.now();
+                const cachedData = window.earthquakeCache.fieldSearches.get(bulkTestKey);
+                const cacheRetrievalTime = performance.now() - cacheStart;
+                
+                // Step 5: Calculate performance metrics
+                const firebaseSpeed = testResults.length / firebaseTime * 1000; // records per second
+                const cacheSpeed = testResults.length / cacheRetrievalTime * 1000; // records per second
+                const speedImprovement = cacheSpeed / firebaseSpeed;
+                
+                // Log comprehensive results
+                console.log('📊 === PERFORMANCE COMPARISON ===');
+                console.log(`Firebase: ${firebaseTime.toFixed(3)}ms (${firebaseSpeed.toFixed(0)} records/sec)`);
+                console.log(`Cache: ${cacheRetrievalTime.toFixed(3)}ms (${cacheSpeed.toFixed(0)} records/sec)`);
+                console.log(`Speed improvement: ${speedImprovement.toFixed(1)}x faster`);
+                console.log(`Total records tested: ${testResults.length}`);
+                
+                // Display comprehensive results
+                contentDiv.innerHTML = `
+                    <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                        <h4>📡 Firebase Performance</h4>
+                        <p><strong>Fetch Time:</strong> ${firebaseTime.toFixed(3)} ms</p>
+                        <p><strong>Query Type:</strong> Simple limit(1000) - fastest possible</p>
+                        <p><strong>Records Fetched:</strong> ${testResults.length}</p>
+                        <p><strong>Speed:</strong> ${firebaseSpeed.toFixed(0)} records/second</p>
+                    </div>
+                    <div style="background: #d4edda; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                        <h4>⚡ Cache Performance</h4>
+                        <p><strong>Retrieval Time:</strong> ${cacheRetrievalTime.toFixed(3)} ms</p>
+                        <p><strong>Records Retrieved:</strong> ${testResults.length}</p>
+                        <p><strong>Speed:</strong> ${cacheSpeed.toFixed(0)} records/second</p>
+                        <p><strong>Improvement:</strong> <span style="color: #28a745; font-weight: bold;">${speedImprovement.toFixed(1)}x FASTER</span></p>
+                    </div>
+                    <div style="background: #f8d7da; padding: 10px; border-radius: 5px;">
+                        <h4>💰 Cost Savings Analysis</h4>
+                        <p><strong>Firebase Reads Used:</strong> 1 simple query</p>
+                        <p><strong>Cache Efficiency:</strong> Future identical requests = 0 Firebase reads</p>
+                        <p><strong>Next Test:</strong> Click "🚀 Test 1000 Random Tuples" again to see cache-only performance!</p>
+                        <p><em>Use "🔄 Reset Bulk Test Cache" to clear cache and retest Firebase performance.</em></p>
+                    </div>
+                `;
+                
+                // Log performance data to Firebase (fix the function call)
+                await logEarthquakePerformance('bulk_test_1000_tuples', firebaseTime, testResults.length, {
+                    cache_hit: false,
+                    query_type: 'simple_limit_1000',
+                    notes: `Bulk performance test: Single Firebase query for ${testResults.length} records`
+                });
+                
+                showStatus('success', `Bulk test completed: ${testResults.length} records | Firebase: ${firebaseTime.toFixed(0)}ms | Cache: ${cacheRetrievalTime.toFixed(0)}ms | ${speedImprovement.toFixed(1)}x faster`);
+                
+            } catch (error) {
+                console.error('❌ Error in bulk test:', error);
+                contentDiv.innerHTML = `
+                    <div style="background: #f8d7da; padding: 10px; border-radius: 5px;">
+                        <h4>❌ Test Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Check console for detailed error information.</p>
+                    </div>
+                `;
+                showStatus('error', 'Bulk test failed: ' + error.message);
+            }
+        };
+
+        // Reset the bulk test cache
+        window.resetBulkTestCache = function() {
+            const bulkTestKey = "bulk_test_1000_random";
+            
+            if (window.earthquakeCache.fieldSearches.has(bulkTestKey)) {
+                window.earthquakeCache.fieldSearches.delete(bulkTestKey);
+                console.log('🔄 Bulk test cache cleared');
+                
+                const resultsDiv = document.getElementById('bulkTestResults');
+                const contentDiv = document.getElementById('bulkTestContent');
+                
+                contentDiv.innerHTML = `
+                    <div style="background: #d1ecf1; padding: 10px; border-radius: 5px;">
+                        <h4>🔄 Bulk Test Cache Reset</h4>
+                        <p><strong>Status:</strong> Cache cleared successfully</p>
+                        <p><strong>Next Action:</strong> Click "🚀 Test 1000 Random Tuples" to run a fresh Firebase performance test</p>
+                    </div>
+                `;
+                
+                showStatus('success', 'Bulk test cache cleared - ready for fresh Firebase test');
+            } else {
+                console.log('ℹ️ No bulk test cache to clear');
+                showStatus('info', 'No bulk test cache found to clear');
+            }
+        };
+
+        // View performance data in browser
+        window.viewEarthquakePerformanceData = async function() {
+            try {
+                console.log('🔍 Fetching performance data...');
+                showStatus('info', 'Loading performance data...');
+                
+                const resultsDiv = document.getElementById('performanceDataResults');
+                const contentDiv = document.getElementById('performanceDataContent');
+                
+                const q = query(collection(db, "earthquake_performance_logs"), orderBy("timestamp", "desc"));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    contentDiv.innerHTML = `
+                        <div style="background: #fff3cd; padding: 15px; border-radius: 5px; text-align: center;">
+                            <h4>📊 No Performance Data Found</h4>
+                            <p>No performance logs available yet. Run some searches or tests to generate performance data.</p>
+                        </div>
+                    `;
+                    resultsDiv.style.display = 'block';
+                    showStatus('info', 'No performance data found');
+                    return;
+                }
+                
+                // Store data globally for export function
+                window.currentPerformanceData = [];
+                let htmlContent = `
+                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                            <thead style="background: #e9ecef; position: sticky; top: 0;">
+                                <tr>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Timestamp</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Function</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Time (ms)</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Results</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Cache Hit</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    window.currentPerformanceData.push(data);
+                    
+                    const timestamp = data.timestamp.toDate().toLocaleString();
+                    const cacheHit = data.cache_hit ? '✅' : '❌';
+                    const cacheHitColor = data.cache_hit ? '#28a745' : '#dc3545';
+                    
+                    // Create details string
+                    let details = [];
+                    if (data.min_magnitude && data.max_magnitude) {
+                        details.push(`Mag: ${data.min_magnitude}-${data.max_magnitude}`);
+                    }
+                    if (data.threshold) {
+                        details.push(`Threshold: ${data.threshold}`);
+                    }
+                    if (data.operator) {
+                        details.push(`Op: ${data.operator}`);
+                    }
+                    if (data.query_type) {
+                        details.push(`Type: ${data.query_type}`);
+                    }
+                    if (data.notes) {
+                        details.push(data.notes);
+                    }
+                    
+                    htmlContent += `
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${timestamp}</td>
+                            <td style="padding: 6px; border: 1px solid #ddd; font-weight: bold;">${data.function_name}</td>
+                            <td style="padding: 6px; border: 1px solid #ddd; text-align: right;">${data.execution_time_ms.toFixed(1)}</td>
+                            <td style="padding: 6px; border: 1px solid #ddd; text-align: right;">${data.result_count}</td>
+                            <td style="padding: 6px; border: 1px solid #ddd; text-align: center; color: ${cacheHitColor};">${cacheHit}</td>
+                            <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${details.join(', ') || '-'}</td>
+                        </tr>
+                    `;
+                });
+                
+                htmlContent += `
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top: 10px; padding: 10px; background: #e9ecef; border-radius: 5px; font-size: 12px;">
+                        <strong>Performance Summary:</strong> ${snapshot.size} total entries | 
+                        Cache hits: ${window.currentPerformanceData.filter(d => d.cache_hit).length} | 
+                        Firebase queries: ${window.currentPerformanceData.filter(d => !d.cache_hit).length}
+                    </div>
+                `;
+                
+                contentDiv.innerHTML = htmlContent;
+                resultsDiv.style.display = 'block';
+                showStatus('success', `Performance data loaded: ${snapshot.size} entries`);
+                
+            } catch (error) {
+                console.error('❌ Error fetching performance data:', error);
+                showStatus('error', 'Failed to load performance data: ' + error.message);
+            }
+        };
+
+        // Hide performance data view
+        window.hidePerformanceData = function() {
+            document.getElementById('performanceDataResults').style.display = 'none';
+        };
+
+        // Export currently viewed performance data to CSV
+        window.exportCurrentPerformanceData = function() {
+            if (!window.currentPerformanceData || window.currentPerformanceData.length === 0) {
+                alert('No performance data to export. Please view performance data first.');
+                return;
+            }
+            
+            try {
+                // Convert to CSV format
+                const headers = ["timestamp", "function_name", "execution_time_ms", "result_count", "cache_hit", "min_magnitude", "max_magnitude", "operator", "threshold", "notes"];
+                let csvContent = headers.join(",") + "\n";
+                
+                window.currentPerformanceData.forEach(data => {
+                    const row = [
+                        data.timestamp.toDate().toISOString(),
+                        data.function_name,
+                        data.execution_time_ms.toFixed(3),
+                        data.result_count,
+                        data.cache_hit || false,
+                        data.min_magnitude || '',
+                        data.max_magnitude || '',
+                        data.operator || '',
+                        data.threshold || '',
+                        data.notes || ''
+                    ];
+                    csvContent += row.map(field => `"${field}"`).join(",") + "\n";
+                });
+                
+                // Download CSV file
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `earthquake_performance_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showStatus('success', 'Performance data exported to CSV file');
+                
+            } catch (error) {
+                console.error('❌ Export failed:', error);
+                alert("Export failed: " + error.message);
+            }
+        };
+
+        // Clear all performance data from Firebase
+        window.clearPerformanceData = async function() {
+            // Confirm before clearing
+            const confirmed = confirm('⚠️ WARNING: This will permanently delete ALL performance data from Firebase.\n\nThis action cannot be undone. Are you sure you want to continue?');
+            
+            if (!confirmed) {
+                return;
+            }
+            
+            try {
+                showStatus('info', 'Clearing performance data...');
+                console.log('🗑️ Starting to clear all performance data...');
+                
+                // Get all performance log documents
+                const q = query(collection(db, "earthquake_performance_logs"));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    showStatus('info', 'No performance data found to clear');
+                    return;
+                }
+                
+                const totalDocs = snapshot.size;
+                console.log(`Found ${totalDocs} performance documents to delete`);
+                
+                // Delete all documents
+                let deletedCount = 0;
+                const deletePromises = [];
+                
+                snapshot.forEach(doc => {
+                    deletePromises.push(deleteDoc(doc.ref));
+                });
+                
+                // Execute all deletions
+                await Promise.all(deletePromises);
+                deletedCount = deletePromises.length;
+                
+                console.log(`✅ Successfully deleted ${deletedCount} performance documents`);
+                
+                // Clear the current view
+                const performanceDataDiv = document.getElementById('performanceDataResults');
+                const contentDiv = document.getElementById('performanceDataContent');
+                
+                contentDiv.innerHTML = `
+                    <div style="background: #d4edda; padding: 15px; border-radius: 5px; text-align: center;">
+                        <h4>🗑️ Performance Data Cleared</h4>
+                        <p><strong>Deleted:</strong> ${deletedCount} performance log entries</p>
+                        <p>All historical performance data has been permanently removed from Firebase.</p>
+                        <p><em>New performance data will be logged as you use the application.</em></p>
+                    </div>
+                `;
+                
+                // Clear the globally stored data
+                window.currentPerformanceData = [];
+                
+                showStatus('success', `Performance data cleared: ${deletedCount} entries deleted`);
+                
+            } catch (error) {
+                console.error('❌ Error clearing performance data:', error);
+                showStatus('error', 'Failed to clear performance data: ' + error.message);
+                alert("Clear operation failed: " + error.message);
             }
         };
     </script>
