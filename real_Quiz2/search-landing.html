@@ -248,11 +248,11 @@
             <div class="form-group proximity-inputs">
                 <div class="coord-group">
                     <label>Latitude:</label>
-                    <input type="number" id="centerLat" value="34.0522" step="0.0001" min="-90" max="90">
+                    <input type="number" id="centerLat" value="31.667" step="0.0001" min="-90" max="90">
                 </div>
                 <div class="coord-group">
                     <label>Longitude:</label>
-                    <input type="number" id="centerLon" value="-118.2437" step="0.0001" min="-180" max="180">
+                    <input type="number" id="centerLon" value="-104.19" step="0.0001" min="-180" max="180">
                 </div>
                 <button onclick="searchByProximity()">Search Proximity</button>
                 <button class="clear-btn" onclick="clearResults()">Clear</button>
@@ -566,6 +566,18 @@
             }
         });
 
+        // Helper function to filter magnitude results to valid range (0.1 to 10.0)
+        function filterValidMagnitudes(results) {
+            return results.filter(eq => {
+                const mag = parseFloat(eq.mag);
+                const isValid = !isNaN(mag) && mag >= 0.1 && mag <= 10.0;
+                if (!isValid && eq.mag !== null && eq.mag !== undefined) {
+                    console.log(`Filtered out earthquake with invalid magnitude: ${eq.mag} (ID: ${eq.id})`);
+                }
+                return isValid;
+            });
+        }
+
         // Make functions available globally
         window.searchByMagnitudeThreshold = async function() {
             const startTime = performance.now();
@@ -658,6 +670,11 @@
                 });
                 
                 console.log(`🎯 Filtered to ${results.length} results for magnitude ${operator} ${threshold}`);
+                
+                // Apply magnitude range filter (0.1 to 10.0)
+                const originalCount = results.length;
+                results = filterValidMagnitudes(results);
+                console.log(`📏 Magnitude filtering: ${originalCount} → ${results.length} (removed ${originalCount - results.length} with mag outside 0.1-10.0 range)`);
                 
                 // 3. Cache the results
                 window.earthquakeCache.magnitudeGreater.set(cacheKey, {
@@ -763,17 +780,22 @@
                 
                 console.log(`🎯 Filtered to ${results.length} results in magnitude range ${minMag}-${maxMag}`);
                 
+                // Apply additional magnitude range filter (0.1 to 10.0) - this ensures data quality
+                const originalCount = results.length;
+                const filteredResults = filterValidMagnitudes(results);
+                console.log(`📏 Magnitude validation: ${originalCount} → ${filteredResults.length} (removed ${originalCount - filteredResults.length} with mag outside 0.1-10.0 range)`);
+                
                 // 3. Cache the results
                 window.earthquakeCache.magnitudeRange.set(cacheKey, {
-                    results: results,
+                    results: filteredResults,
                     timestamp: Date.now()
                 });
-                console.log(`💾 Results cached with key: ${cacheKey} (${results.length} results)`);
+                console.log(`💾 Results cached with key: ${cacheKey} (${filteredResults.length} results)`);
                 
                 const executionTime = performance.now() - startTime;
                 
                 // Log fresh performance
-                await logEarthquakePerformance('magnitude_range', executionTime, results.length, {
+                await logEarthquakePerformance('magnitude_range', executionTime, filteredResults.length, {
                     min_magnitude: minMag,
                     max_magnitude: maxMag,
                     cache_hit: false,
@@ -781,7 +803,7 @@
                     data_source: 'firebase_on_demand'
                 });
                 
-                displayResults(results, `Magnitude between ${minMag} and ${maxMag}`);
+                displayResults(filteredResults, `Magnitude between ${minMag} and ${maxMag}`);
                 
             } catch (error) {
                 console.error('❌ Firebase query error:', error);
@@ -790,6 +812,7 @@
         };
 
         window.searchByProximity = async function() {
+            const startTime = performance.now();
             const radius = parseFloat(document.getElementById('proximityRadius').value);
             const centerLat = parseFloat(document.getElementById('centerLat').value);
             const centerLon = parseFloat(document.getElementById('centerLon').value);
@@ -799,14 +822,89 @@
                 return;
             }
             
-            showStatus('loading', 'Searching by proximity...');
-            
-            const results = earthquakeData.filter(eq => {
-                const distance = calculateDistance(centerLat, centerLon, parseFloat(eq.lat), parseFloat(eq.long));
-                return distance <= radius;
-            });
-            
-            displayResults(results, `Within ${radius}km of (${centerLat}, ${centerLon})`);
+            try {
+                showStatus('info', 'Searching by proximity...');
+                
+                // Create cache key for location search
+                const locationKey = `location-${centerLat}-${centerLon}-${radius}`;
+                
+                // Check cache first
+                const cachedLocationData = window.earthquakeCache.locationSearch.get(locationKey);
+                if (cachedLocationData && isCacheValid(cachedLocationData)) {
+                    console.log(`✅ Cache hit for location search: ${locationKey}`);
+                    const executionTime = performance.now() - startTime;
+                    
+                    displayResults(cachedLocationData.results, `Within ${radius}km of (${centerLat}, ${centerLon})`);
+                    await logEarthquakePerformance('searchByProximity', executionTime, cachedLocationData.results.length, {
+                        cache_hit: true,
+                        center_lat: centerLat,
+                        center_lon: centerLon,
+                        radius: radius
+                    });
+                    return;
+                }
+                
+                console.log(`📡 Cache miss for location search: ${locationKey} - querying Firebase`);
+                
+                // No cache or expired - query Firebase for ALL records
+                // Note: Firebase doesn't support geo-queries efficiently, so we get all records and filter
+                const q = query(collection(db, window.COLLECTION_NAME));
+                const querySnapshot = await getDocs(q);
+                
+                const allResults = [];
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    allResults.push({
+                        id: doc.id,
+                        ...data
+                    });
+                });
+                
+                console.log(`📡 Retrieved ${allResults.length} total records from Firebase for distance filtering`);
+                
+                // Filter by distance
+                const results = allResults.filter(eq => {
+                    const lat = parseFloat(eq.lat);
+                    const lon = parseFloat(eq.long);
+                    
+                    if (isNaN(lat) || isNaN(lon)) {
+                        console.warn(`Invalid coordinates for record ${eq.id}: lat=${eq.lat}, long=${eq.long}`);
+                        return false;
+                    }
+                    
+                    const distance = calculateDistance(centerLat, centerLon, lat, lon);
+                    console.log(`Distance from (${centerLat}, ${centerLon}) to (${lat}, ${lon}): ${distance.toFixed(2)}km`);
+                    return distance <= radius;
+                });
+                
+                console.log(`🎯 Found ${results.length} earthquakes within ${radius}km of (${centerLat}, ${centerLon})`);
+                
+                // Apply magnitude filtering (0.1 to 10.0) to proximity results
+                const originalCount = results.length;
+                const filteredResults = filterValidMagnitudes(results);
+                console.log(`📏 Magnitude filtering for proximity: ${originalCount} → ${filteredResults.length} (removed ${originalCount - filteredResults.length} with mag outside 0.1-10.0 range)`);
+                
+                // Cache the filtered results
+                window.earthquakeCache.locationSearch.set(locationKey, {
+                    results: filteredResults,
+                    timestamp: Date.now()
+                });
+                
+                const executionTime = performance.now() - startTime;
+                
+                displayResults(filteredResults, `Within ${radius}km of (${centerLat}, ${centerLon})`);
+                await logEarthquakePerformance('searchByProximity', executionTime, filteredResults.length, {
+                    cache_hit: false,
+                    center_lat: centerLat,
+                    center_lon: centerLon,
+                    radius: radius,
+                    total_records_checked: allResults.length
+                });
+                
+            } catch (error) {
+                console.error('Error in proximity search:', error);
+                showStatus('error', 'Error searching by proximity: ' + error.message);
+            }
         };
 
         window.clearResults = function() {
@@ -1362,6 +1460,14 @@
                         </div>
                     `;
                     
+                    // Log cache hit performance to Firebase
+                    await logEarthquakePerformance('bulk_test_cache_hit', cacheTime, cachedResults.length, {
+                        cache_hit: true,
+                        query_type: 'cache_hit_only',
+                        test_type: 'bulk_performance_test',
+                        notes: `Pure cache hit: ${cachedResults.length} records retrieved in ${cacheTime.toFixed(3)}ms`
+                    });
+                    
                     showStatus('success', `Cache test completed: ${cachedResults.length} records in ${cacheTime.toFixed(3)}ms`);
                     return;
                 }
@@ -1444,11 +1550,20 @@
                     </div>
                 `;
                 
-                // Log performance data to Firebase (fix the function call)
-                await logEarthquakePerformance('bulk_test_1000_tuples', firebaseTime, testResults.length, {
+                // Log performance data to Firebase - BOTH Firebase and Cache performance
+                await logEarthquakePerformance('bulk_test_firebase_fetch', firebaseTime, testResults.length, {
                     cache_hit: false,
                     query_type: 'simple_limit_1000',
-                    notes: `Bulk performance test: Single Firebase query for ${testResults.length} records`
+                    test_type: 'bulk_performance_test',
+                    notes: `Firebase fetch: Single query for ${testResults.length} records`
+                });
+                
+                await logEarthquakePerformance('bulk_test_cache_retrieval', cacheRetrievalTime, testResults.length, {
+                    cache_hit: true,
+                    query_type: 'cache_retrieval',
+                    test_type: 'bulk_performance_test',
+                    speed_improvement: speedImprovement.toFixed(1) + 'x',
+                    notes: `Cache retrieval: ${speedImprovement.toFixed(1)}x faster than Firebase`
                 });
                 
                 showStatus('success', `Bulk test completed: ${testResults.length} records | Firebase: ${firebaseTime.toFixed(0)}ms | Cache: ${cacheRetrievalTime.toFixed(0)}ms | ${speedImprovement.toFixed(1)}x faster`);
