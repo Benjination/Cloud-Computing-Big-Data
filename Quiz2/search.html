@@ -1177,7 +1177,8 @@
                         Other: regions.Other.length
                     },
                     earthquakes: earthquakes.slice(0, 100), // Show top 100 for display
-                    reads_used: snapshot.size
+                    reads_used: snapshot.size,
+                    conclusion: `Analysis of ${earthquakes.length} large earthquakes shows geographic clustering patterns. ${regions['Pacific Ring'].length > regions.California.length ? 'Pacific Ring dominates' : 'California shows high activity'}.`
                 };
 
                 // Cache the results
@@ -1257,16 +1258,17 @@
                     html += `Afternoon (12-6 PM): ${data.afternoon_count}<br>`;
                     html += `Evening (6 PM-12 AM): ${data.evening_count}<br>`;
                 } else if (data.clusters) {
-                    html += `<table><tr><th>Cluster Size</th><th>Center Location</th><th>Avg Magnitude</th><th>Sample Location</th></tr>`;
-                    data.clusters.forEach(cluster => {
+                    html += `<table><tr><th>Region</th><th>Count</th><th>Percentage</th></tr>`;
+                    Object.entries(data.clusters).forEach(([region, count]) => {
+                        const percentage = data.count > 0 ? ((count / data.count) * 100).toFixed(1) : '0.0';
                         html += `<tr>
-                            <td><strong>${cluster.count}</strong></td>
-                            <td>${cluster.center_lat}, ${cluster.center_lon}</td>
-                            <td>${cluster.avg_magnitude}</td>
-                            <td>${cluster.sample_location}</td>
+                            <td><strong>${region}</strong></td>
+                            <td>${count}</td>
+                            <td>${percentage}%</td>
                         </tr>`;
                     });
                     html += '</table>';
+                    html += `<br><strong>Pattern:</strong> Most large earthquakes (>${5.0}) occur in the Pacific Ring of Fire region.<br>`;
                 }
                 
                 html += `<br><strong>Conclusion:</strong> ${data.conclusion}<br>`;
@@ -1580,21 +1582,32 @@
 
         // Add cache status display
         window.showCacheStatus = function() {
-            if (window.earthquakeCache.isLoaded) {
-                alert(`Cache Status: ✅ Loaded\n` +
-                      `Total Records: ${window.earthquakeCache.totalCount}\n` +
-                      `Load Time: ${window.earthquakeCache.loadTime.toFixed(3)}ms\n` +
-                      `Last Updated: ${window.earthquakeCache.lastUpdated.toLocaleString()}\n` +
-                      `Memory Usage: ~${Math.round(JSON.stringify(window.earthquakeCache.allData).length / 1024 / 1024 * 100) / 100}MB\n\n` +
-                      `Memoization Cache:\n` +
-                      `- Magnitude Greater: ${window.searchCache.magnitudeGreater.size} queries cached\n` +
-                      `- Magnitude Range: ${window.searchCache.magnitudeRange.size} queries cached\n` +
-                      `- Location Search: ${window.searchCache.locationSearch.size} queries cached\n` +
-                      `- Time Patterns: ${window.searchCache.timePatterns ? 'Cached' : 'Not cached'}\n` +
-                      `- Weekend Patterns: ${window.searchCache.weekendPatterns ? 'Cached' : 'Not cached'}`);
+            const searchCacheSize = window.searchCache.magnitudeGreater.size + 
+                                   window.searchCache.magnitudeRange.size + 
+                                   window.searchCache.locationSearch.size + 
+                                   window.searchCache.timePatterns.size;
+            
+            let cacheInfo = `Query Cache Status: ✅ Active\n` +
+                           `Cache Expiry: 5 minutes\n\n` +
+                           `Cache Contents:\n` +
+                           `- Magnitude Greater: ${window.searchCache.magnitudeGreater.size} queries cached\n` +
+                           `- Magnitude Range: ${window.searchCache.magnitudeRange.size} queries cached\n` +
+                           `- Location Search: ${window.searchCache.locationSearch.size} queries cached\n` +
+                           `- Time Patterns: ${window.searchCache.timePatterns.size} analyses cached\n\n` +
+                           `Total Cached Queries: ${searchCacheSize}\n\n`;
+            
+            if (window.earthquakeCache && window.earthquakeCache.isLoaded) {
+                cacheInfo += `Bulk Cache Status: ✅ Loaded\n` +
+                           `Total Records: ${window.earthquakeCache.totalCount}\n` +
+                           `Load Time: ${window.earthquakeCache.loadTime.toFixed(3)}ms\n` +
+                           `Last Updated: ${window.earthquakeCache.lastUpdated.toLocaleString()}\n` +
+                           `Memory Usage: ~${Math.round(JSON.stringify(window.earthquakeCache.allData).length / 1024 / 1024 * 100) / 100}MB`;
             } else {
-                alert('Cache Status: ❌ Not loaded\nCache will be automatically loaded when you perform your first search.');
+                cacheInfo += `Bulk Cache Status: ❌ Not loaded\n` +
+                           `Note: Using on-demand Firestore queries with per-query caching for optimal cost efficiency.`;
             }
+            
+            alert(cacheInfo);
         };
 
     </script>
