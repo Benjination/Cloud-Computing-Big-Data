@@ -33,7 +33,7 @@ Quiz Q3, Fall 2025   (c) DL, UTA, 2025
 
      If you have computer, or other, problems, please raise your hand immediately.
 
-     If you understand and agree, please initial here:
+     If you understand and agree, please initial here: BN
      _________________
 
  2. Get files from this same folder.
@@ -55,22 +55,108 @@ Show and submit code, when each part is complete, raise your hand and then show 
          the time, the id, and the latitude and longitude values for all in within that range.
          Also - please show the time to do those queries. 
 
+     **TA TESTING INSTRUCTIONS FOR 10(a):**
+     1. Navigate to section "4. 📅 Time Range Search (Quiz 3 Req 10a)"
+     2. Enter Start Time: 15000
+     3. Enter End Time: 16000
+     4. Click "🔍 Search Time Range"
+     5. Verify results show: ID, net value, time, latitude, longitude for all records in range
+     6. Verify execution time is prominently displayed in green performance box
+     7. Test caching: Run same search again and note faster execution time with "(Cached)" label
+
      (b) Allow a user to give a time (for example 15560) and a net value (for example "ak") and a count C (for example 3)
          and you will show all C events at that net value starting at that time (for this example at time 15560, 15820,
          15840 at net value "ak" show those 3 events with the same attributes as part a)
-         Also - please show the time to do those queries. 
+         Also - please show the time to do those queries.
+
+     **TA TESTING INSTRUCTIONS FOR 10(b):**
+     1. Navigate to section "5. 🔗 Time + Net + Count Search (Quiz 3 Req 10b)"
+     2. Enter Starting Time: 15560
+     3. Enter Net Value: ak
+     4. Enter Count (C): 3
+     5. Click "🔍 Search Sequential Events"
+     6. Verify results show exactly 3 sequential events at net "ak" starting from time 15560
+     7. Verify same attributes as 10(a): ID, net, time, latitude, longitude
+     8. Verify execution time displayed in cyan performance box
+     9. Test with different net values: "us", "ci", "nn" 
 
  11. A user will give you the number of times (T) to do the "query", you will do both of the previous questions 
      that number (T) of times (that is repeat the query T times) and show the results as well as the the individual 
      times for each followed by the total time taken. (slight modification to 10.)
 
+     **TA TESTING INSTRUCTIONS FOR 11:**
+     1. Navigate to section "6. 🔄 Repeated Query Performance Testing (Quiz 3 Req 11)"
+     2. Set Number of Repetitions (T): 5
+     3. Verify test parameters are set:
+        - Time Range: Start Time: 15000, End Time: 16000
+        - Time+Net+Count: Starting Time: 15500, Net Value: us, Count: 3
+     4. Click "🚀 Run T Repetition Tests"
+     5. Verify results show:
+        - Overall summary with total execution time
+        - Individual iteration results for both query types
+        - Cache performance statistics (hits/misses/hit rate)
+        - Detailed table showing each of the 5 repetitions with execution times
+        - Cache hit indicators (✅ for cache hit, ❌ for Firebase query)
+     6. Note: First iteration should be slower (Firebase), subsequent iterations faster (cache hits)
+
  12. The user will give a time (if it exists) and modify any of the attributes.
+
+     **TA TESTING INSTRUCTIONS FOR 12:**
+     1. Scroll down to "Update Earthquake Record Service" section
+     2. Enter a time value that exists in database: 15000
+     3. Click "🔍 Find Record by Time"
+     4. Verify existing record details are displayed
+     5. Modify any attribute (e.g., change magnitude from 2.1 to 2.5)
+     6. Click "💾 Update Record"
+     7. Verify success message and updated details are shown
+     8. Optionally: Re-search for same time to confirm changes persisted in Firebase
 
  13. Repeat the previous question 10 and 11 using (in addition to the database) an in-memory caching mechanism 
      (NOT an in-memory database) then show us. 
      Please show us the number of cache hits and cache misses and times.
 
+     **TA TESTING INSTRUCTIONS FOR 13:**
+     CACHING IS INTEGRATED INTO ALL SEARCHES - DEMONSTRATE AS FOLLOWS:
+     
+     A. Cache Performance in Individual Searches:
+        1. Perform any search from 10(a) or 10(b) - note execution time
+        2. Repeat EXACT same search - note much faster time and "(Cached)" label
+        3. Wait 5+ minutes OR click "🧹 Clear Cache" button to reset
+        4. Repeat search - note slower time as cache was cleared
+     
+     B. Cache Statistics in Repeated Testing (Requirement 11):
+        1. Run the repeated query test from requirement 11
+        2. Observe detailed cache statistics:
+           - Cache Hit Rate percentage
+           - Individual iteration cache hit indicators (✅/❌)
+           - First iteration: Cache miss (slower, Firebase query)
+           - Subsequent iterations: Cache hits (faster, memory retrieval)
+        3. Console logs show cache operations for technical verification
+     
+     C. Cache Management:
+        1. Scroll to "🧹 Cache Controls" section
+        2. Click "🧹 Clear Cache" to demonstrate cache clearing functionality
+        3. Verify all subsequent searches hit Firebase until cache repopulates
+
  14. Show us, in a link, the application running and we will try it out. Only for parts 10,11,12,13,
+
+     **TA TESTING INSTRUCTIONS FOR 14:**
+     APPLICATION LINK: [Your live application URL here]
+     
+     QUICK VERIFICATION CHECKLIST:
+     ✅ Requirement 10(a): Time Range Search - Section 4
+     ✅ Requirement 10(b): Time+Net+Count Search - Section 5  
+     ✅ Requirement 11: Repeated Query Testing - Section 6
+     ✅ Requirement 12: Record Modification - "Update Earthquake Record Service"
+     ✅ Requirement 13: Caching - Integrated throughout all searches
+     
+     DEMONSTRATION FLOW FOR TA:
+     1. Start with Time Range Search (10a) - show execution time and results
+     2. Repeat same search to show caching effect (faster time, "Cached" label)
+     3. Test Time+Net+Count Search (10b) with different parameters  
+     4. Run Repeated Query Test (11) to show comprehensive performance analysis
+     5. Update a record (12) to show modification capability
+     6. Clear cache and re-run searches to show cache behavior (13)
 
  15. When complete, return (send) this quiz
      If you finish early, send this immediately, otherwise send between

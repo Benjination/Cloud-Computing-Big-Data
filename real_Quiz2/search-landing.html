@@ -301,9 +301,40 @@
             </div>
         </div>
 
+        <!-- Quiz 3 Requirement 11: Repeated Query Performance Testing -->
+        <div class="search-form">
+            <h3>6. 🔄 Repeated Query Performance Testing (Quiz 3 Req 11)</h3>
+            <p><strong>Requirement:</strong> Repeat time-based queries T times and measure performance</p>
+            <div class="form-group">
+                <label>Number of Repetitions (T):</label>
+                <input type="number" id="repetitionsCount" placeholder="e.g., 5" min="1" max="50" value="5">
+            </div>
+            <div class="form-group">
+                <label>Test Parameters for Time Range Search (10a):</label>
+                <input type="number" id="bulkStartTime" placeholder="Start Time" value="15000">
+                <input type="number" id="bulkEndTime" placeholder="End Time" value="16000">
+            </div>
+            <div class="form-group">
+                <label>Test Parameters for Time+Net+Count Search (10b):</label>
+                <input type="number" id="bulkTimeStart" placeholder="Starting Time" value="15500">
+                <input type="text" id="bulkNetValue" placeholder="Net Value" value="us" maxlength="10">
+                <input type="number" id="bulkCount" placeholder="Count" value="3" min="1" max="20">
+            </div>
+            <div class="form-group">
+                <button onclick="runRepeatedQueryTests()" style="background: #e74c3c; color: white; font-size: 16px;">
+                    🚀 Run T Repetition Tests
+                </button>
+                <button class="clear-btn" onclick="clearRepeatedTestResults()">Clear Results</button>
+            </div>
+            <div id="repeatedTestResults" style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px; display: none;">
+                <h4>Repeated Query Performance Results:</h4>
+                <div id="repeatedTestContent"></div>
+            </div>
+        </div>
+
         <!-- Q14: Net Value Search and Delete -->
         <div class="search-form">
-            <h3>6. Q14: Net Value Management</h3>
+            <h3>7. Q14: Net Value Management</h3>
             <p><strong>Quiz Requirement:</strong> Count occurrences of net value, delete all entries, show remaining count</p>
             <div class="form-group">
                 <label>Net Value:</label>
@@ -998,33 +1029,38 @@
             console.log(`🔍 Querying Firebase for time range ${timeStart}-${timeEnd}`);
             
             try {
-                // Query Firebase with time range filter
+                // Query Firebase with time >= filter only (to avoid composite index requirement)
+                // Then filter for <= in JavaScript for better compatibility
                 const q = query(
                     collection(db, window.COLLECTION_NAME),
                     where('time', '>=', timeStart),
-                    where('time', '<=', timeEnd),
                     orderBy('time')
                 );
                 const snapshot = await getDocs(q);
-                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase`);
+                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase for time >= ${timeStart}`);
                 
-                // Process results
+                // Process results and filter by end time in JavaScript
                 const results = [];
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
-                    results.push({
-                        id: data.id || docSnap.id,
-                        time: data.time,
-                        lat: parseFloat(data.latitude) || 0,
-                        long: parseFloat(data.longitude) || 0,
-                        mag: parseFloat(data.mag) || 0,
-                        net: data.net || '',
-                        nst: data.nst || 0,
-                        firebase_doc_id: docSnap.id
-                    });
+                    const time = data.time;
+                    
+                    // Only include records within the time range
+                    if (time >= timeStart && time <= timeEnd) {
+                        results.push({
+                            id: data.id || docSnap.id,
+                            time: time,
+                            lat: parseFloat(data.latitude) || 0,
+                            long: parseFloat(data.longitude) || 0,
+                            mag: parseFloat(data.mag) || 0,
+                            net: data.net || '',
+                            nst: data.nst || 0,
+                            firebase_doc_id: docSnap.id
+                        });
+                    }
                 });
                 
-                console.log(`🎯 Found ${results.length} earthquakes in time range ${timeStart}-${timeEnd}`);
+                console.log(`🎯 Found ${results.length} earthquakes in time range ${timeStart}-${timeEnd} (filtered from ${snapshot.size} total records)`);
                 
                 // Apply magnitude filtering (0.1 to 10.0) to time range results
                 const originalCount = results.length;
@@ -1179,6 +1215,273 @@
                 console.error('❌ Firebase query error:', error);
                 showStatus('error', 'Time+net+count search failed: ' + error.message);
             }
+        };
+
+        // 🔄 REPEATED QUERY PERFORMANCE TESTING (Quiz 3 Requirement 11)
+        window.runRepeatedQueryTests = async function() {
+            const repetitions = parseInt(document.getElementById('repetitionsCount').value);
+            const startTime = parseInt(document.getElementById('bulkStartTime').value);
+            const endTime = parseInt(document.getElementById('bulkEndTime').value);
+            const timeStart = parseInt(document.getElementById('bulkTimeStart').value);
+            const netValue = document.getElementById('bulkNetValue').value.trim();
+            const count = parseInt(document.getElementById('bulkCount').value);
+            
+            // Validation
+            if (isNaN(repetitions) || repetitions < 1) {
+                showStatus('error', 'Please enter a valid number of repetitions (T >= 1)');
+                return;
+            }
+            
+            if (isNaN(startTime) || isNaN(endTime)) {
+                showStatus('error', 'Please enter valid start and end times for time range search');
+                return;
+            }
+            
+            if (isNaN(timeStart) || !netValue || isNaN(count)) {
+                showStatus('error', 'Please enter valid parameters for time+net+count search');
+                return;
+            }
+            
+            showStatus('loading', `Starting ${repetitions} repetitions of both time searches...`);
+            
+            const testStartTime = performance.now();
+            const results = {
+                timeRangeTests: [],
+                timeNetCountTests: [],
+                totalExecutionTime: 0,
+                cacheStats: { hits: 0, misses: 0 }
+            };
+            
+            // Clear caches before testing to ensure fair measurement
+            console.log('🧹 Clearing caches before repetition testing...');
+            window.earthquakeCache.timeRangeSearch.clear();
+            window.earthquakeCache.timeNetCountSearch.clear();
+            
+            try {
+                // Run T repetitions of Time Range Search (Requirement 10a)
+                console.log(`🔄 Running ${repetitions} repetitions of Time Range Search...`);
+                for (let i = 1; i <= repetitions; i++) {
+                    const iterationStart = performance.now();
+                    
+                    // Simulate the time range search
+                    const cacheKey = `${startTime}-${endTime}`;
+                    let cacheHit = false;
+                    
+                    if (window.earthquakeCache.timeRangeSearch.has(cacheKey)) {
+                        const cacheEntry = window.earthquakeCache.timeRangeSearch.get(cacheKey);
+                        if (isCacheValid(cacheEntry)) {
+                            cacheHit = true;
+                            results.cacheStats.hits++;
+                        }
+                    }
+                    
+                    if (!cacheHit) {
+                        results.cacheStats.misses++;
+                        // Perform actual Firebase query for time range (avoid composite index)
+                        const q = query(
+                            collection(db, window.COLLECTION_NAME),
+                            where('time', '>=', startTime),
+                            orderBy('time')
+                        );
+                        const snapshot = await getDocs(q);
+                        
+                        const searchResults = [];
+                        snapshot.forEach(docSnap => {
+                            const data = docSnap.data();
+                            const time = data.time;
+                            
+                            // Filter by end time in JavaScript
+                            if (time >= startTime && time <= endTime) {
+                                searchResults.push({
+                                    id: data.id || docSnap.id,
+                                    time: time,
+                                    latitude: parseFloat(data.latitude) || 0,
+                                    longitude: parseFloat(data.longitude) || 0,
+                                    mag: parseFloat(data.mag) || 0,
+                                    net: data.net || '',
+                                    nst: data.nst || 0
+                                });
+                            }
+                        });
+                        
+                        // Cache the results
+                        window.earthquakeCache.timeRangeSearch.set(cacheKey, {
+                            results: filterValidMagnitudes(searchResults),
+                            timestamp: Date.now()
+                        });
+                    }
+                    
+                    const iterationTime = performance.now() - iterationStart;
+                    results.timeRangeTests.push({
+                        iteration: i,
+                        executionTime: iterationTime,
+                        cacheHit: cacheHit
+                    });
+                    
+                    console.log(`⏱️ Time Range Test ${i}/${repetitions}: ${iterationTime.toFixed(3)}ms (${cacheHit ? 'cache hit' : 'Firebase query'})`);
+                }
+                
+                // Run T repetitions of Time+Net+Count Search (Requirement 10b)
+                console.log(`🔄 Running ${repetitions} repetitions of Time+Net+Count Search...`);
+                for (let i = 1; i <= repetitions; i++) {
+                    const iterationStart = performance.now();
+                    
+                    const cacheKey = `${timeStart}-${netValue}-${count}`;
+                    let cacheHit = false;
+                    
+                    if (window.earthquakeCache.timeNetCountSearch.has(cacheKey)) {
+                        const cacheEntry = window.earthquakeCache.timeNetCountSearch.get(cacheKey);
+                        if (isCacheValid(cacheEntry)) {
+                            cacheHit = true;
+                            results.cacheStats.hits++;
+                        }
+                    }
+                    
+                    if (!cacheHit) {
+                        results.cacheStats.misses++;
+                        // Perform actual Firebase query for time+net+count
+                        const q = query(
+                            collection(db, window.COLLECTION_NAME),
+                            where('net', '==', netValue)
+                        );
+                        const snapshot = await getDocs(q);
+                        
+                        const allResults = [];
+                        snapshot.forEach(docSnap => {
+                            const data = docSnap.data();
+                            if (data.time >= timeStart) {
+                                allResults.push({
+                                    id: data.id || docSnap.id,
+                                    time: data.time,
+                                    latitude: parseFloat(data.latitude) || 0,
+                                    longitude: parseFloat(data.longitude) || 0,
+                                    mag: parseFloat(data.mag) || 0,
+                                    net: data.net || '',
+                                    nst: data.nst || 0
+                                });
+                            }
+                        });
+                        
+                        allResults.sort((a, b) => a.time - b.time);
+                        const searchResults = allResults.slice(0, count);
+                        
+                        // Cache the results
+                        window.earthquakeCache.timeNetCountSearch.set(cacheKey, {
+                            results: filterValidMagnitudes(searchResults),
+                            timestamp: Date.now()
+                        });
+                    }
+                    
+                    const iterationTime = performance.now() - iterationStart;
+                    results.timeNetCountTests.push({
+                        iteration: i,
+                        executionTime: iterationTime,
+                        cacheHit: cacheHit
+                    });
+                    
+                    console.log(`⏱️ Time+Net+Count Test ${i}/${repetitions}: ${iterationTime.toFixed(3)}ms (${cacheHit ? 'cache hit' : 'Firebase query'})`);
+                }
+                
+                results.totalExecutionTime = performance.now() - testStartTime;
+                
+                // Display comprehensive results
+                displayRepeatedTestResults(results, repetitions, startTime, endTime, timeStart, netValue, count);
+                
+                // Log aggregated performance data
+                await logEarthquakePerformance('repeated_query_test', results.totalExecutionTime, repetitions * 2, {
+                    repetitions: repetitions,
+                    total_cache_hits: results.cacheStats.hits,
+                    total_cache_misses: results.cacheStats.misses,
+                    time_range_params: `${startTime}-${endTime}`,
+                    time_net_count_params: `${timeStart}-${netValue}-${count}`,
+                    test_type: 'bulk_repetition'
+                });
+                
+                showStatus('success', `Completed ${repetitions} repetitions of both searches in ${results.totalExecutionTime.toFixed(3)}ms`);
+                
+            } catch (error) {
+                console.error('❌ Repeated query test error:', error);
+                showStatus('error', 'Repeated query test failed: ' + error.message);
+            }
+        };
+
+        function displayRepeatedTestResults(results, repetitions, startTime, endTime, timeStart, netValue, count) {
+            const resultsDiv = document.getElementById('repeatedTestResults');
+            const contentDiv = document.getElementById('repeatedTestContent');
+            
+            // Calculate statistics
+            const timeRangeTotalTime = results.timeRangeTests.reduce((sum, test) => sum + test.executionTime, 0);
+            const timeRangeAvgTime = timeRangeTotalTime / results.timeRangeTests.length;
+            
+            const timeNetCountTotalTime = results.timeNetCountTests.reduce((sum, test) => sum + test.executionTime, 0);
+            const timeNetCountAvgTime = timeNetCountTotalTime / results.timeNetCountTests.length;
+            
+            const timeRangeCacheHits = results.timeRangeTests.filter(test => test.cacheHit).length;
+            const timeNetCountCacheHits = results.timeNetCountTests.filter(test => test.cacheHit).length;
+            
+            contentDiv.innerHTML = `
+                <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                    <h4>📊 Overall Performance Summary</h4>
+                    <p><strong>Total Execution Time:</strong> ${results.totalExecutionTime.toFixed(3)} ms</p>
+                    <p><strong>Total Queries Executed:</strong> ${repetitions * 2} (${repetitions} of each type)</p>
+                    <p><strong>Cache Performance:</strong> ${results.cacheStats.hits} hits, ${results.cacheStats.misses} misses</p>
+                    <p><strong>Cache Hit Rate:</strong> ${((results.cacheStats.hits / (results.cacheStats.hits + results.cacheStats.misses)) * 100).toFixed(1)}%</p>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div style="background: #cce5ff; padding: 10px; border-radius: 5px;">
+                        <h5>⏰ Time Range Search (10a) Performance</h5>
+                        <p><strong>Parameters:</strong> ${startTime} to ${endTime}</p>
+                        <p><strong>Total Time:</strong> ${timeRangeTotalTime.toFixed(3)} ms</p>
+                        <p><strong>Average Time:</strong> ${timeRangeAvgTime.toFixed(3)} ms</p>
+                        <p><strong>Cache Hits:</strong> ${timeRangeCacheHits}/${repetitions}</p>
+                    </div>
+                    <div style="background: #ffe6cc; padding: 10px; border-radius: 5px;">
+                        <h5>🔗 Time+Net+Count Search (10b) Performance</h5>
+                        <p><strong>Parameters:</strong> Time ${timeStart}, Net "${netValue}", Count ${count}</p>
+                        <p><strong>Total Time:</strong> ${timeNetCountTotalTime.toFixed(3)} ms</p>
+                        <p><strong>Average Time:</strong> ${timeNetCountAvgTime.toFixed(3)} ms</p>
+                        <p><strong>Cache Hits:</strong> ${timeNetCountCacheHits}/${repetitions}</p>
+                    </div>
+                </div>
+                
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <h5>📈 Individual Iteration Results</h5>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="border: 1px solid #ddd; padding: 5px;">Iteration</th>
+                                <th style="border: 1px solid #ddd; padding: 5px;">Time Range (10a)</th>
+                                <th style="border: 1px solid #ddd; padding: 5px;">Cache Hit</th>
+                                <th style="border: 1px solid #ddd; padding: 5px;">Time+Net+Count (10b)</th>
+                                <th style="border: 1px solid #ddd; padding: 5px;">Cache Hit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Array.from({length: repetitions}, (_, i) => {
+                                const timeRangeTest = results.timeRangeTests[i];
+                                const timeNetCountTest = results.timeNetCountTests[i];
+                                return `
+                                    <tr>
+                                        <td style="border: 1px solid #ddd; padding: 5px; text-align: center;">${i + 1}</td>
+                                        <td style="border: 1px solid #ddd; padding: 5px; text-align: right;">${timeRangeTest.executionTime.toFixed(3)} ms</td>
+                                        <td style="border: 1px solid #ddd; padding: 5px; text-align: center;">${timeRangeTest.cacheHit ? '✅' : '❌'}</td>
+                                        <td style="border: 1px solid #ddd; padding: 5px; text-align: right;">${timeNetCountTest.executionTime.toFixed(3)} ms</td>
+                                        <td style="border: 1px solid #ddd; padding: 5px; text-align: center;">${timeNetCountTest.cacheHit ? '✅' : '❌'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            resultsDiv.style.display = 'block';
+        }
+
+        window.clearRepeatedTestResults = function() {
+            document.getElementById('repeatedTestResults').style.display = 'none';
+            document.getElementById('repeatedTestContent').innerHTML = '';
         };
 
         window.clearResults = function() {
@@ -1722,6 +2025,7 @@
                 window.earthquakeCache.magnitudeGreater.size +
                 window.earthquakeCache.locationSearch.size +
                 window.earthquakeCache.timeRangeSearch.size +
+                window.earthquakeCache.timeNetCountSearch.size +
                 window.earthquakeCache.fieldSearches.size;
             
             const cacheInfo = `🌍 Earthquake Data Cache Status: ✅ Active\n` +
@@ -1730,7 +2034,8 @@
                              `- Magnitude Ranges: ${window.earthquakeCache.magnitudeRange.size} queries\n` +
                              `- Magnitude Thresholds: ${window.earthquakeCache.magnitudeGreater.size} queries\n` +
                              `- Location Searches: ${window.earthquakeCache.locationSearch.size} queries\n` +
-                             `- Time Range Searches: ${window.earthquakeCache.timeRangeSearch.size} queries\n` +
+                             `- Time Range Searches: ${window.earthquakeCache.timeRangeSearch.size} queries (Quiz 3 Req 10a)\n` +
+                             `- Time+Net+Count Searches: ${window.earthquakeCache.timeNetCountSearch.size} queries (Quiz 3 Req 10b)\n` +
                              `- Bulk Tests: ${window.earthquakeCache.fieldSearches.size} queries\n\n` +
                              `Total Cached Queries: ${totalCached}\n\n` +
                              `Data Source: On-demand Firebase queries with caching`;
