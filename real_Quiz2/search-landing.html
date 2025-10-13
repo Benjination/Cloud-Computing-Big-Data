@@ -511,10 +511,7 @@
             magnitudeRange: new Map(),        // Key: "min-max", Value: {results, timestamp}
             magnitudeGreater: new Map(),      // Key: magnitude, Value: {results, timestamp}
             locationSearch: new Map(),        // Key: "lat,long,radius", Value: {results, timestamp}
-            timeFilters: new Map(),           // Key: time range, Value: {results, timestamp}
-            networkFilters: new Map(),        // Key: network code, Value: {results, timestamp}
-            fieldSearches: new Map(),         // Key: "field_operator_value", Value: {results, timestamp}
-            rangeSearches: new Map()          // Key: "field_min_max", Value: {results, timestamp}
+            fieldSearches: new Map()          // Key: "bulk_test_1000_random", Value: {results, timestamp}
         };
 
         // Cache expiration time (5 minutes)
@@ -557,7 +554,7 @@
         // Remove auto-loading - we'll query on-demand instead
         // earthquakeData is no longer used for bulk storage
         
-        // Initialize page without loading all data
+        // -----Grabs count of elements in database for display
         document.addEventListener('DOMContentLoaded', function() {
             // Update data count display to show on-demand mode
             const dataCountElement = document.getElementById('dataCount');
@@ -566,7 +563,7 @@
             }
         });
 
-        // Helper function to filter magnitude results to valid range (0.1 to 10.0)
+        // -------Ensures valid mag range (0.1 to 10.0)
         function filterValidMagnitudes(results) {
             return results.filter(eq => {
                 const mag = parseFloat(eq.mag);
@@ -578,7 +575,7 @@
             });
         }
 
-        // Make functions available globally
+        // ----------Caching Sytem
         window.searchByMagnitudeThreshold = async function() {
             const startTime = performance.now();
             const operator = document.getElementById('magnitudeOperator').value;
@@ -685,7 +682,7 @@
                 
                 const executionTime = performance.now() - startTime;
                 
-                // Log fresh performance
+                // ----------Performance logging update
                 await logEarthquakePerformance('magnitude_threshold', executionTime, results.length, {
                     operator: operator,
                     threshold: threshold,
@@ -703,7 +700,7 @@
         };
 
         window.searchByMagnitudeRange = async function() {
-            const startTime = performance.now();
+            const startTime = performance.now(); //Performance data start time
             const minMag = parseFloat(document.getElementById('magnitudeMin').value);
             const maxMag = parseFloat(document.getElementById('magnitudeMax').value);
             
@@ -737,7 +734,7 @@
                         max_magnitude: maxMag,
                         cache_hit: true
                     });
-                    return;
+                    return; //-------------Found in cache, leaves function
                 } else {
                     console.log('❌ Cache entry expired');
                 }
@@ -745,7 +742,7 @@
                 console.log('❌ No cache entry found');
             }
             
-            // 2. Query Firebase on-demand
+            // 2. Query Firebase on-demand ----- No cache 
             showStatus('loading', 'Searching Firebase for magnitude range...');
             console.log(`🔍 Querying Firebase for magnitude ${minMag}-${maxMag}`);
             
@@ -792,9 +789,9 @@
                 });
                 console.log(`💾 Results cached with key: ${cacheKey} (${filteredResults.length} results)`);
                 
-                const executionTime = performance.now() - startTime;
-                
-                // Log fresh performance
+                const executionTime = performance.now() - startTime; //--------------------Performance data end time
+
+                // Log performance data
                 await logEarthquakePerformance('magnitude_range', executionTime, filteredResults.length, {
                     min_magnitude: minMag,
                     max_magnitude: maxMag,
@@ -1359,10 +1356,7 @@
                 window.earthquakeCache.magnitudeRange.size +
                 window.earthquakeCache.magnitudeGreater.size +
                 window.earthquakeCache.locationSearch.size +
-                window.earthquakeCache.timeFilters.size +
-                window.earthquakeCache.networkFilters.size +
-                window.earthquakeCache.fieldSearches.size +
-                window.earthquakeCache.rangeSearches.size;
+                window.earthquakeCache.fieldSearches.size;
             
             const cacheInfo = `🌍 Earthquake Data Cache Status: ✅ Active\n` +
                              `Cache Expiry: 5 minutes\n\n` +
@@ -1370,12 +1364,9 @@
                              `- Magnitude Ranges: ${window.earthquakeCache.magnitudeRange.size} queries\n` +
                              `- Magnitude Thresholds: ${window.earthquakeCache.magnitudeGreater.size} queries\n` +
                              `- Location Searches: ${window.earthquakeCache.locationSearch.size} queries\n` +
-                             `- Time Filters: ${window.earthquakeCache.timeFilters.size} queries\n` +
-                             `- Network Filters: ${window.earthquakeCache.networkFilters.size} queries\n` +
-                             `- Field Searches: ${window.earthquakeCache.fieldSearches.size} queries\n` +
-                             `- Range Searches: ${window.earthquakeCache.rangeSearches.size} queries\n\n` +
+                             `- Bulk Tests: ${window.earthquakeCache.fieldSearches.size} queries\n\n` +
                              `Total Cached Queries: ${totalCached}\n\n` +
-                             `Data Source: Client-side (${earthquakeData.length} records loaded)`;
+                             `Data Source: On-demand Firebase queries with caching`;
             
             alert(cacheInfo);
         };
@@ -1386,10 +1377,7 @@
                 magnitudeRange: new Map(),
                 magnitudeGreater: new Map(),
                 locationSearch: new Map(),
-                timeFilters: new Map(),
-                networkFilters: new Map(),
-                fieldSearches: new Map(),
-                rangeSearches: new Map()
+                fieldSearches: new Map()
             };
             alert('🌍 Earthquake data cache cleared!');
         };
