@@ -704,10 +704,11 @@
                         limit(1000)
                     );
                 } else {
-                    // For "under" we need to get more data and filter client-side
+                    // For "under" we can use Firebase's where clause too!
                     q = query(
                         collection(db, window.COLLECTION_NAME),
-                        limit(2000)
+                        where('mag', '<', threshold),
+                        limit(1000)
                     );
                 }
                 
@@ -822,21 +823,23 @@
             console.log(`🔍 Querying Firebase for magnitude ${minMag}-${maxMag}`);
             
             try {
-                // Query Firebase with filters and client-side filtering for precise range
+                // Query Firebase with proper range filters (mag >= minMag AND mag <= maxMag)
                 const q = query(
                     collection(db, window.COLLECTION_NAME),
-                    limit(2000) // reasonable limit to prevent huge downloads
+                    where('mag', '>=', minMag),
+                    where('mag', '<=', maxMag),
+                    orderBy('mag')
                 );
                 const snapshot = await getDocs(q);
-                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase`);
+                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase with mag between ${minMag}-${maxMag}`);
                 
-                // Client-side filtering for magnitude range
+                // Process results (all records already match criteria)
                 const results = [];
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
                     const mag = parseFloat(data.mag);
                     
-                    if (!isNaN(mag) && mag >= minMag && mag <= maxMag) {
+                    if (!isNaN(mag)) {
                         results.push({
                             id: data.id || docSnap.id,
                             time: data.time,
@@ -918,10 +921,26 @@
                 
                 console.log(`📡 Cache miss for location search: ${locationKey} - querying Firebase`);
                 
-                // No cache or expired - query Firebase for ALL records
-                // Note: Firebase doesn't support geo-queries efficiently, so we get all records and filter
-                const q = query(collection(db, window.COLLECTION_NAME));
+                // No cache or expired - query Firebase for location-based search
+                // Note: Firebase doesn't support native geo-queries, but we can optimize with lat/lng ranges
+                console.log(`🗺️ Performing optimized geo-search for ${radius}km around ${centerLat}, ${centerLon}`);
+                
+                // Calculate approximate lat/lng bounds (rough approximation for better filtering)
+                const latRange = radius / 111; // Approximate degrees per km for latitude
+                const lngRange = radius / (111 * Math.cos(centerLat * Math.PI / 180)); // Adjust for longitude
+                
+                const minLat = centerLat - latRange;
+                const maxLat = centerLat + latRange;
+                
+                // Query with latitude bounds to reduce dataset size
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    where('latitude', '>=', minLat),
+                    where('latitude', '<=', maxLat),
+                    orderBy('latitude')
+                );
                 const querySnapshot = await getDocs(q);
+                console.log(`📊 Retrieved ${querySnapshot.size} documents within latitude bounds ${minLat.toFixed(3)} to ${maxLat.toFixed(3)}`);
                 
                 const allResults = [];
                 querySnapshot.forEach(doc => {
@@ -1029,35 +1048,33 @@
             console.log(`🔍 Querying Firebase for time range ${timeStart}-${timeEnd}`);
             
             try {
-                // Query Firebase with time >= filter only (to avoid composite index requirement)
-                // Then filter for <= in JavaScript for better compatibility
+                // Query Firebase with proper time range filters (time >= start AND time <= end)
                 const q = query(
                     collection(db, window.COLLECTION_NAME),
                     where('time', '>=', timeStart),
+                    where('time', '<=', timeEnd),
                     orderBy('time')
                 );
                 const snapshot = await getDocs(q);
-                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase for time >= ${timeStart}`);
+                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase with time between ${timeStart}-${timeEnd}`);
                 
-                // Process results and filter by end time in JavaScript
+                // Process results (all records already match criteria)
                 const results = [];
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
                     const time = data.time;
                     
-                    // Only include records within the time range
-                    if (time >= timeStart && time <= timeEnd) {
-                        results.push({
-                            id: data.id || docSnap.id,
-                            time: time,
-                            lat: parseFloat(data.latitude) || 0,
-                            long: parseFloat(data.longitude) || 0,
-                            mag: parseFloat(data.mag) || 0,
-                            net: data.net || '',
-                            nst: data.nst || 0,
-                            firebase_doc_id: docSnap.id
-                        });
-                    }
+                    // All records already match the time range from Firebase query
+                    results.push({
+                        id: data.id || docSnap.id,
+                        time: time,
+                        lat: parseFloat(data.latitude) || 0,
+                        long: parseFloat(data.longitude) || 0,
+                        mag: parseFloat(data.mag) || 0,
+                        net: data.net || '',
+                        nst: data.nst || 0,
+                        firebase_doc_id: docSnap.id
+                    });
                 });
                 
                 console.log(`🎯 Found ${results.length} earthquakes in time range ${timeStart}-${timeEnd} (filtered from ${snapshot.size} total records)`);
@@ -1277,10 +1294,11 @@
                     
                     if (!cacheHit) {
                         results.cacheStats.misses++;
-                        // Perform actual Firebase query for time range (avoid composite index)
+                        // Perform actual Firebase query for time range with proper compound query
                         const q = query(
                             collection(db, window.COLLECTION_NAME),
                             where('time', '>=', startTime),
+                            where('time', '<=', endTime),
                             orderBy('time')
                         );
                         const snapshot = await getDocs(q);
@@ -1290,18 +1308,16 @@
                             const data = docSnap.data();
                             const time = data.time;
                             
-                            // Filter by end time in JavaScript
-                            if (time >= startTime && time <= endTime) {
-                                searchResults.push({
-                                    id: data.id || docSnap.id,
-                                    time: time,
-                                    latitude: parseFloat(data.latitude) || 0,
-                                    longitude: parseFloat(data.longitude) || 0,
-                                    mag: parseFloat(data.mag) || 0,
-                                    net: data.net || '',
-                                    nst: data.nst || 0
-                                });
-                            }
+                            // All records already match time range from Firebase query
+                            searchResults.push({
+                                id: data.id || docSnap.id,
+                                time: time,
+                                latitude: parseFloat(data.latitude) || 0,
+                                longitude: parseFloat(data.longitude) || 0,
+                                mag: parseFloat(data.mag) || 0,
+                                net: data.net || '',
+                                nst: data.nst || 0
+                            });
                         });
                         
                         // Cache the results
