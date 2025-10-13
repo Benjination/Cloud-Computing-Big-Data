@@ -654,14 +654,14 @@
                     
                     if (matches) {
                         results.push({
-                            id: docSnap.id,
+                            id: data.id || docSnap.id,
                             time: data.time,
                             lat: parseFloat(data.lat) || 0,
                             long: parseFloat(data.long) || 0,
                             mag: mag,
                             net: data.net || '',
                             nst: data.nst || 0,
-                            original_id: data.id || ''
+                            firebase_doc_id: docSnap.id
                         });
                     }
                 });
@@ -763,14 +763,14 @@
                     
                     if (!isNaN(mag) && mag >= minMag && mag <= maxMag) {
                         results.push({
-                            id: docSnap.id,
+                            id: data.id || docSnap.id,
                             time: data.time,
                             lat: parseFloat(data.lat) || 0,
                             long: parseFloat(data.long) || 0,
                             mag: mag,
                             net: data.net || '',
                             nst: data.nst || 0,
-                            original_id: data.id || ''
+                            firebase_doc_id: docSnap.id
                         });
                     }
                 });
@@ -852,7 +852,8 @@
                 querySnapshot.forEach(doc => {
                     const data = doc.data();
                     allResults.push({
-                        id: doc.id,
+                        id: data.id || doc.id,
+                        firebase_doc_id: doc.id,
                         ...data
                     });
                 });
@@ -1480,7 +1481,8 @@
                 querySnapshot.forEach(doc => {
                     const data = doc.data();
                     testResults.push({
-                        id: doc.id,
+                        id: data.id || doc.id,
+                        firebase_doc_id: doc.id,
                         ...data
                     });
                 });
