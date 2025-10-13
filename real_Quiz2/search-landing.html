@@ -1179,7 +1179,7 @@
         };
 
 
-
+        //--------Editing record to database
         window.updateRecord = async function() {
             if (!currentRecordDocId) {
                 showStatus('error', 'No record selected. Please search for a record first.');
@@ -1255,7 +1255,7 @@
             }
         };
 
-        // Add New Earthquake Service
+        // --------------Add New Earthquake
         window.addNewEarthquake = async function() {
             try {
                 // Get all form values
@@ -1348,7 +1348,7 @@
             }
         };
 
-        // 💾 CACHE MANAGEMENT FUNCTIONS
+        //---------------------------------------------------- 💾 CACHE MANAGEMENT FUNCTIONS
 
         // View earthquake cache status
         window.showEarthquakeCacheStatus = function() {
