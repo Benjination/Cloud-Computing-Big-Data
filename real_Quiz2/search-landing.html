@@ -259,9 +259,51 @@
             </div>
         </div>
 
+        <!-- Quiz 3 Requirement 10(a): Time Range Search -->
+        <div class="search-form">
+            <h3>4. 📅 Time Range Search (Quiz 3 Req 10a)</h3>
+            <p><strong>Requirement:</strong> Show ID, net value, time, latitude, longitude for earthquakes in time range</p>
+            <div class="form-group">
+                <label>Start Time:</label>
+                <input type="number" id="timeRangeStart" placeholder="e.g., 18020" min="0">
+                <label>End Time:</label>
+                <input type="number" id="timeRangeEnd" placeholder="e.g., 18060" min="0">
+            </div>
+            <div class="form-group">
+                <button onclick="searchByTimeRange()">🔍 Search Time Range</button>
+                <button class="clear-btn" onclick="clearResults()">Clear</button>
+            </div>
+            <div id="timeRangeResults" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; display: none;">
+                <h4>Time Range Search Results:</h4>
+                <div id="timeRangeContent"></div>
+            </div>
+        </div>
+
+        <!-- Quiz 3 Requirement 10(b): Time + Net + Count Search -->
+        <div class="search-form">
+            <h3>5. 🔗 Time + Net + Count Search (Quiz 3 Req 10b)</h3>
+            <p><strong>Requirement:</strong> Find C sequential events at specific net value starting from a time</p>
+            <div class="form-group">
+                <label>Starting Time:</label>
+                <input type="number" id="timeNetStart" placeholder="e.g., 15560" min="0">
+                <label>Net Value:</label>
+                <input type="text" id="timeNetValue" placeholder="e.g., ak, us, ci" maxlength="10">
+                <label>Count (C):</label>
+                <input type="number" id="timeNetCount" placeholder="e.g., 3" min="1" max="100">
+            </div>
+            <div class="form-group">
+                <button onclick="searchByTimeNetCount()">🔍 Search Sequential Events</button>
+                <button class="clear-btn" onclick="clearResults()">Clear</button>
+            </div>
+            <div id="timeNetResults" style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 5px; display: none;">
+                <h4>Time + Net + Count Search Results:</h4>
+                <div id="timeNetContent"></div>
+            </div>
+        </div>
+
         <!-- Q14: Net Value Search and Delete -->
         <div class="search-form">
-            <h3>4. Q14: Net Value Management</h3>
+            <h3>6. Q14: Net Value Management</h3>
             <p><strong>Quiz Requirement:</strong> Count occurrences of net value, delete all entries, show remaining count</p>
             <div class="form-group">
                 <label>Net Value:</label>
@@ -277,7 +319,7 @@
     <!-- Update Earthquake Record Service -->
     <div class="container">
         <div class="search-section">
-            <h3>5. ✏️ Update Earthquake Record</h3>
+            <h3>7. ✏️ Update Earthquake Record</h3>
             <p><strong>Service:</strong> Find earthquake by net ID, then modify any attributes</p>
             
             <!-- Search Section -->
@@ -376,7 +418,7 @@
     <!-- Add New Earthquake Service -->
     <div class="container">
         <div class="search-section">
-            <h3>6. ➕ Add New Earthquake Data</h3>
+            <h3>8. ➕ Add New Earthquake Data</h3>
             <p><strong>Service:</strong> Insert new earthquake record into the database</p>
             <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 <div>
@@ -511,6 +553,8 @@
             magnitudeRange: new Map(),        // Key: "min-max", Value: {results, timestamp}
             magnitudeGreater: new Map(),      // Key: magnitude, Value: {results, timestamp}
             locationSearch: new Map(),        // Key: "lat,long,radius", Value: {results, timestamp}
+            timeRangeSearch: new Map(),       // Key: "startTime-endTime", Value: {results, timestamp}
+            timeNetCountSearch: new Map(),    // Key: "time-net-count", Value: {results, timestamp}
             fieldSearches: new Map()          // Key: "bulk_test_1000_random", Value: {results, timestamp}
         };
 
@@ -656,8 +700,8 @@
                         results.push({
                             id: data.id || docSnap.id,
                             time: data.time,
-                            lat: parseFloat(data.lat) || 0,
-                            long: parseFloat(data.long) || 0,
+                            lat: parseFloat(data.latitude) || 0,
+                            long: parseFloat(data.longitude) || 0,
                             mag: mag,
                             net: data.net || '',
                             nst: data.nst || 0,
@@ -765,8 +809,8 @@
                         results.push({
                             id: data.id || docSnap.id,
                             time: data.time,
-                            lat: parseFloat(data.lat) || 0,
-                            long: parseFloat(data.long) || 0,
+                            lat: parseFloat(data.latitude) || 0,
+                            long: parseFloat(data.longitude) || 0,
                             mag: mag,
                             net: data.net || '',
                             nst: data.nst || 0,
@@ -862,11 +906,11 @@
                 
                 // Filter by distance
                 const results = allResults.filter(eq => {
-                    const lat = parseFloat(eq.lat);
-                    const lon = parseFloat(eq.long);
+                    const lat = parseFloat(eq.latitude);
+                    const lon = parseFloat(eq.longitude);
                     
                     if (isNaN(lat) || isNaN(lon)) {
-                        console.warn(`Invalid coordinates for record ${eq.id}: lat=${eq.lat}, long=${eq.long}`);
+                        console.warn(`Invalid coordinates for record ${eq.id}: latitude=${eq.latitude}, longitude=${eq.longitude}`);
                         return false;
                     }
                     
@@ -902,6 +946,238 @@
             } catch (error) {
                 console.error('Error in proximity search:', error);
                 showStatus('error', 'Error searching by proximity: ' + error.message);
+            }
+        };
+
+        // 📅 TIME RANGE SEARCH (Quiz 3 Requirement 10a)
+        window.searchByTimeRange = async function() {
+            const startTime = performance.now();
+            const timeStart = parseInt(document.getElementById('timeRangeStart').value);
+            const timeEnd = parseInt(document.getElementById('timeRangeEnd').value);
+            
+            if (isNaN(timeStart) || isNaN(timeEnd)) {
+                showStatus('error', 'Please enter valid start and end times');
+                return;
+            }
+            
+            if (timeStart >= timeEnd) {
+                showStatus('error', 'Start time must be less than end time');
+                return;
+            }
+
+            // Create cache key for this search
+            const cacheKey = `${timeStart}-${timeEnd}`;
+            
+            // 1. Check cache first
+            console.log(`🔍 Checking cache for time range: ${cacheKey}`);
+            if (window.earthquakeCache.timeRangeSearch.has(cacheKey)) {
+                const cacheEntry = window.earthquakeCache.timeRangeSearch.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached time range results');
+                    const executionTime = performance.now() - startTime;
+                    
+                    // Display cached results in special time range div
+                    displayTimeRangeResults(cacheEntry.results, `Time ${timeStart} to ${timeEnd} (Cached)`, executionTime);
+                    
+                    // Log cached performance
+                    await logEarthquakePerformance('time_range_cached', executionTime, cacheEntry.results.length, {
+                        time_start: timeStart,
+                        time_end: timeEnd,
+                        cache_hit: true
+                    });
+                    return;
+                } else {
+                    console.log('❌ Cache entry expired');
+                }
+            } else {
+                console.log('❌ No cache entry found');
+            }
+            
+            // 2. Query Firebase on-demand
+            showStatus('loading', 'Searching Firebase for time range...');
+            console.log(`🔍 Querying Firebase for time range ${timeStart}-${timeEnd}`);
+            
+            try {
+                // Query Firebase with time range filter
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    where('time', '>=', timeStart),
+                    where('time', '<=', timeEnd),
+                    orderBy('time')
+                );
+                const snapshot = await getDocs(q);
+                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase`);
+                
+                // Process results
+                const results = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    results.push({
+                        id: data.id || docSnap.id,
+                        time: data.time,
+                        lat: parseFloat(data.latitude) || 0,
+                        long: parseFloat(data.longitude) || 0,
+                        mag: parseFloat(data.mag) || 0,
+                        net: data.net || '',
+                        nst: data.nst || 0,
+                        firebase_doc_id: docSnap.id
+                    });
+                });
+                
+                console.log(`🎯 Found ${results.length} earthquakes in time range ${timeStart}-${timeEnd}`);
+                
+                // Apply magnitude filtering (0.1 to 10.0) to time range results
+                const originalCount = results.length;
+                const filteredResults = filterValidMagnitudes(results);
+                console.log(`📏 Magnitude filtering for time range: ${originalCount} → ${filteredResults.length} (removed ${originalCount - filteredResults.length} with mag outside 0.1-10.0 range)`);
+                
+                // 3. Cache the results
+                window.earthquakeCache.timeRangeSearch.set(cacheKey, {
+                    results: filteredResults,
+                    timestamp: Date.now()
+                });
+                console.log(`💾 Time range results cached with key: ${cacheKey} (${filteredResults.length} results)`);
+                
+                const executionTime = performance.now() - startTime;
+                
+                // Log fresh performance
+                await logEarthquakePerformance('time_range', executionTime, filteredResults.length, {
+                    time_start: timeStart,
+                    time_end: timeEnd,
+                    cache_hit: false,
+                    firebase_reads: snapshot.size,
+                    data_source: 'firebase_on_demand'
+                });
+                
+                displayTimeRangeResults(filteredResults, `Time ${timeStart} to ${timeEnd}`, executionTime);
+                
+            } catch (error) {
+                console.error('❌ Firebase query error:', error);
+                showStatus('error', 'Time range search failed: ' + error.message);
+            }
+        };
+
+        // 🔗 TIME + NET + COUNT SEARCH (Quiz 3 Requirement 10b)
+        window.searchByTimeNetCount = async function() {
+            const startTime = performance.now();
+            const startingTime = parseInt(document.getElementById('timeNetStart').value);
+            const netValue = document.getElementById('timeNetValue').value.trim();
+            const count = parseInt(document.getElementById('timeNetCount').value);
+            
+            if (isNaN(startingTime)) {
+                showStatus('error', 'Please enter a valid starting time');
+                return;
+            }
+            
+            if (!netValue) {
+                showStatus('error', 'Please enter a net value (e.g., ak, us, ci)');
+                return;
+            }
+            
+            if (isNaN(count) || count < 1) {
+                showStatus('error', 'Please enter a valid count (positive number)');
+                return;
+            }
+
+            // Create cache key for this search
+            const cacheKey = `${startingTime}-${netValue}-${count}`;
+            
+            // 1. Check cache first
+            console.log(`🔍 Checking cache for time+net+count: ${cacheKey}`);
+            if (window.earthquakeCache.timeNetCountSearch.has(cacheKey)) {
+                const cacheEntry = window.earthquakeCache.timeNetCountSearch.get(cacheKey);
+                if (isCacheValid(cacheEntry)) {
+                    console.log('🚀 Using cached time+net+count results');
+                    const executionTime = performance.now() - startTime;
+                    
+                    // Display cached results in special time+net+count div
+                    displayTimeNetCountResults(cacheEntry.results, `${count} events at net "${netValue}" starting from time ${startingTime} (Cached)`, executionTime);
+                    
+                    // Log cached performance
+                    await logEarthquakePerformance('time_net_count_cached', executionTime, cacheEntry.results.length, {
+                        starting_time: startingTime,
+                        net_value: netValue,
+                        count: count,
+                        cache_hit: true
+                    });
+                    return;
+                } else {
+                    console.log('❌ Cache entry expired');
+                }
+            } else {
+                console.log('❌ No cache entry found');
+            }
+            
+            // 2. Query Firebase on-demand for sequential events
+            showStatus('loading', 'Searching Firebase for sequential events...');
+            console.log(`🔍 Querying Firebase for ${count} events at net "${netValue}" starting from time ${startingTime}`);
+            
+            try {
+                // Query Firebase by net only (to avoid composite index requirement)
+                // Then filter by time and sort in JavaScript
+                const q = query(
+                    collection(db, window.COLLECTION_NAME),
+                    where('net', '==', netValue)
+                );
+                const snapshot = await getDocs(q);
+                console.log(`📊 Retrieved ${snapshot.size} documents from Firebase for net "${netValue}"`);
+                
+                // Process results and filter by time in JavaScript
+                const allResults = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const time = data.time;
+                    
+                    // Only include events at or after the starting time
+                    if (time >= startingTime) {
+                        allResults.push({
+                            id: data.id || docSnap.id,
+                            time: time,
+                            latitude: parseFloat(data.latitude) || 0,
+                            longitude: parseFloat(data.longitude) || 0,
+                            mag: parseFloat(data.mag) || 0,
+                            net: data.net || '',
+                            nst: data.nst || 0,
+                            firebase_doc_id: docSnap.id
+                        });
+                    }
+                });
+                
+                // Sort by time (ascending) and take only the requested count
+                allResults.sort((a, b) => a.time - b.time);
+                const results = allResults.slice(0, count);
+                
+                console.log(`🎯 Found ${results.length} sequential events for net "${netValue}" starting from time ${startingTime} (filtered from ${allResults.length} total matches)`);
+                
+                // Apply magnitude filtering (0.1 to 10.0) to sequential results
+                const originalCount = results.length;
+                const filteredResults = filterValidMagnitudes(results);
+                console.log(`📏 Magnitude filtering for sequential events: ${originalCount} → ${filteredResults.length} (removed ${originalCount - filteredResults.length} with mag outside 0.1-10.0 range)`);
+                
+                // 3. Cache the results
+                window.earthquakeCache.timeNetCountSearch.set(cacheKey, {
+                    results: filteredResults,
+                    timestamp: Date.now()
+                });
+                console.log(`💾 Time+net+count results cached with key: ${cacheKey} (${filteredResults.length} results)`);
+                
+                const executionTime = performance.now() - startTime;
+                
+                // Log fresh performance
+                await logEarthquakePerformance('time_net_count', executionTime, filteredResults.length, {
+                    starting_time: startingTime,
+                    net_value: netValue,
+                    count: count,
+                    cache_hit: false,
+                    firebase_reads: snapshot.size,
+                    data_source: 'firebase_on_demand'
+                });
+                
+                displayTimeNetCountResults(filteredResults, `${count} events at net "${netValue}" starting from time ${startingTime}`, executionTime);
+                
+            } catch (error) {
+                console.error('❌ Firebase query error:', error);
+                showStatus('error', 'Time+net+count search failed: ' + error.message);
             }
         };
 
@@ -942,6 +1218,94 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        // Display time range search results in dedicated section (Quiz 3 Requirement 10a)
+        function displayTimeRangeResults(results, searchDescription, executionTime) {
+            const resultsDiv = document.getElementById('timeRangeResults');
+            const contentDiv = document.getElementById('timeRangeContent');
+            
+            if (results.length === 0) {
+                showStatus('error', `No earthquakes found for: ${searchDescription}`);
+                contentDiv.innerHTML = '<p><strong>No results found in this time range.</strong></p>';
+                resultsDiv.style.display = 'block';
+                return;
+            }
+            
+            showStatus('success', `Found ${results.length} earthquakes for: ${searchDescription}`);
+            
+            // Sort by time (ascending)
+            results.sort((a, b) => a.time - b.time);
+            
+            contentDiv.innerHTML = `
+                <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                    <h4>📊 Query Performance</h4>
+                    <p><strong>Execution Time:</strong> ${executionTime.toFixed(3)} ms</p>
+                    <p><strong>Results Found:</strong> ${results.length} earthquakes</p>
+                    <p><strong>Search Range:</strong> ${searchDescription}</p>
+                </div>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    ${results.map(eq => `
+                        <div class="result-item" style="border-left: 4px solid #007bff; margin-bottom: 8px;">
+                            <div style="font-weight: bold; color: #007bff;">Time: ${eq.time}</div>
+                            <div class="details" style="font-size: 14px; color: #555;">
+                                <strong>ID:</strong> ${eq.id} | 
+                                <strong>Net:</strong> ${eq.net} | 
+                                <strong>Magnitude:</strong> ${eq.mag}
+                            </div>
+                            <div class="details" style="font-size: 13px; color: #666;">
+                                <strong>Location:</strong> Lat: ${eq.lat}, Lon: ${eq.long} | 
+                                <strong>NST:</strong> ${eq.nst || 'N/A'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            resultsDiv.style.display = 'block';
+        }
+
+        function displayTimeNetCountResults(results, searchDescription, executionTime) {
+            const resultsDiv = document.getElementById('timeNetResults');
+            const contentDiv = document.getElementById('timeNetContent');
+            
+            if (results.length === 0) {
+                showStatus('error', `No earthquakes found for: ${searchDescription}`);
+                contentDiv.innerHTML = '<p><strong>No results found matching the criteria.</strong></p>';
+                resultsDiv.style.display = 'block';
+                return;
+            }
+            
+            showStatus('success', `Found ${results.length} earthquakes for: ${searchDescription}`);
+            
+            // Results are already sorted by time from Firebase query
+            
+            contentDiv.innerHTML = `
+                <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                    <h4>📊 Sequential Search Performance</h4>
+                    <p><strong>Execution Time:</strong> ${executionTime.toFixed(3)} ms</p>
+                    <p><strong>Results Found:</strong> ${results.length} earthquakes</p>
+                    <p><strong>Search Criteria:</strong> ${searchDescription}</p>
+                </div>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    ${results.map((eq, index) => `
+                        <div class="result-item" style="border-left: 4px solid #17a2b8; margin-bottom: 8px;">
+                            <div style="font-weight: bold; color: #17a2b8;">Event ${index + 1}: Time ${eq.time}</div>
+                            <div class="details" style="font-size: 14px; color: #555;">
+                                <strong>ID:</strong> ${eq.id} | 
+                                <strong>Net:</strong> ${eq.net} | 
+                                <strong>Magnitude:</strong> ${eq.mag}
+                            </div>
+                            <div class="details" style="font-size: 13px; color: #666;">
+                                <strong>Location:</strong> Lat: ${eq.latitude}, Lon: ${eq.longitude} | 
+                                <strong>NST:</strong> ${eq.nst || 'N/A'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            resultsDiv.style.display = 'block';
         }
 
         // Haversine formula to calculate distance between two coordinates
@@ -1155,8 +1519,8 @@
                 document.getElementById('updateMinute').value = timeData.minute;
                 document.getElementById('updateSecond').value = timeData.second;
                 document.getElementById('updateAmPm').value = timeData.ampm;
-                document.getElementById('updateLat').value = earthquake.lat || '';
-                document.getElementById('updateLong').value = earthquake.long || '';
+                document.getElementById('updateLat').value = earthquake.latitude || '';
+                document.getElementById('updateLong').value = earthquake.longitude || '';
                 document.getElementById('updateMag').value = earthquake.mag || '';
                 document.getElementById('updateNst').value = earthquake.nst !== null ? earthquake.nst : '';
                 document.getElementById('updateNet').value = earthquake.net || '';
@@ -1215,8 +1579,8 @@
                 // Create update object
                 const updateData = {
                     time: time,
-                    lat: lat,
-                    long: long,
+                    latitude: lat,
+                    longitude: long,
                     mag: mag,
                     nst: nst,
                     net: net,
@@ -1300,8 +1664,8 @@
                 // Create new earthquake object
                 const newEarthquake = {
                     time: time,
-                    lat: lat,
-                    long: long,
+                    latitude: lat,
+                    longitude: long,
                     mag: mag,
                     nst: nst,
                     net: net,
@@ -1357,6 +1721,7 @@
                 window.earthquakeCache.magnitudeRange.size +
                 window.earthquakeCache.magnitudeGreater.size +
                 window.earthquakeCache.locationSearch.size +
+                window.earthquakeCache.timeRangeSearch.size +
                 window.earthquakeCache.fieldSearches.size;
             
             const cacheInfo = `🌍 Earthquake Data Cache Status: ✅ Active\n` +
@@ -1365,6 +1730,7 @@
                              `- Magnitude Ranges: ${window.earthquakeCache.magnitudeRange.size} queries\n` +
                              `- Magnitude Thresholds: ${window.earthquakeCache.magnitudeGreater.size} queries\n` +
                              `- Location Searches: ${window.earthquakeCache.locationSearch.size} queries\n` +
+                             `- Time Range Searches: ${window.earthquakeCache.timeRangeSearch.size} queries\n` +
                              `- Bulk Tests: ${window.earthquakeCache.fieldSearches.size} queries\n\n` +
                              `Total Cached Queries: ${totalCached}\n\n` +
                              `Data Source: On-demand Firebase queries with caching`;
@@ -1378,6 +1744,8 @@
                 magnitudeRange: new Map(),
                 magnitudeGreater: new Map(),
                 locationSearch: new Map(),
+                timeRangeSearch: new Map(),
+                timeNetCountSearch: new Map(),
                 fieldSearches: new Map()
             };
             alert('🌍 Earthquake data cache cleared!');
