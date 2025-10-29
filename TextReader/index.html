@@ -265,6 +265,64 @@
                 transform: translateY(0) scale(1);
             }
         }
+        
+        /* Search Results Styles */
+        .search-result-item {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .search-result-item:hover {
+            background: #e9ecef;
+            border-color: #007bff;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .search-result-filename {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+        
+        .search-result-matches {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        
+        .search-result-preview {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .search-highlight {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        .search-no-results {
+            text-align: center;
+            color: #6c757d;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-style: italic;
+        }
     </style>
     </head>
     <body>
@@ -302,6 +360,35 @@
             <div id="uploadProgress" style="margin-top: 10px; display: none;">
                 <div>Progress: <span id="uploadPercentage">0%</span></div>
                 <div>Records uploaded: <span id="recordsUploaded">0</span></div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div id="searchSection" style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3>🔍 Search Files</h3>
+            <p>Search across all your uploaded files for specific words or phrases:</p>
+            <div style="display: flex; gap: 10px; margin-top: 15px; align-items: center; flex-wrap: wrap;">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Enter keywords to search (e.g., 'witches magic spells')" 
+                    style="flex: 1; min-width: 250px; padding: 12px; border: 2px solid #dee2e6; border-radius: 6px; font-size: 16px;"
+                    onkeypress="handleSearchKeyPress(event)"
+                >
+                <button onclick="searchFiles()" class="btn" style="background-color: #17a2b8;">
+                    🔍 Search
+                </button>
+                <button onclick="clearSearch()" class="btn" style="background-color: #6c757d;">
+                    ✖️ Clear
+                </button>
+            </div>
+            
+            <!-- Search Results -->
+            <div id="searchResults" style="margin-top: 20px; display: none;">
+                <h4>Search Results</h4>
+                <div id="searchResultsList">
+                    <!-- Search results will be populated here -->
+                </div>
             </div>
         </div>
 

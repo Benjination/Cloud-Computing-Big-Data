@@ -159,7 +159,25 @@ async function uploadText() {
         const fileExists = await checkFileExists(file.name);
         if (fileExists) {
             showProgress(false);
-            showError(`File "${file.name}" already exists. Please rename the file or remove the existing one first.`);
+            
+            // Create a formatted modal message for duplicate files
+            const modalMessage = `
+                <p><strong>A file with this name already exists:</strong></p>
+                <p style="margin: 15px 0; padding: 15px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                    <strong>"${file.name}"</strong> is already in your file collection.
+                </p>
+                <p><strong>What would you like to do?</strong></p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li><strong>Rename the file:</strong> Add a number or date to make it unique (e.g., "${file.name.replace('.txt', '_2.txt')}")</li>
+                    <li><strong>Remove the existing file:</strong> Click on the existing file in your list and use the "Remove" button</li>
+                    <li><strong>Choose a different file:</strong> Upload a different text file instead</li>
+                </ul>
+                <p style="margin-top: 15px; padding: 10px; background-color: #e7f3ff; border-radius: 4px; font-size: 0.9em;">
+                    <strong>💡 Tip:</strong> Each file must have a unique name to prevent confusion and data loss.
+                </p>
+            `;
+            
+            showErrorModal(modalMessage, "Duplicate File Detected", "📁");
             return;
         }
         
@@ -209,7 +227,7 @@ async function uploadText() {
                 </ul>
             `;
             
-            showErrorModal(modalMessage);
+            showErrorModal(modalMessage, "Invalid File Type", "🚫");
         } else {
             // Use regular error display for other errors
             showError('Error uploading file: ' + error.message);
@@ -855,6 +873,8 @@ function displayAnalysisResults(analysis) {
     console.log('=== DISPLAY ANALYSIS DEBUG ===');
     console.log('Analysis object keys:', Object.keys(analysis));
     console.log('Word frequency object:', analysis.wordFrequency);
+    console.log('Letter frequency object:', analysis.letterFrequency);
+    console.log('Letter frequency entries:', Object.entries(analysis.letterFrequency || {}));
     
     const topWords = Object.entries(analysis.wordFrequency)
         .sort(([,a], [,b]) => b - a)
@@ -863,10 +883,17 @@ function displayAnalysisResults(analysis) {
     console.log('Top 5 words for display:', topWords);
     console.log('=== END DISPLAY ANALYSIS DEBUG ===');
     
-    // Get top letter frequencies
-    const topLetters = Object.entries(analysis.letterFrequency)
-        .sort(([,a], [,b]) => parseFloat(b) - parseFloat(a))
-        .slice(0, 10);
+    // Get top letter frequencies with defensive check
+    const letterFreq = analysis.letterFrequency || {};
+    const hasLetterFreqData = Object.keys(letterFreq).length > 0;
+    const topLetters = hasLetterFreqData ? 
+        Object.entries(letterFreq)
+            .sort(([,a], [,b]) => parseFloat(b) - parseFloat(a))
+            .slice(0, 10) : 
+        [];
+    
+    console.log('Letter frequency data available:', hasLetterFreqData);
+    console.log('Top letters:', topLetters);
     
     const resultsHtml = `
         <div style="margin-top: 20px; padding: 25px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #007bff;">
@@ -883,16 +910,23 @@ function displayAnalysisResults(analysis) {
                 </div>
                 
                 <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    <h4 style="margin: 0 0 10px 0; color: #495057;">� Letter Frequency (A-Z)</h4>
-                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; font-size: 12px;">
-                        ${topLetters.map(([letter, freq]) => `
-                            <div style="text-align: center; padding: 5px; background: #f8f9fa; border-radius: 3px;">
-                                <div style="font-weight: bold; text-transform: uppercase;">${letter}</div>
-                                <div style="color: #007bff;">${freq}%</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <p style="margin-top: 10px; font-size: 12px; color: #6c757d;">Top 10 most frequent letters</p>
+                    <h4 style="margin: 0 0 10px 0; color: #495057;">🔤 Letter Frequency (A-Z)</h4>
+                    ${hasLetterFreqData ? `
+                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; font-size: 12px;">
+                            ${topLetters.map(([letter, freq]) => `
+                                <div style="text-align: center; padding: 5px; background: #f8f9fa; border-radius: 3px;">
+                                    <div style="font-weight: bold; text-transform: uppercase;">${letter}</div>
+                                    <div style="color: #007bff;">${freq}%</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <p style="margin-top: 10px; font-size: 12px; color: #6c757d;">Top 10 most frequent letters</p>
+                    ` : `
+                        <div style="text-align: center; padding: 20px; color: #6c757d; background: #f8f9fa; border-radius: 5px;">
+                            <p style="margin: 0; font-style: italic;">Letter frequency data not available</p>
+                            <p style="margin: 5px 0 0 0; font-size: 12px;">This may be an older file. Try re-uploading for full analysis.</p>
+                        </div>
+                    `}
                 </div>
             </div>
             
@@ -1170,70 +1204,89 @@ function calculateAverageWordLength(words) {
  * Show detailed analysis (letter distribution)
  * @param {string} docId - Document ID
  */
-function showDetailedAnalysis(docId) {
-    const doc = currentDocuments.find(d => d.id === docId);
-    if (!doc) {
-        showError('Document not found');
-        return;
+async function showDetailedAnalysis(docId) {
+    try {
+        // Try to find in current documents first
+        let doc = currentDocuments.find(d => d.id === docId);
+        
+        // If not found locally, fetch from Firebase
+        if (!doc) {
+            const docSnapshot = await db.collection('documents').doc(docId).get();
+            if (!docSnapshot.exists) {
+                showError('Document not found');
+                return;
+            }
+            doc = { id: docSnapshot.id, ...docSnapshot.data() };
+        }
+        
+        // Check if letter frequency data exists
+        if (!doc.letterFrequency) {
+            showError('Letter frequency data not available for this document');
+            return;
+        }
+    
+        // Create detailed letter distribution chart
+        const allLetters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+        const letterData = allLetters.map(letter => ({
+            letter: letter.toUpperCase(),
+            frequency: parseFloat(doc.letterFrequency[letter]) || 0
+        }));
+        
+        const detailsHtml = `
+            <div style="margin-top: 20px; padding: 25px; background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #17a2b8;">
+                <h3 style="color: #17a2b8; margin-bottom: 20px;">📊 Complete Letter Distribution - ${doc.name}</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(13, 1fr); gap: 10px; margin-bottom: 20px;">
+                    ${letterData.map(({ letter, frequency }) => `
+                        <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, #f8f9fa 0%, ${frequency > 8 ? '#ffecb3' : frequency > 4 ? '#f0f4f8' : '#fafafa'} 100%); border-radius: 8px; border: 1px solid #dee2e6;">
+                            <div style="font-weight: bold; font-size: 18px; color: #495057;">${letter}</div>
+                            <div style="color: #007bff; font-weight: bold;">${frequency}%</div>
+                            <div style="height: ${Math.max(3, frequency * 2)}px; background: linear-gradient(45deg, #007bff, #17a2b8); margin-top: 5px; border-radius: 2px;"></div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 10px 0;">📈 Analysis Summary</h4>
+                    <p><strong>Most common letter:</strong> ${letterData.sort((a, b) => b.frequency - a.frequency)[0].letter} (${letterData.sort((a, b) => b.frequency - a.frequency)[0].frequency}%)</p>
+                    <p><strong>Least common letter:</strong> ${letterData.filter(l => l.frequency > 0).sort((a, b) => a.frequency - b.frequency)[0]?.letter || 'None'} (${letterData.filter(l => l.frequency > 0).sort((a, b) => a.frequency - b.frequency)[0]?.frequency || 0}%)</p>
+                    <p><strong>Letters not found:</strong> ${letterData.filter(l => l.frequency === 0).map(l => l.letter).join(', ') || 'All letters present'}</p>
+                </div>
+                
+                ${doc.foreignChars && doc.foreignChars.length > 0 ? `
+                <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                    <h4 style="margin: 0 0 10px 0;">🌍 Foreign Characters Details</h4>
+                    ${doc.foreignChars.map(fc => `
+                        <p><strong>${fc.char}</strong> (${fc.description}): appears ${fc.count} times</p>
+                    `).join('')}
+                </div>
+                ` : ''}
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="closeDetailedAnalysis()" class="btn" style="background-color: #6c757d;">✖ Close</button>
+                </div>
+            </div>
+        `;
+        
+        // Add detailed analysis
+        const analysisDiv = document.getElementById('analysisResults');
+        let detailedDiv = document.getElementById('detailedAnalysis');
+        if (detailedDiv) {
+            detailedDiv.remove();
+        }
+        
+        detailedDiv = document.createElement('div');
+        detailedDiv.id = 'detailedAnalysis';
+        detailedDiv.innerHTML = detailsHtml;
+        analysisDiv.after(detailedDiv);
+        
+        // Scroll to detailed analysis
+        detailedDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+    } catch (error) {
+        console.error('Error loading detailed analysis:', error);
+        showError('Failed to load detailed analysis: ' + error.message);
     }
-    
-    // Create detailed letter distribution chart
-    const allLetters = 'abcdefghijklmnopqrstuvwxyz'.split('');
-    const letterData = allLetters.map(letter => ({
-        letter: letter.toUpperCase(),
-        frequency: parseFloat(doc.letterFrequency[letter]) || 0
-    }));
-    
-    const detailsHtml = `
-        <div style="margin-top: 20px; padding: 25px; background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #17a2b8;">
-            <h3 style="color: #17a2b8; margin-bottom: 20px;">📊 Complete Letter Distribution - ${doc.name}</h3>
-            
-            <div style="display: grid; grid-template-columns: repeat(13, 1fr); gap: 10px; margin-bottom: 20px;">
-                ${letterData.map(({ letter, frequency }) => `
-                    <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, #f8f9fa 0%, ${frequency > 8 ? '#ffecb3' : frequency > 4 ? '#f0f4f8' : '#fafafa'} 100%); border-radius: 8px; border: 1px solid #dee2e6;">
-                        <div style="font-weight: bold; font-size: 18px; color: #495057;">${letter}</div>
-                        <div style="color: #007bff; font-weight: bold;">${frequency}%</div>
-                        <div style="height: ${Math.max(3, frequency * 2)}px; background: linear-gradient(45deg, #007bff, #17a2b8); margin-top: 5px; border-radius: 2px;"></div>
-                    </div>
-                `).join('')}
-            </div>
-            
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <h4 style="margin: 0 0 10px 0;">📈 Analysis Summary</h4>
-                <p><strong>Most common letter:</strong> ${letterData.sort((a, b) => b.frequency - a.frequency)[0].letter} (${letterData.sort((a, b) => b.frequency - a.frequency)[0].frequency}%)</p>
-                <p><strong>Least common letter:</strong> ${letterData.filter(l => l.frequency > 0).sort((a, b) => a.frequency - b.frequency)[0]?.letter || 'None'} (${letterData.filter(l => l.frequency > 0).sort((a, b) => a.frequency - b.frequency)[0]?.frequency || 0}%)</p>
-                <p><strong>Letters not found:</strong> ${letterData.filter(l => l.frequency === 0).map(l => l.letter).join(', ') || 'All letters present'}</p>
-            </div>
-            
-            ${doc.foreignChars && doc.foreignChars.length > 0 ? `
-            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
-                <h4 style="margin: 0 0 10px 0;">🌍 Foreign Characters Details</h4>
-                ${doc.foreignChars.map(fc => `
-                    <p><strong>${fc.char}</strong> (${fc.description}): appears ${fc.count} times</p>
-                `).join('')}
-            </div>
-            ` : ''}
-            
-            <div style="text-align: center; margin-top: 20px;">
-                <button onclick="closeDetailedAnalysis()" class="btn" style="background-color: #6c757d;">✖ Close</button>
-            </div>
-        </div>
-    `;
-    
-    // Add detailed analysis
-    const analysisDiv = document.getElementById('analysisResults');
-    let detailedDiv = document.getElementById('detailedAnalysis');
-    if (detailedDiv) {
-        detailedDiv.remove();
-    }
-    
-    detailedDiv = document.createElement('div');
-    detailedDiv.id = 'detailedAnalysis';
-    detailedDiv.innerHTML = detailsHtml;
-    analysisDiv.after(detailedDiv);
-    
-    // Scroll to detailed analysis
-    detailedDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /**
@@ -1389,14 +1442,23 @@ function showSuccess(message) {
 /**
  * Show error modal for garbage files and other critical errors
  * @param {string} message - Error message to display
+ * @param {string} title - Optional custom title (default: "File Upload Error")
+ * @param {string} icon - Optional custom icon (default: "⚠️")
  */
-function showErrorModal(message) {
+function showErrorModal(message, title = "File Upload Error", icon = "⚠️") {
     console.error('Modal Error:', message);
     
     const modal = document.getElementById('errorModal');
     const messageContainer = document.getElementById('modalErrorMessage');
     
     if (modal && messageContainer) {
+        // Update the title and icon
+        const titleElement = modal.querySelector('.modal-header h3');
+        const iconElement = modal.querySelector('.modal-icon');
+        
+        if (titleElement) titleElement.textContent = title;
+        if (iconElement) iconElement.textContent = icon;
+        
         messageContainer.innerHTML = message;
         modal.style.display = 'block';
         
@@ -2099,6 +2161,362 @@ window.removeFile = removeFile;
 // };
 
 // =====================================
+// SEARCH FUNCTIONALITY
+// =====================================
+
+/**
+ * Search files for keywords and display results
+ */
+async function searchFiles() {
+    const searchInput = document.getElementById('searchInput');
+    const searchQuery = searchInput.value.trim();
+    
+    if (!searchQuery) {
+        showError('Please enter search terms');
+        return;
+    }
+    
+    try {
+        showProgress(true);
+        
+        // Break search query into keywords
+        const keywords = searchQuery.toLowerCase()
+            .split(/\s+/)
+            .filter(word => word.length > 2) // Only words with 3+ characters
+            .map(word => word.replace(/[^\w]/g, '')); // Remove punctuation
+        
+        if (keywords.length === 0) {
+            showError('Please enter valid search terms (at least 3 characters each)');
+            showProgress(false);
+            return;
+        }
+        
+        console.log('Searching for keywords:', keywords);
+        
+        // Get all documents from Firebase
+        const documentsSnapshot = await db.collection('documents').get();
+        const searchResults = [];
+        
+        documentsSnapshot.forEach(doc => {
+            const data = doc.data();
+            const matches = findKeywordsInText(data.cleanedText || data.originalContent, keywords);
+            
+            if (matches.length > 0) {
+                searchResults.push({
+                    id: doc.id,
+                    filename: data.name,
+                    matches: matches,
+                    originalContent: data.originalContent,
+                    cleanedText: data.cleanedText || data.originalContent
+                });
+            }
+        });
+        
+        showProgress(false);
+        displaySearchResults(searchResults, keywords);
+        
+    } catch (error) {
+        showProgress(false);
+        showError('Error searching files: ' + error.message);
+        console.error('Search error:', error);
+    }
+}
+
+/**
+ * Find keywords in text and return match details
+ * @param {string} text - Text to search in
+ * @param {Array} keywords - Array of keywords to search for
+ * @returns {Array} - Array of match objects
+ */
+function findKeywordsInText(text, keywords) {
+    const matches = [];
+    const lowerText = text.toLowerCase();
+    
+    keywords.forEach(keyword => {
+        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        const keywordMatches = [...lowerText.matchAll(regex)];
+        
+        keywordMatches.forEach(match => {
+            const position = match.index;
+            // Get context around the match (50 characters before and after)
+            const start = Math.max(0, position - 50);
+            const end = Math.min(text.length, position + keyword.length + 50);
+            const context = text.substring(start, end);
+            
+            matches.push({
+                keyword: keyword,
+                position: position,
+                context: context,
+                fullMatch: match[0]
+            });
+        });
+    });
+    
+    return matches;
+}
+
+/**
+ * Display search results in the UI
+ * @param {Array} results - Array of search result objects
+ * @param {Array} keywords - Original search keywords
+ */
+function displaySearchResults(results, keywords) {
+    const searchResults = document.getElementById('searchResults');
+    const searchResultsList = document.getElementById('searchResultsList');
+    
+    if (results.length === 0) {
+        searchResultsList.innerHTML = `
+            <div class="search-no-results">
+                <div style="font-size: 24px; margin-bottom: 10px;">🔍</div>
+                <p>No files found containing the search terms: <strong>${keywords.join(', ')}</strong></p>
+                <p>Try different keywords or check your spelling.</p>
+            </div>
+        `;
+    } else {
+        const resultsHTML = results.map(result => {
+            const matchCount = result.matches.length;
+            const uniqueKeywords = [...new Set(result.matches.map(m => m.keyword))];
+            
+            // Create preview with highlighted terms
+            const preview = createHighlightedPreview(result.matches[0].context, keywords);
+            
+            return `
+                <div class="search-result-item" onclick="openFileFromSearch('${result.id}', '${encodeURIComponent(JSON.stringify(keywords))}')">
+                    <div class="search-result-filename">📄 ${result.filename}</div>
+                    <div class="search-result-matches">
+                        ${matchCount} match${matchCount !== 1 ? 'es' : ''} found for: ${uniqueKeywords.join(', ')}
+                    </div>
+                    <div class="search-result-preview">
+                        ...${preview}...
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        searchResultsList.innerHTML = resultsHTML;
+    }
+    
+    searchResults.style.display = 'block';
+    
+    // Scroll to results
+    searchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * Create highlighted preview text
+ * @param {string} context - Context text around the match
+ * @param {Array} keywords - Keywords to highlight
+ * @returns {string} - HTML with highlighted keywords
+ */
+function createHighlightedPreview(context, keywords) {
+    let highlightedText = context;
+    
+    keywords.forEach(keyword => {
+        const regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+        highlightedText = highlightedText.replace(regex, '<span class="search-highlight">$1</span>');
+    });
+    
+    return highlightedText;
+}
+
+/**
+ * Open file from search results with highlighting
+ * @param {string} fileId - File ID to open
+ * @param {string} encodedKeywords - Encoded keywords for highlighting
+ */
+async function openFileFromSearch(fileId, encodedKeywords) {
+    try {
+        const keywords = JSON.parse(decodeURIComponent(encodedKeywords));
+        
+        // Get the document data
+        const doc = await db.collection('documents').doc(fileId).get();
+        if (!doc.exists) {
+            showError('File not found');
+            return;
+        }
+        
+        const data = doc.data();
+        
+        // Store search keywords for highlighting
+        window.currentSearchKeywords = keywords;
+        
+        // Open the file analysis with search highlighting
+        await viewFileAnalysisWithSearch(data, keywords);
+        
+    } catch (error) {
+        showError('Error opening file: ' + error.message);
+        console.error('Error opening file from search:', error);
+    }
+}
+
+/**
+ * Clear search results and input
+ */
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchResults').style.display = 'none';
+    window.currentSearchKeywords = null;
+}
+
+/**
+ * Handle Enter key press in search input
+ * @param {Event} event - Keyboard event
+ */
+function handleSearchKeyPress(event) {
+    if (event.key === 'Enter') {
+        searchFiles();
+    }
+}
+
+/**
+ * View file analysis with search term highlighting
+ * @param {Object} docData - Document data
+ * @param {Array} keywords - Keywords to highlight
+ */
+async function viewFileAnalysisWithSearch(docData, keywords) {
+    try {
+        showProgress(true);
+        
+        // Get additional data from Firebase if needed
+        const fileId = docData.id || generateDocumentId();
+        let wordFreqData = {};
+        let letterFreqData = {};
+        let foreignCharsData = {};
+        
+        if (isFirebaseInitialized && docData.id) {
+            const wordFreqSnapshot = await db.collection('wordFrequencies').doc(fileId).get();
+            const letterFreqSnapshot = await db.collection('letterFrequencies').doc(fileId).get();
+            const foreignCharsSnapshot = await db.collection('foreignCharacters').doc(fileId).get();
+            
+            wordFreqData = wordFreqSnapshot.exists ? wordFreqSnapshot.data() : {};
+            letterFreqData = letterFreqSnapshot.exists ? letterFreqSnapshot.data() : {};
+            foreignCharsData = foreignCharsSnapshot.exists ? foreignCharsSnapshot.data() : {};
+        }
+        
+        // Reconstruct the analysis object
+        const analysisData = {
+            id: fileId,
+            name: docData.name,
+            uploadDate: docData.uploadDate?.toDate ? docData.uploadDate.toDate() : new Date(docData.uploadDate),
+            wordCount: docData.wordCount,
+            language: docData.language,
+            originalContent: docData.originalContent,
+            cleanedText: docData.cleanedText,
+            wordFrequency: wordFreqData.frequencies || {},
+            letterFrequency: letterFreqData.frequencies || {},
+            foreignChars: foreignCharsData.characters || []
+        };
+        
+        // Display with search highlighting
+        displayAnalysisResultsWithSearch(analysisData, keywords);
+        showProgress(false);
+        
+    } catch (error) {
+        showProgress(false);
+        showError('Error loading file analysis: ' + error.message);
+        console.error('Error loading file analysis:', error);
+    }
+}
+
+/**
+ * Display analysis results with search term highlighting
+ * @param {Object} analysis - Analysis data
+ * @param {Array} keywords - Keywords to highlight
+ */
+function displayAnalysisResultsWithSearch(analysis, keywords) {
+    // Remove any existing analysis results
+    const existingResults = document.getElementById('analysisResults');
+    if (existingResults) {
+        existingResults.remove();
+    }
+    
+    // Create highlighted original content
+    const highlightedContent = highlightTextContent(analysis.originalContent, keywords);
+    
+    // Create the analysis results HTML with highlighted content
+    const analysisHTML = `
+        <div id="analysisResults" style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 20px;">
+                <h3>🔍 Analysis Results (Search Highlighted)</h3>
+                <button onclick="document.getElementById('analysisResults').remove()" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">✖️ Close</button>
+            </div>
+            
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p><strong>Search Keywords:</strong> ${keywords.map(k => `<span class="search-highlight">${k}</span>`).join(', ')}</p>
+                <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #6c757d;">Keywords are highlighted in the text below</p>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h4 style="color: #007bff; margin-top: 0;">📄 Document Info</h4>
+                    <p><strong>Name:</strong> ${analysis.name}</p>
+                    <p><strong>Language:</strong> <span style="color: #28a745; font-weight: bold;">${analysis.language}</span></p>
+                    <p><strong>Total Words:</strong> ${analysis.wordCount?.toLocaleString() || 'N/A'}</p>
+                    <p><strong>Processed:</strong> ${analysis.uploadDate ? analysis.uploadDate.toLocaleString() : 'N/A'}</p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h4 style="color: #007bff; margin-top: 0;">🔍 Search Matches</h4>
+                    <div id="searchMatchSummary">
+                        ${generateSearchMatchSummary(analysis.originalContent, keywords)}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                <h4 style="color: #007bff; margin-top: 0;">📝 Full Text (with highlighting)</h4>
+                <div style="background: white; padding: 20px; border-radius: 8px; max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; font-family: 'Georgia', serif; line-height: 1.6;">
+                    ${highlightedContent}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(document.createElement('div')).innerHTML = analysisHTML;
+    
+    // Scroll to the results
+    document.getElementById('analysisResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * Highlight keywords in text content
+ * @param {string} content - Original text content
+ * @param {Array} keywords - Keywords to highlight
+ * @returns {string} - HTML with highlighted keywords
+ */
+function highlightTextContent(content, keywords) {
+    let highlightedContent = content;
+    
+    // Replace newlines with HTML breaks first
+    highlightedContent = highlightedContent.replace(/\n/g, '<br>');
+    
+    // Highlight each keyword
+    keywords.forEach(keyword => {
+        const regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+        highlightedContent = highlightedContent.replace(regex, '<span class="search-highlight">$1</span>');
+    });
+    
+    return highlightedContent;
+}
+
+/**
+ * Generate search match summary
+ * @param {string} content - Text content
+ * @param {Array} keywords - Keywords to search for
+ * @returns {string} - HTML summary of matches
+ */
+function generateSearchMatchSummary(content, keywords) {
+    const lowerContent = content.toLowerCase();
+    const summary = keywords.map(keyword => {
+        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        const matches = lowerContent.match(regex) || [];
+        return `<p>📍 <strong>${keyword}:</strong> ${matches.length} occurrence${matches.length !== 1 ? 's' : ''}</p>`;
+    }).join('');
+    
+    return summary || '<p>No matches found</p>';
+}
+
+// =====================================
 // GLOBAL FUNCTION ASSIGNMENTS
 // =====================================
 
@@ -2110,6 +2528,10 @@ window.viewFileAnalysis = viewFileAnalysis;
 window.removeFile = removeFile;
 window.clearDatabase = clearDatabase;
 window.closeErrorModal = closeErrorModal;
+window.searchFiles = searchFiles;
+window.clearSearch = clearSearch;
+window.handleSearchKeyPress = handleSearchKeyPress;
+window.openFileFromSearch = openFileFromSearch;
 
 console.log('Global functions assigned:', {
     uploadText: typeof window.uploadText,
@@ -2118,7 +2540,11 @@ console.log('Global functions assigned:', {
     viewFileAnalysis: typeof window.viewFileAnalysis,
     removeFile: typeof window.removeFile,
     clearDatabase: typeof window.clearDatabase,
-    closeErrorModal: typeof window.closeErrorModal
+    closeErrorModal: typeof window.closeErrorModal,
+    searchFiles: typeof window.searchFiles,
+    clearSearch: typeof window.clearSearch,
+    handleSearchKeyPress: typeof window.handleSearchKeyPress,
+    openFileFromSearch: typeof window.openFileFromSearch
 });
 
 console.log('TextReader app.js fully loaded and ready!');
