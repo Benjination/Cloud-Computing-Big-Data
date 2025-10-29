@@ -176,8 +176,17 @@ async function processDocument(filename, content) {
         language: 'unknown',
         cleanedText: '',
         words: [],
-        wordFrequency: {}
+        wordFrequency: {},
+        charFrequency: {},
+        foreignChars: [],
+        letterFrequency: {}
     };
+    
+    // Analyze original content for foreign characters BEFORE cleaning
+    doc.foreignChars = findForeignCharacters(content);
+    
+    // Calculate letter frequency (a-z) from original content
+    doc.letterFrequency = calculateLetterFrequency(content);
     
     // Clean the text
     doc.cleanedText = cleanText(content);
@@ -188,11 +197,14 @@ async function processDocument(filename, content) {
     // Calculate word frequency
     doc.wordFrequency = calculateWordFrequency(doc.words);
     
+    // Calculate character frequency from cleaned text
+    doc.charFrequency = calculateCharacterFrequency(doc.cleanedText);
+    
     // Count words (excluding stop words)
     doc.wordCount = doc.words.length;
     
-    // Detect language
-    doc.language = detectLanguage(doc.cleanedText);
+    // Detect language using multiple methods
+    doc.language = detectLanguage(doc.cleanedText, doc.letterFrequency, doc.foreignChars);
     
     console.log(`Processed document: ${filename}, Words: ${doc.wordCount}, Language: ${doc.language}`);
     return doc;
@@ -238,32 +250,174 @@ function calculateWordFrequency(words) {
     return frequency;
 }
 
+/**
+ * Calculate letter frequency (a-z only) from text
+ * @param {string} text - Text to analyze
+ * @returns {Object} - Letter frequency object with percentages
+ */
+function calculateLetterFrequency(text) {
+    const freq = {};
+    let totalLetters = 0;
+    
+    // Initialize all letters
+    for (let i = 97; i <= 122; i++) {
+        freq[String.fromCharCode(i)] = 0;
+    }
+    
+    // Count letters
+    for (let char of text.toLowerCase()) {
+        if (char >= 'a' && char <= 'z') {
+            freq[char]++;
+            totalLetters++;
+        }
+    }
+    
+    // Convert to percentages
+    const percentages = {};
+    for (let letter in freq) {
+        percentages[letter] = totalLetters > 0 ? ((freq[letter] / totalLetters) * 100).toFixed(2) : 0;
+    }
+    
+    return percentages;
+}
+
+/**
+ * Find non-English characters (accented letters, etc.)
+ * @param {string} text - Text to analyze
+ * @returns {Array} - Array of foreign characters with counts
+ */
+function findForeignCharacters(text) {
+    const foreignChars = {};
+    
+    for (let char of text) {
+        // Check if character is not basic ASCII letter, number, punctuation, or whitespace
+        if (char.match(/[^\x00-\x7F]/)) {
+            // It's a non-ASCII character
+            if (char.match(/[À-ÿ]/)) {
+                // It's an accented letter
+                foreignChars[char] = (foreignChars[char] || 0) + 1;
+            }
+        }
+    }
+    
+    // Convert to array and sort by frequency
+    return Object.entries(foreignChars)
+        .sort(([,a], [,b]) => b - a)
+        .map(([char, count]) => ({ char, count, description: getCharacterDescription(char) }));
+}
+
+/**
+ * Get description of foreign character
+ * @param {string} char - Character to describe
+ * @returns {string} - Description of the character
+ */
+function getCharacterDescription(char) {
+    const descriptions = {
+        'à': 'a with grave accent',
+        'á': 'a with acute accent',
+        'â': 'a with circumflex',
+        'ã': 'a with tilde',
+        'ä': 'a with diaeresis',
+        'å': 'a with ring above',
+        'è': 'e with grave accent',
+        'é': 'e with acute accent',
+        'ê': 'e with circumflex',
+        'ë': 'e with diaeresis',
+        'ì': 'i with grave accent',
+        'í': 'i with acute accent',
+        'î': 'i with circumflex',
+        'ï': 'i with diaeresis',
+        'ò': 'o with grave accent',
+        'ó': 'o with acute accent',
+        'ô': 'o with circumflex',
+        'õ': 'o with tilde',
+        'ö': 'o with diaeresis',
+        'ù': 'u with grave accent',
+        'ú': 'u with acute accent',
+        'û': 'u with circumflex',
+        'ü': 'u with diaeresis',
+        'ç': 'c with cedilla',
+        'ñ': 'n with tilde'
+    };
+    
+    return descriptions[char.toLowerCase()] || `accented character (${char})`;
+}
+
 // =====================================
 // LANGUAGE DETECTION
 // =====================================
 
 /**
- * Detect language based on character frequency analysis
+ * Detect language based on character frequency analysis and foreign characters
  * @param {string} text - Text to analyze
+ * @param {Object} letterFreq - Letter frequency object
+ * @param {Array} foreignChars - Array of foreign characters
  * @returns {string} - Detected language
  */
-function detectLanguage(text) {
-    // Simple language detection based on character frequency
-    // This is a basic implementation - can be enhanced
+function detectLanguage(text, letterFreq, foreignChars) {
+    // Enhanced language detection using multiple indicators
     
-    const charFreq = calculateCharacterFrequency(text);
+    // Check for foreign characters first
+    if (foreignChars && foreignChars.length > 0) {
+        // Check for French-specific characters
+        const frenchChars = foreignChars.filter(fc => 
+            ['à', 'á', 'â', 'ç', 'è', 'é', 'ê', 'ë', 'î', 'ï', 'ô', 'ù', 'û', 'ü', 'ÿ'].includes(fc.char.toLowerCase())
+        );
+        
+        if (frenchChars.length > 0) {
+            return 'French (detected accented characters)';
+        }
+        
+        // Check for other European languages
+        const spanishChars = foreignChars.filter(fc => 
+            ['ñ', 'á', 'é', 'í', 'ó', 'ú', 'ü'].includes(fc.char.toLowerCase())
+        );
+        
+        if (spanishChars.length > 0) {
+            return 'Spanish (detected accented characters)';
+        }
+        
+        return `Unknown (contains accented characters)`;
+    }
     
-    // Basic heuristics for English vs French
-    const englishScore = calculateLanguageScore(charFreq, 'english');
-    const frenchScore = calculateLanguageScore(charFreq, 'french');
+    // If no foreign characters, use letter frequency analysis
+    if (letterFreq) {
+        const eFreq = parseFloat(letterFreq.e) || 0;
+        const aFreq = parseFloat(letterFreq.a) || 0;
+        const tFreq = parseFloat(letterFreq.t) || 0;
+        
+        // English typically has high E frequency (~12-13%)
+        // French has different patterns
+        if (eFreq > 10 && tFreq > 8) {
+            return 'English (letter frequency analysis)';
+        } else if (eFreq > 14 && aFreq > 7) {
+            return 'French (letter frequency analysis)';
+        }
+    }
+    
+    // Fallback to basic word analysis
+    const commonEnglishWords = ['the', 'and', 'of', 'to', 'a', 'in', 'for', 'is', 'on', 'that'];
+    const commonFrenchWords = ['le', 'de', 'et', 'un', 'à', 'être', 'ce', 'il', 'que', 'ne'];
+    
+    const lowerText = text.toLowerCase();
+    let englishScore = 0;
+    let frenchScore = 0;
+    
+    commonEnglishWords.forEach(word => {
+        if (lowerText.includes(' ' + word + ' ')) englishScore++;
+    });
+    
+    commonFrenchWords.forEach(word => {
+        if (lowerText.includes(' ' + word + ' ')) frenchScore++;
+    });
     
     if (englishScore > frenchScore) {
-        return 'English';
+        return 'English (word analysis)';
     } else if (frenchScore > englishScore) {
-        return 'French';
-    } else {
-        return 'Unknown';
+        return 'French (word analysis)';
     }
+    
+    return 'Unknown';
 }
 
 /**
@@ -331,44 +485,81 @@ async function analyzeText() {
 function displayAnalysisResults(analysis) {
     const topWords = Object.entries(analysis.wordFrequency)
         .sort(([,a], [,b]) => b - a)
-        .slice(0, 15);
+        .slice(0, 5); // Show top 5 words as requested
+    
+    // Get top letter frequencies
+    const topLetters = Object.entries(analysis.letterFrequency)
+        .sort(([,a], [,b]) => parseFloat(b) - parseFloat(a))
+        .slice(0, 10);
     
     const resultsHtml = `
         <div style="margin-top: 20px; padding: 25px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #007bff;">
-            <h3 style="color: #007bff; margin-bottom: 20px;">📊 Text Analysis Results</h3>
+            <h3 style="color: #007bff; margin-bottom: 20px;">📊 Linguistic Analysis Results</h3>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 25px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 25px;">
                 <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0 0 10px 0; color: #495057;">📄 Document Info</h4>
                     <p><strong>Name:</strong> ${analysis.name}</p>
                     <p><strong>Language:</strong> <span style="color: #28a745; font-weight: bold;">${analysis.language}</span></p>
                     <p><strong>Total Words:</strong> ${analysis.wordCount.toLocaleString()}</p>
                     <p><strong>Unique Words:</strong> ${Object.keys(analysis.wordFrequency).length.toLocaleString()}</p>
+                    <p><strong>Processed:</strong> ${analysis.uploadDate.toLocaleString()}</p>
                 </div>
                 
                 <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    <h4 style="margin: 0 0 10px 0; color: #495057;">📈 Statistics</h4>
-                    <p><strong>Processed:</strong> ${analysis.uploadDate.toLocaleString()}</p>
-                    <p><strong>Avg Word Length:</strong> ${calculateAverageWordLength(analysis.words).toFixed(1)} chars</p>
-                    <p><strong>Text Density:</strong> ${(analysis.wordCount / analysis.cleanedText.length * 100).toFixed(1)}%</p>
-                    <p><strong>Status:</strong> <span style="color: #28a745;">✅ Processed</span></p>
+                    <h4 style="margin: 0 0 10px 0; color: #495057;">� Letter Frequency (A-Z)</h4>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; font-size: 12px;">
+                        ${topLetters.map(([letter, freq]) => `
+                            <div style="text-align: center; padding: 5px; background: #f8f9fa; border-radius: 3px;">
+                                <div style="font-weight: bold; text-transform: uppercase;">${letter}</div>
+                                <div style="color: #007bff;">${freq}%</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p style="margin-top: 10px; font-size: 12px; color: #6c757d;">Top 10 most frequent letters</p>
                 </div>
             </div>
             
+            ${analysis.foreignChars && analysis.foreignChars.length > 0 ? `
+            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                <h4 style="margin: 0 0 15px 0; color: #495057;">🌍 Non-English Characters Found</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+                    ${analysis.foreignChars.slice(0, 10).map(fc => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #fff3cd; border-radius: 5px; border-left: 3px solid #ffc107;">
+                            <span style="font-weight: 500; font-size: 16px;">${fc.char}</span>
+                            <div style="text-align: right; font-size: 12px;">
+                                <div style="color: #007bff; font-weight: bold;">${fc.count} times</div>
+                                <div style="color: #6c757d;">${fc.description}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <p style="margin-top: 10px; font-size: 12px; color: #6c757d;">
+                    Found ${analysis.foreignChars.length} type(s) of accented characters - indicates non-English text
+                </p>
+            </div>
+            ` : `
+            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                <h4 style="margin: 0 0 15px 0; color: #495057;">🌍 Character Analysis</h4>
+                <p style="color: #28a745; font-weight: bold;">✅ No accented characters found - text uses standard English alphabet</p>
+            </div>
+            `}
+            
             <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                <h4 style="margin: 0 0 15px 0; color: #495057;">🏆 Most Frequent Words</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <h4 style="margin: 0 0 15px 0; color: #495057;">🏆 Top 5 Most Frequent Words</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                     ${topWords.map(([word, count], index) => `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: ${index < 3 ? '#fff3cd' : '#f8f9fa'}; border-radius: 5px; border-left: 3px solid ${index < 3 ? '#ffc107' : '#dee2e6'};">
-                            <span style="font-weight: 500;">${index + 1}. ${word}</span>
-                            <span style="color: #007bff; font-weight: bold;">${count}</span>
+                        <div style="text-align: center; padding: 15px; background: ${index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#f8f9fa'}; border-radius: 8px; border: 2px solid ${index < 3 ? '#ffc107' : '#dee2e6'};">
+                            <div style="font-size: 24px; margin-bottom: 5px;">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}</div>
+                            <div style="font-weight: bold; font-size: 18px; margin-bottom: 5px;">${word}</div>
+                            <div style="color: #007bff; font-weight: bold; font-size: 16px;">${count} occurrences</div>
                         </div>
                     `).join('')}
                 </div>
             </div>
             
             <div style="margin-top: 15px; text-align: center;">
-                <button onclick="showDetailedAnalysis('${analysis.id}')" class="btn" style="background-color: #28a745;">📋 View Detailed Analysis</button>
+                <button onclick="showDetailedAnalysis('${analysis.id}')" class="btn" style="background-color: #28a745;">📋 View Letter Distribution</button>
                 <button onclick="downloadAnalysis('${analysis.id}')" class="btn" style="background-color: #17a2b8; margin-left: 10px;">💾 Download Report</button>
             </div>
         </div>
@@ -501,7 +692,7 @@ function calculateAverageWordLength(words) {
 }
 
 /**
- * Show detailed analysis (placeholder for future feature)
+ * Show detailed analysis (letter distribution)
  * @param {string} docId - Document ID
  */
 function showDetailedAnalysis(docId) {
@@ -511,7 +702,73 @@ function showDetailedAnalysis(docId) {
         return;
     }
     
-    alert(`Detailed analysis for "${doc.name}" - This feature will be implemented in Phase 2!\n\nCurrent data:\n- Words: ${doc.wordCount}\n- Language: ${doc.language}\n- Unique words: ${Object.keys(doc.wordFrequency).length}`);
+    // Create detailed letter distribution chart
+    const allLetters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+    const letterData = allLetters.map(letter => ({
+        letter: letter.toUpperCase(),
+        frequency: parseFloat(doc.letterFrequency[letter]) || 0
+    }));
+    
+    const detailsHtml = `
+        <div style="margin-top: 20px; padding: 25px; background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #17a2b8;">
+            <h3 style="color: #17a2b8; margin-bottom: 20px;">📊 Complete Letter Distribution - ${doc.name}</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(13, 1fr); gap: 10px; margin-bottom: 20px;">
+                ${letterData.map(({ letter, frequency }) => `
+                    <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, #f8f9fa 0%, ${frequency > 8 ? '#ffecb3' : frequency > 4 ? '#f0f4f8' : '#fafafa'} 100%); border-radius: 8px; border: 1px solid #dee2e6;">
+                        <div style="font-weight: bold; font-size: 18px; color: #495057;">${letter}</div>
+                        <div style="color: #007bff; font-weight: bold;">${frequency}%</div>
+                        <div style="height: ${Math.max(3, frequency * 2)}px; background: linear-gradient(45deg, #007bff, #17a2b8); margin-top: 5px; border-radius: 2px;"></div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 10px 0;">📈 Analysis Summary</h4>
+                <p><strong>Most common letter:</strong> ${letterData.sort((a, b) => b.frequency - a.frequency)[0].letter} (${letterData.sort((a, b) => b.frequency - a.frequency)[0].frequency}%)</p>
+                <p><strong>Least common letter:</strong> ${letterData.filter(l => l.frequency > 0).sort((a, b) => a.frequency - b.frequency)[0]?.letter || 'None'} (${letterData.filter(l => l.frequency > 0).sort((a, b) => a.frequency - b.frequency)[0]?.frequency || 0}%)</p>
+                <p><strong>Letters not found:</strong> ${letterData.filter(l => l.frequency === 0).map(l => l.letter).join(', ') || 'All letters present'}</p>
+            </div>
+            
+            ${doc.foreignChars && doc.foreignChars.length > 0 ? `
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <h4 style="margin: 0 0 10px 0;">🌍 Foreign Characters Details</h4>
+                ${doc.foreignChars.map(fc => `
+                    <p><strong>${fc.char}</strong> (${fc.description}): appears ${fc.count} times</p>
+                `).join('')}
+            </div>
+            ` : ''}
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="closeDetailedAnalysis()" class="btn" style="background-color: #6c757d;">✖ Close</button>
+            </div>
+        </div>
+    `;
+    
+    // Add detailed analysis
+    const analysisDiv = document.getElementById('analysisResults');
+    let detailedDiv = document.getElementById('detailedAnalysis');
+    if (detailedDiv) {
+        detailedDiv.remove();
+    }
+    
+    detailedDiv = document.createElement('div');
+    detailedDiv.id = 'detailedAnalysis';
+    detailedDiv.innerHTML = detailsHtml;
+    analysisDiv.after(detailedDiv);
+    
+    // Scroll to detailed analysis
+    detailedDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * Close detailed analysis view
+ */
+function closeDetailedAnalysis() {
+    const detailedDiv = document.getElementById('detailedAnalysis');
+    if (detailedDiv) {
+        detailedDiv.remove();
+    }
 }
 
 /**
@@ -758,6 +1015,7 @@ window.analyzeText = analyzeText;
 window.clearDatabase = clearDatabase;
 window.showDetailedAnalysis = showDetailedAnalysis;
 window.downloadAnalysis = downloadAnalysis;
+window.closeDetailedAnalysis = closeDetailedAnalysis;
 
 // For testing purposes, you can also access these
 // window.TextReaderApp = {
