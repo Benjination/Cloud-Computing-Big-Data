@@ -88,6 +88,183 @@
             margin: 10px 0;
             display: none;
         }
+        .file-item {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .file-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+        .file-name {
+            transition: color 0.2s;
+        }
+        
+        /* Enhanced Drag and Drop Styles */
+        .file-item {
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+            user-select: none;
+        }
+        
+        .file-item:hover {
+            background-color: #e9ecef !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
+        }
+        
+        .file-item.dragging {
+            opacity: 0.7;
+            transform: rotate(2deg) scale(1.02);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3) !important;
+            z-index: 1000;
+            background-color: #ffffff !important;
+        }
+        
+        .drag-handle {
+            transition: color 0.2s, transform 0.1s;
+        }
+        
+        .drag-handle:hover {
+            color: #007bff !important;
+            transform: scale(1.1);
+        }
+        
+        .drag-handle:active {
+            cursor: grabbing !important;
+            transform: scale(0.95);
+        }
+        
+        /* Drop zone indicators */
+        .drop-indicator-top {
+            border-top: 3px solid #007bff !important;
+            animation: pulse 1s infinite;
+        }
+        
+        .drop-indicator-bottom {
+            border-bottom: 3px solid #007bff !important;
+            animation: pulse 1s infinite;
+        }
+        
+        /* Drop zone indicators */
+        .drop-indicator-top {
+            border-top: 3px solid #007bff !important;
+            animation: pulse 1s infinite;
+        }
+        
+        .drop-indicator-bottom {
+            border-bottom: 3px solid #007bff !important;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .file-name:hover {
+            color: #0056b3;
+        }
+        @media (max-width: 768px) {
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .file-item button {
+                align-self: flex-end;
+            }
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 0;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 500px;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.3em;
+        }
+        
+        .modal-icon {
+            font-size: 1.8em;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+        
+        .modal-body {
+            padding: 25px;
+            font-size: 1.05em;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .modal-footer {
+            padding: 20px 25px;
+            border-top: 1px solid #e9ecef;
+            text-align: right;
+        }
+        
+        .modal-close-btn {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+        }
+        
+        .modal-close-btn:hover {
+            background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+        }
+        
+        .modal-close-btn:active {
+            transform: translateY(0);
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
     </style>
     </head>
     <body>
@@ -111,9 +288,31 @@
             <br>
             <button onclick="uploadText()" class="btn">Upload Text File</button>
             <button onclick="clearDatabase()" class="btn" style="background-color: #dc3545; margin-left: 10px;">🗑️ Clear Database</button>
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                <h4>📚 Try Sample Files</h4>
+                <p>Load pre-existing text samples to test the language detection:</p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                    <button onclick="loadSampleFile('Alice.txt', 'Alice in Wonderland (English)')" class="btn" style="background-color: #28a745;">🇺🇸 English Sample</button>
+                    <button onclick="loadSampleFile('CandideFr.txt', 'Candide (French)')" class="btn" style="background-color: #17a2b8;">🇫🇷 French Sample</button>
+                    <button onclick="loadSampleFile('CandidateSp.txt', 'Candidato (Spanish)')" class="btn" style="background-color: #fd7e14;">🇪🇸 Spanish Sample</button>
+                </div>
+            </div>
+            
             <div id="uploadProgress" style="margin-top: 10px; display: none;">
                 <div>Progress: <span id="uploadPercentage">0%</span></div>
                 <div>Records uploaded: <span id="recordsUploaded">0</span></div>
+            </div>
+        </div>
+
+        <div id="fileListSection" style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3>📚 Previously Uploaded Files</h3>
+            <p>Click on a file name to view its analysis, or use the remove button to delete it:</p>
+            <div id="fileList" style="margin-top: 15px;">
+                <div style="text-align: center; color: #6c757d; padding: 20px;">
+                    <div style="font-size: 24px; margin-bottom: 10px;">📄</div>
+                    <p>No files uploaded yet. Upload a text file above to get started!</p>
+                </div>
             </div>
         </div>
 
@@ -122,8 +321,24 @@
         <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
         <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
         
+        <!-- Error Modal -->
+        <div id="errorModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="modal-icon">⚠️</span>
+                    <h3>File Upload Error</h3>
+                </div>
+                <div class="modal-body" id="modalErrorMessage">
+                    <!-- Error message will be inserted here -->
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-close-btn" onclick="closeErrorModal()">Close</button>
+                </div>
+            </div>
+        </div>
+        
         <!-- Main Application JavaScript -->
-        <script src="app.js"></script>
+        <script src="app.js?v=2025-10-29-16-00"></script>
        
 
     </body>
