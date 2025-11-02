@@ -52,6 +52,125 @@ let frenchStopWords = [];
 let spanishStopWords = [];
 
 // =====================================
+// WORD STEMMING FUNCTIONS
+// =====================================
+
+/**
+ * Simple but effective stemming algorithm for English words
+ * Based on Porter Stemmer principles but simplified for performance
+ * @param {string} word - Word to stem
+ * @returns {string} - Stemmed word
+ */
+function stemWord(word) {
+    if (!word || word.length <= 2) return word;
+    
+    const originalWord = word;
+    word = word.toLowerCase();
+    
+    // Common suffix rules (most effective ones for search)
+    const suffixRules = [
+        // Plurals
+        { pattern: /ies$/, replacement: 'y' },      // cities -> city
+        { pattern: /ied$/, replacement: 'y' },      // cried -> cry
+        { pattern: /ies$/, replacement: 'ie' },     // ties -> tie
+        { pattern: /s$/, replacement: '', minLength: 4 }, // cats -> cat (but not 'as' -> 'a')
+        
+        // Past tense and gerunds
+        { pattern: /eed$/, replacement: 'ee' },     // agreed -> agree
+        { pattern: /ed$/, replacement: '', minLength: 4 },   // wanted -> want
+        { pattern: /ing$/, replacement: '', minLength: 4 },  // running -> run
+        
+        // Comparative and superlative
+        { pattern: /est$/, replacement: '', minLength: 4 },  // fastest -> fast
+        { pattern: /er$/, replacement: '', minLength: 4 },   // faster -> fast
+        
+        // Adverbs
+        { pattern: /ly$/, replacement: '', minLength: 4 },   // quickly -> quick
+        
+        // Common word endings
+        { pattern: /tion$/, replacement: 'te' },    // creation -> create
+        { pattern: /sion$/, replacement: 's' },     // expansion -> expans
+        { pattern: /ness$/, replacement: '' },      // goodness -> good
+        { pattern: /ment$/, replacement: '' },      // development -> develop
+        { pattern: /able$/, replacement: '' },      // readable -> read
+        { pattern: /ible$/, replacement: '' },      // terrible -> terr
+        { pattern: /ful$/, replacement: '' },       // helpful -> help
+        { pattern: /less$/, replacement: '' },      // helpless -> help
+        { pattern: /ous$/, replacement: '' },       // dangerous -> danger
+        { pattern: /ive$/, replacement: '' },       // active -> act
+        { pattern: /ize$/, replacement: '' },       // realize -> real
+        { pattern: /ise$/, replacement: '' },       // realise -> real
+    ];
+    
+    // Apply suffix rules
+    for (const rule of suffixRules) {
+        if (rule.pattern.test(word)) {
+            const newWord = word.replace(rule.pattern, rule.replacement);
+            // Only apply if the resulting word meets minimum length requirement
+            if (!rule.minLength || newWord.length >= rule.minLength) {
+                word = newWord;
+                break; // Apply only the first matching rule
+            }
+        }
+    }
+    
+    // Additional cleaning for double letters at the end (running -> run)
+    if (word.length > 3 && word.match(/(.)\1$/)) {
+        word = word.slice(0, -1);
+    }
+    
+    return word;
+}
+
+/**
+ * Apply stemming to an array of words
+ * @param {Array} words - Array of words to stem
+ * @returns {Array} - Array of stemmed words
+ */
+function stemWords(words) {
+    return words.map(word => stemWord(word));
+}
+
+/**
+ * Create a search index with both original and stemmed words
+ * @param {string} text - Text to index
+ * @returns {Object} - Object with original and stemmed word frequencies
+ */
+function createStemmedIndex(text) {
+    const words = text.toLowerCase()
+        .replace(/[^\w\s]/g, ' ')
+        .split(/\s+/)
+        .filter(word => word.length > 2);
+    
+    const originalIndex = {};
+    const stemmedIndex = {};
+    const stemMapping = {}; // Maps stemmed word back to original words
+    
+    words.forEach(word => {
+        // Count original words
+        originalIndex[word] = (originalIndex[word] || 0) + 1;
+        
+        // Count stemmed words
+        const stemmed = stemWord(word);
+        stemmedIndex[stemmed] = (stemmedIndex[stemmed] || 0) + 1;
+        
+        // Track mapping from stem to original words
+        if (!stemMapping[stemmed]) {
+            stemMapping[stemmed] = new Set();
+        }
+        stemMapping[stemmed].add(word);
+    });
+    
+    return {
+        original: originalIndex,
+        stemmed: stemmedIndex,
+        mapping: Object.fromEntries(
+            Object.entries(stemMapping).map(([stem, words]) => [stem, Array.from(words)])
+        )
+    };
+}
+
+// =====================================
 // INITIALIZATION FUNCTIONS
 // =====================================
 
@@ -60,6 +179,17 @@ let spanishStopWords = [];
  */
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Text Reader App initializing...');
+    
+    // Test stemming function
+    console.log('🌱 Stemming examples:');
+    console.log('running → ' + stemWord('running'));
+    console.log('cats → ' + stemWord('cats'));
+    console.log('questionable → ' + stemWord('questionable'));
+    console.log('computers → ' + stemWord('computers'));
+    console.log('quickly → ' + stemWord('quickly'));
+    console.log('creation → ' + stemWord('creation'));
+    console.log('helpful → ' + stemWord('helpful'));
+    
     initializeApp();
 });
 
@@ -2180,7 +2310,7 @@ async function searchFiles() {
         showProgress(true);
         
         // Break search query into keywords and process wildcards
-        const keywords = searchQuery.toLowerCase()
+        const rawKeywords = searchQuery.toLowerCase()
             .split(/\s+/)
             .filter(word => word.length > 2) // Only words with 3+ characters
             .map(word => {
@@ -2188,13 +2318,36 @@ async function searchFiles() {
                 return word.replace(/[^\w*]/g, '');
             });
         
-        if (keywords.length === 0) {
+        if (rawKeywords.length === 0) {
             showError('Please enter valid search terms (at least 3 characters each)');
             showProgress(false);
             return;
         }
         
-        console.log('Searching for keywords:', keywords);
+        // Create enhanced keyword list with stemming
+        const keywords = [];
+        const keywordInfo = [];
+        
+        rawKeywords.forEach(keyword => {
+            if (keyword.includes('*')) {
+                // Wildcard search - use as-is
+                keywords.push(keyword);
+                keywordInfo.push({ original: keyword, type: 'wildcard' });
+            } else {
+                // Regular word - add both original and stemmed version
+                keywords.push(keyword);
+                keywordInfo.push({ original: keyword, type: 'exact' });
+                
+                const stemmed = stemWord(keyword);
+                if (stemmed !== keyword && stemmed.length > 2) {
+                    keywords.push(stemmed);
+                    keywordInfo.push({ original: keyword, stemmed: stemmed, type: 'stemmed' });
+                }
+            }
+        });
+        
+        console.log('Searching for keywords (including stemmed):', keywords);
+        console.log('Keyword details:', keywordInfo);
         
         // Get all documents from Firebase
         const documentsSnapshot = await db.collection('documents').get();
@@ -2216,7 +2369,7 @@ async function searchFiles() {
         });
         
         showProgress(false);
-        displaySearchResults(searchResults, keywords);
+        displaySearchResults(searchResults, rawKeywords, keywordInfo);
         
     } catch (error) {
         showProgress(false);
@@ -2278,10 +2431,23 @@ function findKeywordsInText(text, keywords) {
  * Display search results in the UI
  * @param {Array} results - Array of search result objects
  * @param {Array} keywords - Original search keywords
+ * @param {Array} keywordInfo - Information about keyword types (exact, stemmed, wildcard)
  */
-function displaySearchResults(results, keywords) {
+function displaySearchResults(results, keywords, keywordInfo = []) {
     const searchResults = document.getElementById('searchResults');
     const searchResultsList = document.getElementById('searchResultsList');
+    
+    // Create search summary with stemming info
+    const stemmedKeywords = keywordInfo.filter(k => k.type === 'stemmed').map(k => k.stemmed);
+    const wildcardKeywords = keywordInfo.filter(k => k.type === 'wildcard').map(k => k.original);
+    
+    let searchSummary = `<strong>Search terms:</strong> ${keywords.join(', ')}`;
+    if (stemmedKeywords.length > 0) {
+        searchSummary += `<br><small style="color: #6c757d;">🌱 Also searching stemmed forms: ${stemmedKeywords.join(', ')}</small>`;
+    }
+    if (wildcardKeywords.length > 0) {
+        searchSummary += `<br><small style="color: #6c757d;">⭐ Wildcard searches: ${wildcardKeywords.join(', ')}</small>`;
+    }
     
     if (results.length === 0) {
         searchResultsList.innerHTML = `
@@ -2292,18 +2458,26 @@ function displaySearchResults(results, keywords) {
             </div>
         `;
     } else {
-        const resultsHTML = results.map(result => {
+        const resultsHTML = `
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #17a2b8;">
+                ${searchSummary}
+                <div style="margin-top: 10px;"><strong>${results.length} document${results.length !== 1 ? 's' : ''} found</strong></div>
+            </div>
+        ` + results.map(result => {
             const matchCount = result.matches.length;
             const uniqueKeywords = [...new Set(result.matches.map(m => m.keyword))];
             
-            // Create preview with highlighted terms
-            const preview = createHighlightedPreview(result.matches[0].context, keywords);
+            // Get all the actual words that were matched (not just search terms)
+            const actualMatchedWords = [...new Set(result.matches.map(m => m.fullMatch))];
+            
+            // Create preview with highlighted terms - use actual matched words for highlighting
+            const preview = createHighlightedPreview(result.matches[0].context, actualMatchedWords);
             
             return `
                 <div class="search-result-item" onclick="openFileFromSearch('${result.id}', '${encodeURIComponent(JSON.stringify(keywords))}')">
                     <div class="search-result-filename">📄 ${result.filename}</div>
                     <div class="search-result-matches">
-                        ${matchCount} match${matchCount !== 1 ? 'es' : ''} found for: ${uniqueKeywords.join(', ')}
+                        ${matchCount} match${matchCount !== 1 ? 'es' : ''} found
                     </div>
                     <div class="search-result-preview">
                         ...${preview}...
@@ -2322,12 +2496,39 @@ function displaySearchResults(results, keywords) {
 }
 
 /**
- * Create highlighted preview text
+ * Create highlighted preview text using actual matched words
+ * @param {string} context - Context text around the match
+ * @param {Array} matchedWords - Actual words that were matched
+ * @returns {string} - HTML with highlighted matched words
+ */
+function createHighlightedPreviewFromMatches(context, matchedWords) {
+    let highlightedText = context;
+    
+    matchedWords.forEach(word => {
+        // Escape the word for regex and create exact match pattern
+        const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b(${escapedWord})\\b`, 'gi');
+        highlightedText = highlightedText.replace(regex, '<span class="search-highlight">$1</span>');
+    });
+    
+    return highlightedText;
+}
+
+/**
+ * Create highlighted preview text (legacy function for search patterns)
  * @param {string} context - Context text around the match
  * @param {Array} keywords - Keywords to highlight
  * @returns {string} - HTML with highlighted keywords
  */
 function createHighlightedPreview(context, keywords) {
+    // Check if this looks like actual matched words or search patterns
+    const hasWildcards = keywords.some(k => k.includes('*'));
+    
+    if (!hasWildcards) {
+        // If no wildcards, treat as actual matched words for better highlighting
+        return createHighlightedPreviewFromMatches(context, keywords);
+    }
+    
     let highlightedText = context;
     
     keywords.forEach(keyword => {
@@ -2356,7 +2557,7 @@ function createHighlightedPreview(context, keywords) {
  */
 async function openFileFromSearch(fileId, encodedKeywords) {
     try {
-        const keywords = JSON.parse(decodeURIComponent(encodedKeywords));
+        const originalKeywords = JSON.parse(decodeURIComponent(encodedKeywords));
         
         // Get the document data
         const doc = await db.collection('documents').doc(fileId).get();
@@ -2367,11 +2568,32 @@ async function openFileFromSearch(fileId, encodedKeywords) {
         
         const data = doc.data();
         
-        // Store search keywords for highlighting
-        window.currentSearchKeywords = keywords;
+        // Rebuild the complete keyword list (original + stemmed) just like in searchFiles
+        const keywords = [];
+        originalKeywords.forEach(keyword => {
+            if (keyword.includes('*')) {
+                // Wildcard search - use as-is
+                keywords.push(keyword);
+            } else {
+                // Regular word - add both original and stemmed version
+                keywords.push(keyword);
+                const stemmed = stemWord(keyword);
+                if (stemmed !== keyword && stemmed.length > 2) {
+                    keywords.push(stemmed);
+                }
+            }
+        });
         
-        // Open the file analysis with search highlighting
-        await viewFileAnalysisWithSearch(data, keywords);
+        // Find all actual matches in this document
+        const matches = findKeywordsInText(data.cleanedText || data.originalContent, keywords);
+        const actualMatchedWords = [...new Set(matches.map(m => m.fullMatch))];
+        
+        // Store both original keywords and actual matched words for highlighting
+        window.currentSearchKeywords = originalKeywords;
+        window.currentMatchedWords = actualMatchedWords;
+        
+        // Open the file analysis with search highlighting using actual matched words
+        await viewFileAnalysisWithSearch(data, actualMatchedWords);
         
     } catch (error) {
         showError('Error opening file: ' + error.message);
@@ -2472,8 +2694,9 @@ function displayAnalysisResultsWithSearch(analysis, keywords) {
             </div>
             
             <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <p><strong>Search Keywords:</strong> ${keywords.map(k => `<span class="search-highlight">${k}</span>`).join(', ')}</p>
-                <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #6c757d;">Keywords are highlighted in the text below</p>
+                <p><strong>Highlighted Words:</strong> ${keywords.map(k => `<span class="search-highlight">${k}</span>`).join(', ')}</p>
+                <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #6c757d;">All matching words (including stemmed forms) are highlighted in the text below</p>
+                ${window.currentSearchKeywords ? `<p style="margin: 5px 0 0 0; font-size: 0.9em; color: #6c757d;"><strong>Original search:</strong> ${window.currentSearchKeywords.join(', ')}</p>` : ''}
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
@@ -2509,12 +2732,43 @@ function displayAnalysisResultsWithSearch(analysis, keywords) {
 }
 
 /**
- * Highlight keywords in text content
+ * Highlight actual matched words in text content (more accurate than search patterns)
+ * @param {string} content - Original text content  
+ * @param {Array} matchedWords - Actual words that were matched
+ * @returns {string} - HTML with highlighted matched words
+ */
+function highlightMatchedWordsInText(content, matchedWords) {
+    let highlightedContent = content;
+    
+    // Replace newlines with HTML breaks first
+    highlightedContent = highlightedContent.replace(/\n/g, '<br>');
+    
+    // Highlight each matched word
+    matchedWords.forEach(word => {
+        // Escape the word for regex and create exact match pattern
+        const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b(${escapedWord})\\b`, 'gi');
+        highlightedContent = highlightedContent.replace(regex, '<span class="search-highlight">$1</span>');
+    });
+    
+    return highlightedContent;
+}
+
+/**
+ * Highlight keywords in text content (legacy function for search patterns)
  * @param {string} content - Original text content
  * @param {Array} keywords - Keywords to highlight
  * @returns {string} - HTML with highlighted keywords
  */
 function highlightTextContent(content, keywords) {
+    // Check if this looks like actual matched words or search patterns
+    const hasWildcards = keywords.some(k => k.includes('*'));
+    
+    if (!hasWildcards) {
+        // If no wildcards, treat as actual matched words for better highlighting
+        return highlightMatchedWordsInText(content, keywords);
+    }
+    
     let highlightedContent = content;
     
     // Replace newlines with HTML breaks first
