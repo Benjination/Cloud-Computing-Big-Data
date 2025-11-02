@@ -57,9 +57,8 @@ let sampleFilesCache = [];
 // Available sample files
 const SAMPLE_FILES = [
     { filename: 'Alice.txt', displayName: 'Alice in Wonderland (English)', id: 'sample-alice' },
-    { filename: 'CandideEn.txt', displayName: 'Candide (English)', id: 'sample-candide-en' },
-    { filename: 'CandideFr.txt', displayName: 'Candide (French)', id: 'sample-candide-fr' },
-    { filename: 'CandidateSp.txt', displayName: 'Candide (Spanish)', id: 'sample-candide-es' }
+    { filename: 'CandideFr.txt', displayName: 'Candide by Voltaire (French)', id: 'sample-candide-fr' },
+    { filename: 'CandidateSp.txt', displayName: 'Don Quixote by Cervantes (Spanish)', id: 'sample-donquixote-es' }
 ];
 
 // =====================================
