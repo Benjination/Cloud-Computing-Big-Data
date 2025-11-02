@@ -54,6 +54,9 @@ let spanishStopWords = [];
 // Sample files cache for search functionality
 let sampleFilesCache = [];
 
+// Temporary storage for current analysis (includes sample files)
+let currentAnalysisData = null;
+
 // Available sample files
 const SAMPLE_FILES = [
     { filename: 'Alice.txt', displayName: 'Alice in Wonderland (English)', id: 'sample-alice' },
@@ -1083,6 +1086,9 @@ function displayAnalysisResults(analysis) {
     console.log('Letter frequency object:', analysis.letterFrequency);
     console.log('Letter frequency entries:', Object.entries(analysis.letterFrequency || {}));
     
+    // Store current analysis data for detailed view access
+    currentAnalysisData = analysis;
+    
     const topWords = Object.entries(analysis.wordFrequency)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5); // Show top 5 words as requested
@@ -1413,17 +1419,28 @@ function calculateAverageWordLength(words) {
  */
 async function showDetailedAnalysis(docId) {
     try {
-        // Try to find in current documents first
-        let doc = currentDocuments.find(d => d.id === docId);
+        let doc = null;
         
-        // If not found locally, fetch from Firebase
-        if (!doc) {
-            const docSnapshot = await db.collection('documents').doc(docId).get();
-            if (!docSnapshot.exists) {
-                showError('Document not found');
-                return;
+        // First check if this matches the current analysis data (works for sample files)
+        if (currentAnalysisData && currentAnalysisData.id === docId) {
+            doc = currentAnalysisData;
+        } else {
+            // Try to find in current documents
+            doc = currentDocuments.find(d => d.id === docId);
+            
+            // If not found locally, fetch from Firebase
+            if (!doc) {
+                if (!isFirebaseInitialized) {
+                    showError('Firebase not available and document not found locally');
+                    return;
+                }
+                const docSnapshot = await db.collection('documents').doc(docId).get();
+                if (!docSnapshot.exists) {
+                    showError('Document not found');
+                    return;
+                }
+                doc = { id: docSnapshot.id, ...docSnapshot.data() };
             }
-            doc = { id: docSnapshot.id, ...docSnapshot.data() };
         }
         
         // Check if letter frequency data exists
@@ -1511,7 +1528,16 @@ function closeDetailedAnalysis() {
  * @param {string} docId - Document ID
  */
 function downloadAnalysis(docId) {
-    const doc = currentDocuments.find(d => d.id === docId);
+    let doc = null;
+    
+    // First check if this matches the current analysis data (works for sample files)
+    if (currentAnalysisData && currentAnalysisData.id === docId) {
+        doc = currentAnalysisData;
+    } else {
+        // Try to find in current documents
+        doc = currentDocuments.find(d => d.id === docId);
+    }
+    
     if (!doc) {
         showError('Document not found');
         return;
