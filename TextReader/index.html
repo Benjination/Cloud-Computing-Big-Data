@@ -366,17 +366,18 @@
         <!-- Search Section -->
         <div id="searchSection" style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <h3>🔍 Search Files</h3>
-            <p>Search across all your uploaded files for specific words or phrases:</p>
+            <p>Search across all your uploaded files AND sample texts (Alice in Wonderland, Candide in English/French/Spanish) for specific words or phrases:</p>
             <div style="margin-bottom: 10px; padding: 10px; background: #e7f3ff; border-radius: 6px; border-left: 4px solid #17a2b8;">
                 <small><strong>💡 Smart Search Features:</strong></small><br>
                 <small>🌱 <strong>Word Stemming:</strong> "Villages" automatically finds "village", "villages", "village's"</small><br>
-                <small>⭐ <strong>Wildcards:</strong> Use asterisk (*) like <code>comput*</code> to find "computer", "computing", etc.</small>
+                <small>⭐ <strong>Wildcards:</strong> Use asterisk (*) like <code>comput*</code> to find "computer", "computing", etc.</small><br>
+                <small>📚 <strong>Includes Sample Files:</strong> Search across your uploads AND sample texts (Alice, Candide EN/FR/ES)</small>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 15px; align-items: center; flex-wrap: wrap;">
                 <input 
                     type="text" 
                     id="searchInput" 
-                    placeholder="Enter keywords to search (e.g., 'witches magic' or 'comput*')" 
+                    placeholder="Enter keywords to search (e.g., 'Alice rabbit' or 'libro' or 'comput*')" 
                     style="flex: 1; min-width: 250px; padding: 12px; border: 2px solid #dee2e6; border-radius: 6px; font-size: 16px;"
                     onkeypress="handleSearchKeyPress(event)"
                 >

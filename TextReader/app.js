@@ -51,6 +51,17 @@ let stopWords = []; // English stop words (default)
 let frenchStopWords = [];
 let spanishStopWords = [];
 
+// Sample files cache for search functionality
+let sampleFilesCache = [];
+
+// Available sample files
+const SAMPLE_FILES = [
+    { filename: 'Alice.txt', displayName: 'Alice in Wonderland (English)', id: 'sample-alice' },
+    { filename: 'CandideEn.txt', displayName: 'Candide (English)', id: 'sample-candide-en' },
+    { filename: 'CandideFr.txt', displayName: 'Candide (French)', id: 'sample-candide-fr' },
+    { filename: 'CandidateSp.txt', displayName: 'Candide (Spanish)', id: 'sample-candide-es' }
+];
+
 // =====================================
 // WORD STEMMING FUNCTIONS
 // =====================================
@@ -171,6 +182,70 @@ function createStemmedIndex(text) {
 }
 
 // =====================================
+// SAMPLE FILES MANAGEMENT
+// =====================================
+
+/**
+ * Load and cache sample files for search functionality
+ */
+async function loadSampleFilesForSearch() {
+    console.log('Loading sample files for search...');
+    
+    for (const sampleFile of SAMPLE_FILES) {
+        try {
+            // Check if already cached
+            if (sampleFilesCache.find(cached => cached.id === sampleFile.id)) {
+                continue;
+            }
+            
+            const response = await fetch(sampleFile.filename);
+            if (response.ok) {
+                const content = await response.text();
+                const processedDoc = await processDocument(sampleFile.displayName, content);
+                
+                // Add to cache with search-friendly format
+                sampleFilesCache.push({
+                    id: sampleFile.id,
+                    filename: sampleFile.displayName,
+                    originalContent: content,
+                    cleanedText: processedDoc.cleanedText,
+                    language: processedDoc.language,
+                    wordCount: processedDoc.wordCount,
+                    isSample: true
+                });
+                
+                console.log(`✓ Cached sample file: ${sampleFile.displayName}`);
+            } else {
+                console.warn(`Failed to load sample file: ${sampleFile.filename}`);
+            }
+        } catch (error) {
+            console.warn(`Error loading sample file ${sampleFile.filename}:`, error);
+        }
+    }
+    
+    console.log(`Sample files cache loaded: ${sampleFilesCache.length} files`);
+}
+
+/**
+ * Get sample file by ID for viewing
+ */
+async function getSampleFileById(sampleId) {
+    const cached = sampleFilesCache.find(file => file.id === sampleId);
+    if (cached) {
+        return cached;
+    }
+    
+    // If not cached, try to load it
+    const sampleConfig = SAMPLE_FILES.find(s => s.id === sampleId);
+    if (sampleConfig) {
+        await loadSampleFilesForSearch();
+        return sampleFilesCache.find(file => file.id === sampleId);
+    }
+    
+    return null;
+}
+
+// =====================================
 // INITIALIZATION FUNCTIONS
 // =====================================
 
@@ -203,6 +278,9 @@ async function initializeApp() {
         
         // Initialize Firebase connection
         isFirebaseInitialized = initializeFirebaseServices();
+        
+        // Load sample files for search functionality
+        await loadSampleFilesForSearch();
         
         // Load and display stored files (this will also load documents internally)
         await loadStoredFiles();
@@ -2349,10 +2427,11 @@ async function searchFiles() {
         console.log('Searching for keywords (including stemmed):', keywords);
         console.log('Keyword details:', keywordInfo);
         
-        // Get all documents from Firebase
-        const documentsSnapshot = await db.collection('documents').get();
+        // Search across both Firebase documents and sample files
         const searchResults = [];
         
+        // Search Firebase documents
+        const documentsSnapshot = await db.collection('documents').get();
         documentsSnapshot.forEach(doc => {
             const data = doc.data();
             const matches = findKeywordsInText(data.cleanedText || data.originalContent, keywords);
@@ -2363,10 +2442,29 @@ async function searchFiles() {
                     filename: data.name,
                     matches: matches,
                     originalContent: data.originalContent,
-                    cleanedText: data.cleanedText || data.originalContent
+                    cleanedText: data.cleanedText || data.originalContent,
+                    isSample: false
                 });
             }
         });
+        
+        // Search sample files
+        sampleFilesCache.forEach(sampleFile => {
+            const matches = findKeywordsInText(sampleFile.cleanedText, keywords);
+            
+            if (matches.length > 0) {
+                searchResults.push({
+                    id: sampleFile.id,
+                    filename: sampleFile.filename + ' 📚',
+                    matches: matches,
+                    originalContent: sampleFile.originalContent,
+                    cleanedText: sampleFile.cleanedText,
+                    isSample: true
+                });
+            }
+        });
+        
+        console.log(`Found ${searchResults.length} documents with matches (${searchResults.filter(r => r.isSample).length} sample files)`);
         
         showProgress(false);
         displaySearchResults(searchResults, rawKeywords, keywordInfo);
@@ -2558,15 +2656,26 @@ function createHighlightedPreview(context, keywords) {
 async function openFileFromSearch(fileId, encodedKeywords) {
     try {
         const originalKeywords = JSON.parse(decodeURIComponent(encodedKeywords));
+        let data;
         
-        // Get the document data
-        const doc = await db.collection('documents').doc(fileId).get();
-        if (!doc.exists) {
-            showError('File not found');
-            return;
+        // Check if this is a sample file or Firebase document
+        if (fileId.startsWith('sample-')) {
+            // Handle sample file
+            const sampleFile = await getSampleFileById(fileId);
+            if (!sampleFile) {
+                showError('Sample file not found');
+                return;
+            }
+            data = sampleFile;
+        } else {
+            // Handle Firebase document
+            const doc = await db.collection('documents').doc(fileId).get();
+            if (!doc.exists) {
+                showError('File not found');
+                return;
+            }
+            data = doc.data();
         }
-        
-        const data = doc.data();
         
         // Rebuild the complete keyword list (original + stemmed) just like in searchFiles
         const keywords = [];
@@ -2629,13 +2738,13 @@ async function viewFileAnalysisWithSearch(docData, keywords) {
     try {
         showProgress(true);
         
-        // Get additional data from Firebase if needed
+        // Get additional data from Firebase if needed (only for uploaded files, not samples)
         const fileId = docData.id || generateDocumentId();
         let wordFreqData = {};
         let letterFreqData = {};
         let foreignCharsData = {};
         
-        if (isFirebaseInitialized && docData.id) {
+        if (isFirebaseInitialized && docData.id && !docData.isSample) {
             const wordFreqSnapshot = await db.collection('wordFrequencies').doc(fileId).get();
             const letterFreqSnapshot = await db.collection('letterFrequencies').doc(fileId).get();
             const foreignCharsSnapshot = await db.collection('foreignCharacters').doc(fileId).get();
@@ -2648,15 +2757,16 @@ async function viewFileAnalysisWithSearch(docData, keywords) {
         // Reconstruct the analysis object
         const analysisData = {
             id: fileId,
-            name: docData.name,
-            uploadDate: docData.uploadDate?.toDate ? docData.uploadDate.toDate() : new Date(docData.uploadDate),
+            name: docData.filename || docData.name,
+            uploadDate: docData.uploadDate?.toDate ? docData.uploadDate.toDate() : new Date(),
             wordCount: docData.wordCount,
             language: docData.language,
             originalContent: docData.originalContent,
             cleanedText: docData.cleanedText,
             wordFrequency: wordFreqData.frequencies || {},
             letterFrequency: letterFreqData.frequencies || {},
-            foreignChars: foreignCharsData.characters || []
+            foreignChars: foreignCharsData.characters || [],
+            isSample: docData.isSample || false
         };
         
         // Display with search highlighting
