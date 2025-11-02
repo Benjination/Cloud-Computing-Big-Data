@@ -2179,11 +2179,14 @@ async function searchFiles() {
     try {
         showProgress(true);
         
-        // Break search query into keywords
+        // Break search query into keywords and process wildcards
         const keywords = searchQuery.toLowerCase()
             .split(/\s+/)
             .filter(word => word.length > 2) // Only words with 3+ characters
-            .map(word => word.replace(/[^\w]/g, '')); // Remove punctuation
+            .map(word => {
+                // Preserve asterisks for wildcard processing, remove other punctuation
+                return word.replace(/[^\w*]/g, '');
+            });
         
         if (keywords.length === 0) {
             showError('Please enter valid search terms (at least 3 characters each)');
@@ -2233,21 +2236,37 @@ function findKeywordsInText(text, keywords) {
     const lowerText = text.toLowerCase();
     
     keywords.forEach(keyword => {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        let regex;
+        let isWildcard = false;
+        
+        // Check if keyword contains wildcard asterisk
+        if (keyword.includes('*')) {
+            isWildcard = true;
+            // Convert wildcard pattern to regex - use \w* to match word characters only
+            // Escape special regex characters except asterisk
+            const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '\\w*');
+            regex = new RegExp(`\\b${escapedKeyword}\\b`, 'gi');
+        } else {
+            // Standard exact word match
+            regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        }
+        
         const keywordMatches = [...lowerText.matchAll(regex)];
         
         keywordMatches.forEach(match => {
             const position = match.index;
+            const matchedWord = match[0];
             // Get context around the match (50 characters before and after)
             const start = Math.max(0, position - 50);
-            const end = Math.min(text.length, position + keyword.length + 50);
+            const end = Math.min(text.length, position + matchedWord.length + 50);
             const context = text.substring(start, end);
             
             matches.push({
                 keyword: keyword,
                 position: position,
                 context: context,
-                fullMatch: match[0]
+                fullMatch: matchedWord,
+                isWildcard: isWildcard
             });
         });
     });
@@ -2312,7 +2331,18 @@ function createHighlightedPreview(context, keywords) {
     let highlightedText = context;
     
     keywords.forEach(keyword => {
-        const regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+        let regex;
+        
+        // Check if keyword contains wildcard asterisk
+        if (keyword.includes('*')) {
+            // Convert wildcard pattern to regex for highlighting - use \w* to match word characters only
+            const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '\\w*');
+            regex = new RegExp(`\\b(${escapedKeyword})\\b`, 'gi');
+        } else {
+            // Standard exact word match
+            regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+        }
+        
         highlightedText = highlightedText.replace(regex, '<span class="search-highlight">$1</span>');
     });
     
@@ -2492,7 +2522,18 @@ function highlightTextContent(content, keywords) {
     
     // Highlight each keyword
     keywords.forEach(keyword => {
-        const regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+        let regex;
+        
+        // Check if keyword contains wildcard asterisk
+        if (keyword.includes('*')) {
+            // Convert wildcard pattern to regex for highlighting - use \w* to match word characters only
+            const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '\\w*');
+            regex = new RegExp(`\\b(${escapedKeyword})\\b`, 'gi');
+        } else {
+            // Standard exact word match
+            regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+        }
+        
         highlightedContent = highlightedContent.replace(regex, '<span class="search-highlight">$1</span>');
     });
     
@@ -2508,9 +2549,21 @@ function highlightTextContent(content, keywords) {
 function generateSearchMatchSummary(content, keywords) {
     const lowerContent = content.toLowerCase();
     const summary = keywords.map(keyword => {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        let regex;
+        
+        // Check if keyword contains wildcard asterisk
+        if (keyword.includes('*')) {
+            // Convert wildcard pattern to regex for counting - use \w* to match word characters only
+            const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '\\w*');
+            regex = new RegExp(`\\b${escapedKeyword}\\b`, 'gi');
+        } else {
+            // Standard exact word match
+            regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        }
+        
         const matches = lowerContent.match(regex) || [];
-        return `<p>📍 <strong>${keyword}:</strong> ${matches.length} occurrence${matches.length !== 1 ? 's' : ''}</p>`;
+        const displayKeyword = keyword.includes('*') ? `${keyword} (wildcard)` : keyword;
+        return `<p>📍 <strong>${displayKeyword}:</strong> ${matches.length} occurrence${matches.length !== 1 ? 's' : ''}</p>`;
     }).join('');
     
     return summary || '<p>No matches found</p>';
