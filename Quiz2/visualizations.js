@@ -62,8 +62,22 @@ function createMagnitudeHistogram(data, containerId, minMagnitude = 0) {
     
     // Process data - bin magnitudes
     const magnitudes = data.map(d => parseFloat(d.mag || d.magnitude));
-    const minMag = Math.floor(Math.min(...magnitudes) * 2) / 2; // Round down to nearest 0.5
-    const maxMag = Math.ceil(Math.max(...magnitudes) * 2) / 2; // Round up to nearest 0.5
+    
+    // Validate that we have magnitude data
+    if (magnitudes.length === 0 || magnitudes.every(m => isNaN(m))) {
+        console.error('No valid magnitude data found');
+        return;
+    }
+    
+    // Calculate actual min/max from the data (not from search parameter)
+    const actualMinMag = Math.min(...magnitudes);
+    const actualMaxMag = Math.max(...magnitudes);
+    
+    // Round to nearest 0.5 for cleaner bins
+    const minMag = Math.floor(actualMinMag * 2) / 2; // Round down to nearest 0.5
+    const maxMag = Math.ceil(actualMaxMag * 2) / 2; // Round up to nearest 0.5
+    
+    console.log(`Creating histogram: data range ${actualMinMag.toFixed(2)} - ${actualMaxMag.toFixed(2)}, bin range ${minMag} - ${maxMag}`);
     
     // Create bins (0.5 magnitude increments) - include maxMag
     const bins = [];
@@ -343,10 +357,473 @@ function showBinDetails(binData, totalCount) {
     document.getElementById('visualizationContainer').appendChild(detailsDiv);
 }
 
+/**
+ * Create Magnitude Range Stacked Bar Chart
+ * Shows distribution within a specific magnitude range with finer granularity
+ * 
+ * @param {Array} data - Array of earthquake objects
+ * @param {string} containerId - ID of the container element
+ * @param {number} minMag - Minimum magnitude
+ * @param {number} maxMag - Maximum magnitude
+ */
+function createMagnitudeRangeChart(data, containerId, minMag, maxMag) {
+    d3.select(`#${containerId}`).selectAll('*').remove();
+    
+    const container = document.getElementById(containerId);
+    if (container) container.style.display = 'block';
+    
+    const margin = { top: 40, right: 30, bottom: 70, left: 60 };
+    const width = 800 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
+    
+    const svg = d3.select(`#${containerId}`)
+        .append('svg')
+        .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+        .attr('preserveAspectRatio', 'xMidYMid meet')
+        .style('background-color', VIZ_COLORS.background)
+        .style('border-radius', '10px')
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Create 0.1 magnitude bins for detailed view
+    const bins = [];
+    for (let i = Math.floor(minMag * 10) / 10; i <= maxMag; i += 0.1) {
+        bins.push({
+            label: i.toFixed(1),
+            value: i,
+            count: 0
+        });
+    }
+    
+    // Fill bins
+    data.forEach(eq => {
+        const mag = parseFloat(eq.mag || eq.magnitude);
+        const bin = bins.find(b => Math.abs(b.value - mag) < 0.05);
+        if (bin) bin.count++;
+    });
+    
+    const xScale = d3.scaleBand()
+        .domain(bins.map(b => b.label))
+        .range([0, width])
+        .padding(0.1);
+    
+    const yScale = d3.scaleLinear()
+        .domain([0, d3.max(bins, d => d.count)])
+        .nice()
+        .range([height, 0]);
+    
+    const colorScale = d3.scaleLinear()
+        .domain([minMag, maxMag])
+        .range([VIZ_COLORS.magnitudeScale[0], VIZ_COLORS.magnitudeScale[2]]);
+    
+    // Title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', -20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '18px')
+        .style('font-weight', 'bold')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text(`Magnitude Range ${minMag} - ${maxMag} (0.1 increments)`);
+    
+    // Axes
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(xScale).tickValues(bins.filter((_, i) => i % 5 === 0).map(b => b.label)))
+        .selectAll('text')
+        .style('fill', VIZ_COLORS.textSecondary)
+        .attr('transform', 'rotate(-45)')
+        .style('text-anchor', 'end');
+    
+    svg.append('g')
+        .call(d3.axisLeft(yScale))
+        .selectAll('text')
+        .style('fill', VIZ_COLORS.textSecondary);
+    
+    // Bars
+    svg.selectAll('.bar')
+        .data(bins.filter(b => b.count > 0))
+        .enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => xScale(d.label))
+        .attr('width', xScale.bandwidth())
+        .attr('y', height)
+        .attr('height', 0)
+        .attr('fill', d => colorScale(d.value))
+        .transition()
+        .duration(750)
+        .attr('y', d => yScale(d.count))
+        .attr('height', d => height - yScale(d.count));
+}
+
+/**
+ * Create Interactive Map for Location-Based Searches
+ * Shows earthquakes on a map with circles sized by magnitude
+ * 
+ * @param {Array} data - Array of earthquake objects with lat/lng
+ * @param {string} containerId - ID of the container element
+ * @param {Object} centerPoint - {lat, lng} of search center
+ * @param {number} radius - Search radius in km
+ */
+function createLocationMap(data, containerId, centerPoint, radius) {
+    d3.select(`#${containerId}`).selectAll('*').remove();
+    
+    const container = document.getElementById(containerId);
+    if (container) container.style.display = 'block';
+    
+    const margin = { top: 40, right: 30, bottom: 50, left: 60 };
+    const width = 800 - margin.left - margin.right;
+    const height = 600 - margin.top - margin.bottom;
+    
+    const svg = d3.select(`#${containerId}`)
+        .append('svg')
+        .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+        .style('background-color', VIZ_COLORS.background)
+        .style('border-radius', '10px')
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Simple projection
+    const xScale = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.longitude || d.lng))
+        .range([0, width]);
+    
+    const yScale = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.latitude || d.lat))
+        .range([height, 0]);
+    
+    const sizeScale = d3.scaleSqrt()
+        .domain([0, d3.max(data, d => d.magnitude || d.mag)])
+        .range([3, 20]);
+    
+    // Title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', -20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '18px')
+        .style('font-weight', 'bold')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text(`Earthquakes within ${radius}km of (${centerPoint.lat.toFixed(2)}, ${centerPoint.lng.toFixed(2)})`);
+    
+    // Draw earthquakes
+    svg.selectAll('.earthquake')
+        .data(data)
+        .enter()
+        .append('circle')
+        .attr('class', 'earthquake')
+        .attr('cx', d => xScale(d.longitude || d.lng))
+        .attr('cy', d => yScale(d.latitude || d.lat))
+        .attr('r', 0)
+        .attr('fill', d => {
+            const mag = d.magnitude || d.mag;
+            return mag > 6 ? VIZ_COLORS.magnitudeScale[2] : 
+                   mag > 4 ? VIZ_COLORS.magnitudeScale[1] : 
+                   VIZ_COLORS.magnitudeScale[0];
+        })
+        .attr('opacity', 0.6)
+        .attr('stroke', VIZ_COLORS.borders)
+        .transition()
+        .duration(750)
+        .attr('r', d => sizeScale(d.magnitude || d.mag));
+    
+    // Center point marker
+    if (centerPoint) {
+        svg.append('circle')
+            .attr('cx', xScale(centerPoint.lng))
+            .attr('cy', yScale(centerPoint.lat))
+            .attr('r', 8)
+            .attr('fill', VIZ_COLORS.warning)
+            .attr('stroke', VIZ_COLORS.textPrimary)
+            .attr('stroke-width', 2);
+    }
+}
+
+/**
+ * Create Circular Time Pattern Chart (24-hour clock)
+ * Shows earthquake frequency by hour of day
+ * 
+ * @param {Array} data - Array of earthquake objects with time property
+ * @param {string} containerId - ID of the container element
+ */
+function createTimePatternChart(data, containerId) {
+    d3.select(`#${containerId}`).selectAll('*').remove();
+    
+    const container = document.getElementById(containerId);
+    if (container) container.style.display = 'block';
+    
+    const width = 600;
+    const height = 600;
+    const radius = Math.min(width, height) / 2 - 60;
+    
+    const svg = d3.select(`#${containerId}`)
+        .append('svg')
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .style('background-color', VIZ_COLORS.background)
+        .style('border-radius', '10px')
+        .append('g')
+        .attr('transform', `translate(${width / 2},${height / 2})`);
+    
+    // Group by hour
+    const hourCounts = Array(24).fill(0);
+    data.forEach(eq => {
+        const date = new Date(eq.time);
+        const hour = date.getHours();
+        hourCounts[hour]++;
+    });
+    
+    const maxCount = Math.max(...hourCounts);
+    
+    // Radial scale
+    const radiusScale = d3.scaleLinear()
+        .domain([0, maxCount])
+        .range([radius * 0.3, radius]);
+    
+    // Create hour segments
+    const angleStep = (2 * Math.PI) / 24;
+    
+    hourCounts.forEach((count, hour) => {
+        const angle = hour * angleStep - Math.PI / 2;
+        const nextAngle = (hour + 1) * angleStep - Math.PI / 2;
+        
+        const innerRadius = radius * 0.3;
+        const outerRadius = radiusScale(count);
+        
+        // Create arc
+        const arc = d3.arc()
+            .innerRadius(innerRadius)
+            .outerRadius(outerRadius)
+            .startAngle(angle)
+            .endAngle(nextAngle);
+        
+        // Color based on time of day
+        const isDayTime = hour >= 6 && hour < 18;
+        const color = isDayTime ? VIZ_COLORS.magnitudeScale[0] : VIZ_COLORS.magnitudeScale[2];
+        
+        svg.append('path')
+            .attr('d', arc)
+            .attr('fill', color)
+            .attr('opacity', 0.7)
+            .attr('stroke', VIZ_COLORS.borders);
+        
+        // Hour labels
+        const labelAngle = angle + angleStep / 2;
+        const labelRadius = radius * 1.15;
+        const x = Math.cos(labelAngle) * labelRadius;
+        const y = Math.sin(labelAngle) * labelRadius;
+        
+        svg.append('text')
+            .attr('x', x)
+            .attr('y', y)
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'middle')
+            .style('fill', VIZ_COLORS.textSecondary)
+            .style('font-size', '12px')
+            .text(`${hour}:00`);
+    });
+    
+    // Title
+    svg.append('text')
+        .attr('x', 0)
+        .attr('y', -radius - 30)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '18px')
+        .style('font-weight', 'bold')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text('24-Hour Earthquake Pattern');
+}
+
+/**
+ * Create Weekend vs Weekday Bar Chart
+ * Compares earthquake frequency on weekends vs weekdays
+ * 
+ * @param {Array} data - Array of earthquake objects
+ * @param {string} containerId - ID of the container element
+ */
+function createWeekendChart(data, containerId) {
+    d3.select(`#${containerId}`).selectAll('*').remove();
+    
+    const container = document.getElementById(containerId);
+    if (container) container.style.display = 'block';
+    
+    const margin = { top: 40, right: 30, bottom: 70, left: 60 };
+    const width = 800 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
+    
+    const svg = d3.select(`#${containerId}`)
+        .append('svg')
+        .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+        .style('background-color', VIZ_COLORS.background)
+        .style('border-radius', '10px')
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Group by day of week
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayCounts = dayNames.map(name => ({ day: name, count: 0, isWeekend: name === 'Saturday' || name === 'Sunday' }));
+    
+    data.forEach(eq => {
+        const date = new Date(eq.time);
+        const dayIndex = date.getDay();
+        dayCounts[dayIndex].count++;
+    });
+    
+    const xScale = d3.scaleBand()
+        .domain(dayNames)
+        .range([0, width])
+        .padding(0.2);
+    
+    const yScale = d3.scaleLinear()
+        .domain([0, d3.max(dayCounts, d => d.count)])
+        .nice()
+        .range([height, 0]);
+    
+    // Title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', -20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '18px')
+        .style('font-weight', 'bold')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text('Earthquake Distribution by Day of Week');
+    
+    // Axes
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(xScale))
+        .selectAll('text')
+        .style('fill', VIZ_COLORS.textSecondary)
+        .attr('transform', 'rotate(-45)')
+        .style('text-anchor', 'end');
+    
+    svg.append('g')
+        .call(d3.axisLeft(yScale))
+        .selectAll('text')
+        .style('fill', VIZ_COLORS.textSecondary);
+    
+    // Bars
+    svg.selectAll('.bar')
+        .data(dayCounts)
+        .enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => xScale(d.day))
+        .attr('width', xScale.bandwidth())
+        .attr('y', height)
+        .attr('height', 0)
+        .attr('fill', d => d.isWeekend ? VIZ_COLORS.magnitudeScale[2] : VIZ_COLORS.magnitudeScale[0])
+        .transition()
+        .duration(750)
+        .attr('y', d => yScale(d.count))
+        .attr('height', d => height - yScale(d.count));
+}
+
+/**
+ * Create Early Morning Analysis Area Chart
+ * Shows earthquake frequency during early morning hours (0-6 AM)
+ * 
+ * @param {Array} data - Array of earthquake objects
+ * @param {string} containerId - ID of the container element
+ */
+function createEarlyMorningChart(data, containerId) {
+    d3.select(`#${containerId}`).selectAll('*').remove();
+    
+    const container = document.getElementById(containerId);
+    if (container) container.style.display = 'block';
+    
+    const margin = { top: 40, right: 30, bottom: 70, left: 60 };
+    const width = 800 - margin.left - margin.right;
+    const height = 400 - margin.top - margin.bottom;
+    
+    const svg = d3.select(`#${containerId}`)
+        .append('svg')
+        .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+        .style('background-color', VIZ_COLORS.background)
+        .style('border-radius', '10px')
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Group by hour (0-6)
+    const hourCounts = Array(7).fill(0).map((_, i) => ({ hour: i, count: 0 }));
+    
+    data.forEach(eq => {
+        const date = new Date(eq.time);
+        const hour = date.getHours();
+        if (hour <= 6) {
+            hourCounts[hour].count++;
+        }
+    });
+    
+    const xScale = d3.scaleLinear()
+        .domain([0, 6])
+        .range([0, width]);
+    
+    const yScale = d3.scaleLinear()
+        .domain([0, d3.max(hourCounts, d => d.count)])
+        .nice()
+        .range([height, 0]);
+    
+    // Title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', -20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '18px')
+        .style('font-weight', 'bold')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text('Early Morning Earthquakes (12 AM - 6 AM)');
+    
+    // Create area generator
+    const area = d3.area()
+        .x(d => xScale(d.hour))
+        .y0(height)
+        .y1(d => yScale(d.count))
+        .curve(d3.curveMonotoneX);
+    
+    // Draw area
+    svg.append('path')
+        .datum(hourCounts)
+        .attr('fill', VIZ_COLORS.magnitudeScale[2])
+        .attr('opacity', 0.6)
+        .attr('d', area);
+    
+    // Draw line
+    const line = d3.line()
+        .x(d => xScale(d.hour))
+        .y(d => yScale(d.count))
+        .curve(d3.curveMonotoneX);
+    
+    svg.append('path')
+        .datum(hourCounts)
+        .attr('fill', 'none')
+        .attr('stroke', VIZ_COLORS.highlight)
+        .attr('stroke-width', 2)
+        .attr('d', line);
+    
+    // Axes
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(xScale).ticks(7))
+        .selectAll('text')
+        .style('fill', VIZ_COLORS.textSecondary);
+    
+    svg.append('g')
+        .call(d3.axisLeft(yScale))
+        .selectAll('text')
+        .style('fill', VIZ_COLORS.textSecondary);
+}
+
 // Export functions for use in other scripts
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         createMagnitudeHistogram,
+        createMagnitudeRangeChart,
+        createLocationMap,
+        createTimePatternChart,
+        createWeekendChart,
+        createEarlyMorningChart,
         VIZ_COLORS
     };
 }

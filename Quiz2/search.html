@@ -493,6 +493,13 @@
                     count: results.length,
                     earthquakes: results
                 });
+                
+                // Create visualization
+                if (typeof createMagnitudeRangeChart === 'function' && results.length > 0) {
+                    setTimeout(() => {
+                        createMagnitudeRangeChart(results, 'visualizationContainer', minMag, maxMag);
+                    }, 100);
+                }
             } catch (error) {
                 hideLoading();
                 console.error('Search error:', error);
@@ -680,8 +687,8 @@
                 const q = query(
                     collection(db, 'earthquakes'),
                     where('magnitude', '>', magnitude),
-                    orderBy('magnitude'),
-                    limit(1000)
+                    orderBy('magnitude', 'desc'),
+                    limit(5000)
                 );
                 const snapshot = await getDocs(q);
                 const results = [];
@@ -878,6 +885,14 @@
                     count: results.length,
                     earthquakes: results.slice(0, 200)
                 });
+                
+                // Create visualization
+                if (typeof createLocationMap === 'function' && results.length > 0) {
+                    setTimeout(() => {
+                        createLocationMap(results.slice(0, 200), 'visualizationContainer', 
+                            {lat: searchLat, lng: searchLng}, radius);
+                    }, 100);
+                }
             } catch (error) {
                 hideLoading();
                 console.error('Location search error:', error);
@@ -926,6 +941,7 @@
                 const snapshot = await getDocs(q);
                 let dayCount = 0;
                 let nightCount = 0;
+                const earthquakeData = []; // Collect for visualization
                 
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -934,6 +950,13 @@
                     if (dateObj) {
                         const hour = dateObj.getHours();
                         const isNight = hour >= 18 || hour < 6;
+                        
+                        // Store earthquake data for visualization
+                        earthquakeData.push({
+                            time: dateObj.getTime(),
+                            magnitude: parseFloat(data.magnitude ?? data.mag) || 0,
+                            place: data.place || ''
+                        });
                         
                         if (isNight) {
                             nightCount++;
@@ -970,6 +993,13 @@
                 
                 hideLoading();
                 displayResults(results);
+                
+                // Create visualization
+                if (typeof createTimePatternChart === 'function' && earthquakeData.length > 0) {
+                    setTimeout(() => {
+                        createTimePatternChart(earthquakeData, 'visualizationContainer');
+                    }, 100);
+                }
                 
             } catch (error) {
                 hideLoading();
@@ -1011,6 +1041,7 @@
                 const snapshot = await getDocs(q);
                 let weekendCount = 0;
                 let weekdayCount = 0;
+                const earthquakeData = []; // Collect for visualization
                 
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -1019,6 +1050,13 @@
                     if (dateObj) {
                         const dayOfWeek = dateObj.getDay();
                         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                        
+                        // Store earthquake data for visualization
+                        earthquakeData.push({
+                            time: dateObj.getTime(),
+                            magnitude: parseFloat(data.magnitude ?? data.mag) || 0,
+                            place: data.place || ''
+                        });
                         
                         if (isWeekend) {
                             weekendCount++;
@@ -1055,6 +1093,13 @@
                 
                 hideLoading();
                 displayResults(results);
+                
+                // Create visualization
+                if (typeof createWeekendChart === 'function' && earthquakeData.length > 0) {
+                    setTimeout(() => {
+                        createWeekendChart(earthquakeData, 'visualizationContainer');
+                    }, 100);
+                }
                 
             } catch (error) {
                 hideLoading();
@@ -1096,6 +1141,7 @@
                 const snapshot = await getDocs(q);
                 let earlyMorningCount = 0;
                 let otherTimeCount = 0;
+                const earthquakeData = []; // Collect for visualization
                 
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -1104,6 +1150,13 @@
                     if (dateObj) {
                         const hour = dateObj.getHours();
                         const isEarlyMorning = hour >= 0 && hour < 6;
+                        
+                        // Store earthquake data for visualization
+                        earthquakeData.push({
+                            time: dateObj.getTime(),
+                            magnitude: parseFloat(data.magnitude ?? data.mag) || 0,
+                            place: data.place || ''
+                        });
                         
                         if (isEarlyMorning) {
                             earlyMorningCount++;
@@ -1138,6 +1191,13 @@
                 
                 hideLoading();
                 displayResults(results);
+                
+                // Create visualization
+                if (typeof createEarlyMorningChart === 'function' && earthquakeData.length > 0) {
+                    setTimeout(() => {
+                        createEarlyMorningChart(earthquakeData, 'visualizationContainer');
+                    }, 100);
+                }
                 
             } catch (error) {
                 hideLoading();
