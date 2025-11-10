@@ -164,6 +164,26 @@
             flex: 1;
             min-width: 100px;
         }
+        
+        /* Visualization Styles */
+        #visualizationContainer {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #visualizationContainer svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .viz-tooltip {
+            font-family: Arial, sans-serif;
+        }
     </style>
 </head>
 <body>
@@ -242,6 +262,9 @@
             <div>Searching earthquake data...</div>
         </div>
         
+        <!-- Visualization Container (Separate from Results) -->
+        <div id="visualizationContainer" style="margin: 30px 0; display: none;"></div>
+        
         <!-- Results Area -->
         <div id="results" class="results">
             <h3>Results</h3>
@@ -254,6 +277,7 @@
                     <option value="100">100</option>
                 </select>
             </div>
+            
             <div id="resultsContent"></div>
             <div id="paginationControls" class="pagination" style="display: none;">
                 <button id="prevPage" onclick="goToPage(currentPage - 1)">Previous</button>
@@ -631,6 +655,14 @@
                         count: cacheEntry.results.length,
                         earthquakes: cacheEntry.results
                     });
+                    
+                    // Create visualization for cached results
+                    if (typeof createMagnitudeHistogram === 'function' && cacheEntry.results.length > 0) {
+                        setTimeout(() => {
+                            createMagnitudeHistogram(cacheEntry.results, 'visualizationContainer', magnitude);
+                        }, 100);
+                    }
+                    
                     await logPerformance('magnitude_greater_cached', executionTime, cacheEntry.results.length, {
                         min_magnitude: magnitude,
                         query_key: `gt:${cacheKey}`,
@@ -691,6 +723,13 @@
                     count: results.length,
                     earthquakes: results
                 });
+                
+                // Create visualization
+                if (typeof createMagnitudeHistogram === 'function' && results.length > 0) {
+                    setTimeout(() => {
+                        createMagnitudeHistogram(results, 'visualizationContainer', magnitude);
+                    }, 100);
+                }
                 
             } catch (error) {
                 hideLoading();
@@ -1630,6 +1669,12 @@
             <em>🚀 Lightning fast searches with local caching and memoization</em>
         </div>
     </div>
+
+    <!-- D3.js Library -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Earthquake Visualizations -->
+    <script src="visualizations.js"></script>
 
     <!-- Note: All JavaScript functions are already declared in the main script block above -->
 

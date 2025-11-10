@@ -1,0 +1,50 @@
+title,platform,genre,year,price,sales_millions,user_score,critic_score
+The Legend of Zelda,Switch,Adventure,2017,59.99,31.61,8.9,97
+Grand Theft Auto V,PS5,Action,2013,29.99,185.00,8.1,97
+Minecraft,PC,Sandbox,2011,26.95,238.00,8.0,93
+Tetris,Mobile,Puzzle,1984,0.99,495.00,8.5,88
+Wii Sports,Wii,Sports,2006,49.99,82.90,8.3,76
+PlayerUnknown's Battlegrounds,PC,Shooter,2017,29.99,75.00,6.8,86
+Super Mario Bros,NES,Platform,1985,49.99,40.24,9.0,94
+Mario Kart 8,Switch,Racing,2014,59.99,55.46,8.8,92
+Red Dead Redemption 2,PS4,Action,2018,59.99,50.00,8.6,97
+Pokémon Red/Blue,GameBoy,RPG,1996,39.99,31.37,8.8,89
+Call of Duty Modern Warfare,PS4,Shooter,2019,59.99,30.71,7.2,81
+Wii Sports Resort,Wii,Sports,2009,49.99,33.14,8.4,80
+New Super Mario Bros,DS,Platform,2006,34.99,30.80,8.7,89
+Duck Hunt,NES,Shooter,1984,24.99,28.31,7.9,75
+Wii Play,Wii,Party,2006,49.99,28.02,7.6,58
+Pokémon Gold/Silver,GameBoy,RPG,1999,39.99,23.10,9.1,89
+Super Mario World,SNES,Platform,1990,49.99,20.61,9.4,94
+Brain Age,DS,Puzzle,2005,19.99,20.22,7.8,77
+Pokémon Diamond/Pearl,DS,RPG,2006,34.99,17.67,8.5,85
+Grand Theft Auto San Andreas,PS2,Action,2004,19.99,17.33,9.0,95
+Super Mario Land,GameBoy,Platform,1989,19.99,18.14,8.2,78
+Call of Duty Black Ops,Xbox360,Shooter,2010,59.99,30.99,8.4,88
+Elden Ring,PS5,RPG,2022,59.99,20.50,9.0,96
+The Witcher 3,PC,RPG,2015,39.99,40.00,9.3,93
+God of War,PS4,Action,2018,49.99,23.00,9.1,94
+Cyberpunk 2077,PC,RPG,2020,59.99,18.00,7.1,86
+Animal Crossing,Switch,Simulation,2020,59.99,42.79,8.3,90
+FIFA 23,PS5,Sports,2022,59.99,15.67,6.9,78
+Madden NFL 23,Xbox,Sports,2022,59.99,8.45,5.8,73
+NBA 2K23,PS5,Sports,2022,59.99,9.87,6.5,77
+Fortnite,PC,Shooter,2017,0.00,85.00,7.8,78
+League of Legends,PC,MOBA,2009,0.00,120.00,8.2,78
+Valorant,PC,Shooter,2020,0.00,28.00,7.6,80
+Apex Legends,PS4,Shooter,2019,0.00,50.00,8.0,89
+Overwatch,PC,Shooter,2016,39.99,50.00,8.2,91
+Halo Infinite,Xbox,Shooter,2021,59.99,20.00,7.4,87
+Spider-Man,PS4,Action,2018,59.99,33.00,9.0,87
+Uncharted 4,PS4,Action,2016,59.99,16.00,9.3,93
+The Last of Us,PS4,Action,2013,59.99,20.00,9.5,95
+Horizon Zero Dawn,PS4,RPG,2017,49.99,20.00,8.9,89
+Death Stranding,PS4,Action,2019,59.99,10.00,7.5,82
+Ghost of Tsushima,PS4,Action,2020,59.99,9.73,9.2,83
+Final Fantasy VII,PS1,RPG,1997,49.99,13.00,9.5,92
+Final Fantasy XV,PS4,RPG,2016,59.99,10.00,7.9,81
+Resident Evil 4,PS2,Horror,2005,19.99,12.00,9.1,96
+Resident Evil Village,PS5,Horror,2021,59.99,7.40,8.3,84
+Dark Souls III,PC,RPG,2016,59.99,10.00,8.9,89
+Bloodborne,PS4,RPG,2015,59.99,7.46,9.1,92
+Sekiro,PS4,Action,2019,59.99,8.00,8.8,90

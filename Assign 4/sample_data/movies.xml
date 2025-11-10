@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<movies>
+  <movie>
+    <title>Avatar</title>
+    <genre>Action</genre>
+    <year>2009</year>
+    <rating>PG-13</rating>
+    <budget>237000000</budget>
+    <revenue>2787965087</revenue>
+    <runtime>162</runtime>
+    <imdb_score>7.8</imdb_score>
+  </movie>
+  <movie>
+    <title>Titanic</title>
+    <genre>Romance</genre>
+    <year>1997</year>
+    <rating>PG-13</rating>
+    <budget>200000000</budget>
+    <revenue>2187463944</revenue>
+    <runtime>194</runtime>
+    <imdb_score>7.8</imdb_score>
+  </movie>
+  <movie>
+    <title>Avengers Endgame</title>
+    <genre>Action</genre>
+    <year>2019</year>
+    <rating>PG-13</rating>
+    <budget>356000000</budget>
+    <revenue>2797800564</revenue>
+    <runtime>181</runtime>
+    <imdb_score>8.4</imdb_score>
+  </movie>
+  <movie>
+    <title>The Godfather</title>
+    <genre>Crime</genre>
+    <year>1972</year>
+    <rating>R</rating>
+    <budget>6000000</budget>
+    <revenue>246120986</revenue>
+    <runtime>175</runtime>
+    <imdb_score>9.2</imdb_score>
+  </movie>
+  <movie>
+    <title>The Dark Knight</title>
+    <genre>Action</genre>
+    <year>2008</year>
+    <rating>PG-13</rating>
+    <budget>185000000</budget>
+    <revenue>1004558444</revenue>
+    <runtime>152</runtime>
+    <imdb_score>9.0</imdb_score>
+  </movie>
+  <movie>
+    <title>Inception</title>
+    <genre>Sci-Fi</genre>
+    <year>2010</year>
+    <rating>PG-13</rating>
+    <budget>160000000</budget>
+    <revenue>829895144</revenue>
+    <runtime>148</runtime>
+    <imdb_score>8.8</imdb_score>
+  </movie>
+  <movie>
+    <title>The Matrix</title>
+    <genre>Sci-Fi</genre>
+    <year>1999</year>
+    <rating>R</rating>
+    <budget>63000000</budget>
+    <revenue>463517383</revenue>
+    <runtime>136</runtime>
+    <imdb_score>8.7</imdb_score>
+  </movie>
+  <movie>
+    <title>The Lion King</title>
+    <genre>Animation</genre>
+    <year>1994</year>
+    <rating>G</rating>
+    <budget>45000000</budget>
+    <revenue>968483777</revenue>
+    <runtime>88</runtime>
+    <imdb_score>8.5</imdb_score>
+  </movie>
+  <movie>
+    <title>Frozen</title>
+    <genre>Animation</genre>
+    <year>2013</year>
+    <rating>PG</rating>
+    <budget>150000000</budget>
+    <revenue>1290000000</revenue>
+    <runtime>102</runtime>
+    <imdb_score>7.4</imdb_score>
+  </movie>
+  <movie>
+    <title>Black Panther</title>
+    <genre>Action</genre>
+    <year>2018</year>
+    <rating>PG-13</rating>
+    <budget>200000000</budget>
+    <revenue>1347280838</revenue>
+    <runtime>134</runtime>
+    <imdb_score>7.3</imdb_score>
+  </movie>
+</movies>

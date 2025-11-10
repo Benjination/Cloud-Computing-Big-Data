@@ -1,0 +1,50 @@
+model,brand,year,price,screen_size,battery_mah,rating,storage_gb,camera_mp
+iPhone 15 Pro Max,Apple,2023,1199,6.7,4422,4.8,256,48
+iPhone 15 Pro,Apple,2023,999,6.1,3274,4.7,128,48
+iPhone 15,Apple,2023,799,6.1,3349,4.6,128,48
+iPhone 14 Pro Max,Apple,2022,1099,6.7,4323,4.7,256,48
+iPhone 14,Apple,2022,799,6.1,3279,4.5,128,12
+iPhone 13,Apple,2021,699,6.1,3240,4.5,128,12
+Samsung Galaxy S23 Ultra,Samsung,2023,1199,6.8,5000,4.7,256,200
+Samsung Galaxy S23 Plus,Samsung,2023,999,6.6,4700,4.6,256,50
+Samsung Galaxy S23,Samsung,2023,799,6.1,3900,4.5,128,50
+Samsung Galaxy S22 Ultra,Samsung,2022,1099,6.8,5000,4.6,256,108
+Samsung Galaxy S22,Samsung,2022,799,6.1,3700,4.4,128,50
+Samsung Galaxy S21,Samsung,2021,699,6.2,4000,4.4,128,64
+Google Pixel 8 Pro,Google,2023,999,6.7,5050,4.6,128,50
+Google Pixel 8,Google,2023,699,6.2,4575,4.5,128,50
+Google Pixel 7 Pro,Google,2022,899,6.7,5000,4.5,128,50
+Google Pixel 7,Google,2022,599,6.3,4355,4.4,128,50
+Google Pixel 6,Google,2021,599,6.4,4614,4.3,128,50
+OnePlus 11,OnePlus,2023,699,6.7,5000,4.5,128,50
+OnePlus 10 Pro,OnePlus,2022,799,6.7,5000,4.4,128,48
+OnePlus 9 Pro,OnePlus,2021,969,6.7,4500,4.3,128,48
+Xiaomi 13 Pro,Xiaomi,2023,999,6.73,4820,4.5,256,50
+Xiaomi 12 Pro,Xiaomi,2022,899,6.73,4600,4.4,256,50
+Xiaomi 11,Xiaomi,2021,749,6.81,4600,4.3,128,108
+Motorola Edge Plus,Motorola,2023,799,6.7,5100,4.3,256,50
+Motorola Edge,Motorola,2022,599,6.6,5000,4.2,128,50
+Sony Xperia 1 V,Sony,2023,1399,6.5,5000,4.4,256,48
+Sony Xperia 5 V,Sony,2023,999,6.1,5000,4.3,128,48
+Asus ROG Phone 7,Asus,2023,999,6.78,6000,4.6,256,50
+Nokia X30,Nokia,2022,599,6.43,4200,4.1,128,50
+Oppo Find X6 Pro,Oppo,2023,1099,6.82,5000,4.5,256,50
+Vivo X90 Pro,Vivo,2023,999,6.78,4870,4.5,256,50
+Realme GT 3,Realme,2023,649,6.74,4600,4.3,128,50
+Nothing Phone 2,Nothing,2023,699,6.7,4700,4.4,128,50
+iPhone SE,Apple,2022,429,4.7,2018,4.3,64,12
+Samsung Galaxy A54,Samsung,2023,449,6.4,5000,4.4,128,50
+Samsung Galaxy A34,Samsung,2023,349,6.6,5000,4.3,128,48
+Google Pixel 7a,Google,2023,499,6.1,4385,4.5,128,64
+Google Pixel 6a,Google,2022,449,6.1,4410,4.4,128,12
+OnePlus Nord 3,OnePlus,2023,399,6.74,5000,4.3,128,50
+Xiaomi Redmi Note 12,Xiaomi,2023,299,6.67,5000,4.2,128,50
+Motorola Moto G Power,Motorola,2023,249,6.5,5000,4.1,64,50
+Samsung Galaxy Z Fold 5,Samsung,2023,1799,7.6,4400,4.7,256,50
+Samsung Galaxy Z Flip 5,Samsung,2023,999,6.7,3700,4.6,256,12
+Huawei P60 Pro,Huawei,2023,999,6.67,4815,4.5,256,48
+Honor Magic 5 Pro,Honor,2023,899,6.81,5100,4.4,256,50
+LG Wing,LG,2020,999,6.8,4000,4.0,128,64
+ZTE Axon 40 Ultra,ZTE,2022,799,6.8,5000,4.2,128,64
+Asus Zenfone 10,Asus,2023,699,5.9,4300,4.5,128,50
+Sony Xperia 10 V,Sony,2023,499,6.1,5000,4.2,128,48

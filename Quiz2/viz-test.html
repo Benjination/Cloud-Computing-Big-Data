@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnitude Histogram Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #1e293b;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #f1f5f9;
+            text-align: center;
+        }
+        #visualizationContainer {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        #visualizationContainer svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+        button:hover {
+            background: #7c3aed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 Earthquake Magnitude Histogram Test</h1>
+        
+        <div class="controls">
+            <button onclick="testSmallDataset()">Test Small Dataset (20)</button>
+            <button onclick="testMediumDataset()">Test Medium Dataset (100)</button>
+            <button onclick="testLargeDataset()">Test Large Dataset (500)</button>
+        </div>
+        
+        <div id="visualizationContainer"></div>
+    </div>
+
+    <!-- D3.js Library -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Earthquake Visualizations -->
+    <script src="visualizations.js"></script>
+    
+    <script>
+        // Generate sample earthquake data
+        function generateEarthquakeData(count, minMag = 4.0, maxMag = 8.0) {
+            const data = [];
+            const locations = [
+                'California', 'Japan', 'Chile', 'Indonesia', 'Alaska',
+                'Mexico', 'Peru', 'Philippines', 'Turkey', 'New Zealand'
+            ];
+            
+            for (let i = 0; i < count; i++) {
+                const mag = (Math.random() * (maxMag - minMag) + minMag).toFixed(2);
+                data.push({
+                    mag: parseFloat(mag),
+                    magnitude: parseFloat(mag),
+                    place: locations[Math.floor(Math.random() * locations.length)],
+                    depth: (Math.random() * 100).toFixed(1),
+                    time: Date.now() - Math.random() * 1000000000,
+                    latitude: (Math.random() * 180 - 90).toFixed(4),
+                    longitude: (Math.random() * 360 - 180).toFixed(4)
+                });
+            }
+            
+            return data;
+        }
+        
+        function testSmallDataset() {
+            const data = generateEarthquakeData(20, 4.0, 6.5);
+            createMagnitudeHistogram(data, 'visualizationContainer', 4.0);
+        }
+        
+        function testMediumDataset() {
+            const data = generateEarthquakeData(100, 3.5, 7.0);
+            createMagnitudeHistogram(data, 'visualizationContainer', 3.5);
+        }
+        
+        function testLargeDataset() {
+            const data = generateEarthquakeData(500, 3.0, 8.0);
+            createMagnitudeHistogram(data, 'visualizationContainer', 3.0);
+        }
+        
+        // Auto-load medium dataset on page load
+        window.addEventListener('load', () => {
+            setTimeout(testMediumDataset, 500);
+        });
+    </script>
+</body>
+</html>
