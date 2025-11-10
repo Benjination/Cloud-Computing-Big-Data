@@ -368,11 +368,22 @@
         window.showLoading = function showLoading() {
             const loadingDiv = document.getElementById('loading');
             if (loadingDiv) loadingDiv.style.display = 'block';
+            
+            // Clear previous visualization when starting a new query
+            clearVisualization();
         }
 
         window.hideLoading = function hideLoading() {
             const loadingDiv = document.getElementById('loading');
             if (loadingDiv) loadingDiv.style.display = 'none';
+        }
+        
+        window.clearVisualization = function clearVisualization() {
+            const vizContainer = document.getElementById('visualizationContainer');
+            if (vizContainer) {
+                vizContainer.style.display = 'none';
+                vizContainer.innerHTML = '';
+            }
         }
 
         window.showSuccess = function showSuccess(message) {
@@ -1219,6 +1230,13 @@
                 if (isCacheValid(cacheEntry)) {
                     console.log('🚀 Using cached earthquake clusters analysis');
                     displayResults(cacheEntry.results);
+                    
+                    // Create visualization from cached data
+                    if (typeof createClusterScatterPlot === 'function' && cacheEntry.earthquakes && cacheEntry.regions) {
+                        setTimeout(() => {
+                            createClusterScatterPlot(cacheEntry.earthquakes, 'visualizationContainer', cacheEntry.regions);
+                        }, 100);
+                    }
                     return;
                 }
             }
@@ -1280,9 +1298,11 @@
                     conclusion: `Analysis of ${earthquakes.length} large earthquakes shows geographic clustering patterns. ${regions['Pacific Ring'].length > regions.California.length ? 'Pacific Ring dominates' : 'California shows high activity'}.`
                 };
 
-                // Cache the results
+                // Cache the results with earthquakes and regions for visualization
                 window.searchCache.timePatterns.set(cacheKey, {
                     results: results,
+                    earthquakes: earthquakes,
+                    regions: regions,
                     timestamp: Date.now()
                 });
 
@@ -1291,6 +1311,13 @@
                 
                 hideLoading();
                 displayResults(results);
+                
+                // Create cluster scatter plot visualization
+                if (typeof createClusterScatterPlot === 'function' && earthquakes.length > 0) {
+                    setTimeout(() => {
+                        createClusterScatterPlot(earthquakes, 'visualizationContainer', regions);
+                    }, 100);
+                }
                 
             } catch (error) {
                 hideLoading();

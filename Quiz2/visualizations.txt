@@ -119,22 +119,35 @@ Purpose: Guide for implementing interactive D3.js visualizations for earthquake 
 7. GEOGRAPHIC CLUSTERING
    Query: findClusters()
    -------------------------------
-   PRIMARY VISUALIZATION: Cluster Bubble Map
-   - Base: World map or region map
-   - Bubbles: Clustered earthquake groups
-   - Bubble size: Number of earthquakes in cluster
-   - Bubble color: Average magnitude of cluster
-   - Bubble position: Centroid of cluster
-   - Interactive: Click to expand and show individual earthquakes
+   PRIMARY VISUALIZATION: Scatter Plot with Color-Coded Regions
+   - X-axis: Longitude
+   - Y-axis: Latitude
+   - Points: Individual earthquakes
+   - Point size: Magnitude (larger = stronger)
+   - Point color: Geographic region/cluster
+   - Opacity: 0.6-0.8 to show overlapping patterns
+   - Interactive: Hover shows location, magnitude, time
    
-   SECONDARY VISUALIZATION: Dendrogram (Hierarchical Clustering)
-   - Tree structure showing how earthquakes group together
-   - Branch length: Distance between clusters
-   - Leaf nodes: Individual earthquakes
-   - Color: Magnitude or region
+   Color Coding by Region:
+   - Pacific Ring of Fire: Cyan (#06b6d4)
+   - Mediterranean: Violet (#8b5cf6)
+   - Mid-Atlantic Ridge: Pink (#ec4899)
+   - Central Asia: Teal (#14b8a6)
+   - Other regions: Amber (#f59e0b)
    
-   WHY: Clustering analysis requires spatial visualization to be meaningful.
-        Bubbles immediately show hotspots and patterns.
+   SECONDARY VISUALIZATION: Density Heatmap
+   - Uses d3.contour to show concentration areas
+   - Gradient from cool to hot colors
+   - Shows "hotspots" of seismic activity
+   
+   ALTERNATIVE: Hexbin Map
+   - Groups nearby earthquakes into hexagons
+   - Hexagon color intensity = earthquake count
+   - Hexagon size can represent average magnitude
+   
+   WHY: Scatter plot clearly shows spatial distribution patterns.
+        Color coding helps identify tectonic plate boundaries.
+        Individual points preserve detail while showing clusters.
 
 
 8. PERFORMANCE ANALYTICS

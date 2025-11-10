@@ -1,8 +1,0 @@
-I have a really cool idea for this next assignment. I want to create a JavaScript with html
- embedded inside that accepts a csv file and sends the data to Firebase. Then it converts the data into a table,
-  but only shows the table on request. Rather, it will show a series of pull down menus. The first menu will be a 
-  selection of visualizations: Pie Chart, Scatterpoint, and Bar chart. If pie chart is selected, a dropdown called
-  Criteria will open that allows the user to select one catagory. Then a pie chart will be created for that catagory.
-  If bar chart is selected, then x and y axis selections will appear with all of the catagories, but the same 
-  catagory cannot be selected for both. Then a bar chart will appear for that data. Same for the Scatterpoint. 
-  Consider this, and the file called visualize.txt and see what we can come up with. 

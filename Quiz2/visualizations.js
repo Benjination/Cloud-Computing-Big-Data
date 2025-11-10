@@ -472,7 +472,7 @@ function createLocationMap(data, containerId, centerPoint, radius) {
     const container = document.getElementById(containerId);
     if (container) container.style.display = 'block';
     
-    const margin = { top: 40, right: 30, bottom: 50, left: 60 };
+    const margin = { top: 60, right: 80, bottom: 60, left: 80 };
     const width = 800 - margin.left - margin.right;
     const height = 600 - margin.top - margin.bottom;
     
@@ -484,60 +484,200 @@ function createLocationMap(data, containerId, centerPoint, radius) {
         .append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
     
-    // Simple projection
+    // Scales
     const xScale = d3.scaleLinear()
         .domain(d3.extent(data, d => d.longitude || d.lng))
-        .range([0, width]);
+        .range([0, width])
+        .nice();
     
     const yScale = d3.scaleLinear()
         .domain(d3.extent(data, d => d.latitude || d.lat))
-        .range([height, 0]);
+        .range([height, 0])
+        .nice();
     
-    const sizeScale = d3.scaleSqrt()
+    const sizeScale = d3.scaleLinear()
         .domain([0, d3.max(data, d => d.magnitude || d.mag)])
-        .range([3, 20]);
+        .range([4, 12]);
     
     // Title
     svg.append('text')
         .attr('x', width / 2)
-        .attr('y', -20)
+        .attr('y', -30)
         .attr('text-anchor', 'middle')
-        .style('font-size', '18px')
+        .style('font-size', '20px')
         .style('font-weight', 'bold')
         .style('fill', VIZ_COLORS.textPrimary)
-        .text(`Earthquakes within ${radius}km of (${centerPoint.lat.toFixed(2)}, ${centerPoint.lng.toFixed(2)})`);
+        .text(`Geographic Scatter: ${data.length} Earthquakes`);
     
-    // Draw earthquakes
-    svg.selectAll('.earthquake')
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', -10)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('fill', VIZ_COLORS.textSecondary)
+        .text(`Within ${radius}km of (${centerPoint.lat.toFixed(2)}, ${centerPoint.lng.toFixed(2)})`);
+    
+    // Grid lines
+    svg.append('g')
+        .attr('class', 'grid')
+        .attr('opacity', 0.1)
+        .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''))
+        .selectAll('line')
+        .style('stroke', VIZ_COLORS.gridLines);
+    
+    svg.append('g')
+        .attr('class', 'grid')
+        .attr('opacity', 0.1)
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''))
+        .selectAll('line')
+        .style('stroke', VIZ_COLORS.gridLines);
+    
+    // Tooltip
+    const tooltip = d3.select('body').append('div')
+        .attr('class', 'viz-tooltip')
+        .style('position', 'absolute')
+        .style('background', VIZ_COLORS.backgroundSecondary)
+        .style('color', VIZ_COLORS.textPrimary)
+        .style('padding', '10px')
+        .style('border-radius', '5px')
+        .style('border', `1px solid ${VIZ_COLORS.borders}`)
+        .style('pointer-events', 'none')
+        .style('opacity', 0)
+        .style('font-size', '12px')
+        .style('z-index', '1000');
+    
+    // Draw earthquake scatter points
+    svg.selectAll('.earthquake-point')
         .data(data)
         .enter()
         .append('circle')
-        .attr('class', 'earthquake')
+        .attr('class', 'earthquake-point')
         .attr('cx', d => xScale(d.longitude || d.lng))
         .attr('cy', d => yScale(d.latitude || d.lat))
         .attr('r', 0)
         .attr('fill', d => {
             const mag = d.magnitude || d.mag;
             return mag > 6 ? VIZ_COLORS.magnitudeScale[2] : 
-                   mag > 4 ? VIZ_COLORS.magnitudeScale[1] : 
+                   mag > 5 ? VIZ_COLORS.magnitudeScale[1] : 
                    VIZ_COLORS.magnitudeScale[0];
         })
-        .attr('opacity', 0.6)
-        .attr('stroke', VIZ_COLORS.borders)
+        .attr('opacity', 0.7)
+        .attr('stroke', VIZ_COLORS.textPrimary)
+        .attr('stroke-width', 1)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .attr('opacity', 1)
+                .attr('stroke-width', 2);
+            
+            tooltip.style('opacity', 1)
+                .html(`
+                    <strong>Magnitude ${(d.magnitude || d.mag).toFixed(1)}</strong><br/>
+                    Lat: ${(d.latitude || d.lat).toFixed(3)}°<br/>
+                    Lng: ${(d.longitude || d.lng).toFixed(3)}°<br/>
+                    Depth: ${d.depth ? d.depth.toFixed(1) + 'km' : 'N/A'}<br/>
+                    ${d.place || 'Unknown location'}
+                `);
+        })
+        .on('mousemove', function(event) {
+            tooltip.style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY - 15) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .attr('opacity', 0.7)
+                .attr('stroke-width', 1);
+            tooltip.style('opacity', 0);
+        })
         .transition()
         .duration(750)
+        .delay((d, i) => i * 2)
         .attr('r', d => sizeScale(d.magnitude || d.mag));
     
-    // Center point marker
+    // Center point marker (search location)
     if (centerPoint) {
         svg.append('circle')
             .attr('cx', xScale(centerPoint.lng))
             .attr('cy', yScale(centerPoint.lat))
-            .attr('r', 8)
+            .attr('r', 10)
             .attr('fill', VIZ_COLORS.warning)
             .attr('stroke', VIZ_COLORS.textPrimary)
-            .attr('stroke-width', 2);
+            .attr('stroke-width', 3)
+            .attr('opacity', 0.8);
+        
+        svg.append('text')
+            .attr('x', xScale(centerPoint.lng))
+            .attr('y', yScale(centerPoint.lat) - 18)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '12px')
+            .style('font-weight', 'bold')
+            .style('fill', VIZ_COLORS.warning)
+            .text('Search Center');
     }
+    
+    // Axes
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(xScale).ticks(8))
+        .selectAll('text')
+        .style('fill', VIZ_COLORS.textSecondary)
+        .style('font-size', '12px');
+    
+    svg.append('g')
+        .call(d3.axisLeft(yScale).ticks(8))
+        .selectAll('text')
+        .style('fill', VIZ_COLORS.textSecondary)
+        .style('font-size', '12px');
+    
+    // Axis labels
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height + 45)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text('Longitude (°)');
+    
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', -55)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text('Latitude (°)');
+    
+    // Legend
+    const legendData = [
+        { label: 'Magnitude > 6', color: VIZ_COLORS.magnitudeScale[2] },
+        { label: 'Magnitude 5-6', color: VIZ_COLORS.magnitudeScale[1] },
+        { label: 'Magnitude < 5', color: VIZ_COLORS.magnitudeScale[0] }
+    ];
+    
+    const legend = svg.append('g')
+        .attr('transform', `translate(${width - 120}, 10)`);
+    
+    legendData.forEach((item, i) => {
+        const g = legend.append('g')
+            .attr('transform', `translate(0, ${i * 25})`);
+        
+        g.append('circle')
+            .attr('cx', 8)
+            .attr('cy', 0)
+            .attr('r', 6)
+            .attr('fill', item.color)
+            .attr('opacity', 0.7)
+            .attr('stroke', VIZ_COLORS.textPrimary)
+            .attr('stroke-width', 1);
+        
+        g.append('text')
+            .attr('x', 20)
+            .attr('y', 4)
+            .style('font-size', '12px')
+            .style('fill', VIZ_COLORS.textSecondary)
+            .text(item.label);
+    });
 }
 
 /**
@@ -815,12 +955,234 @@ function createEarlyMorningChart(data, containerId) {
         .style('fill', VIZ_COLORS.textSecondary);
 }
 
+/**
+ * Create Geographic Cluster Scatter Plot
+ * Shows earthquake clusters across different tectonic regions
+ * 
+ * @param {Array} data - Array of earthquake objects with lat/lng/magnitude
+ * @param {string} containerId - ID of the container element
+ * @param {Object} regions - Object containing regional groupings
+ */
+function createClusterScatterPlot(data, containerId, regions) {
+    d3.select(`#${containerId}`).selectAll('*').remove();
+    
+    const container = document.getElementById(containerId);
+    if (container) container.style.display = 'block';
+    
+    const margin = { top: 60, right: 120, bottom: 60, left: 80 };
+    const width = 800 - margin.left - margin.right;
+    const height = 600 - margin.top - margin.bottom;
+    
+    const svg = d3.select(`#${containerId}`)
+        .append('svg')
+        .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+        .style('background-color', VIZ_COLORS.background)
+        .style('border-radius', '10px')
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Region color mapping
+    const regionColors = {
+        'California': '#06b6d4',        // Cyan
+        'Alaska': '#8b5cf6',            // Violet
+        'Pacific Ring': '#ec4899',      // Pink
+        'Mediterranean': '#a78bfa',     // Light violet
+        'Mid-Atlantic': '#f472b6',      // Light pink
+        'Central Asia': '#14b8a6',      // Teal
+        'Other': '#fbbf24'              // Amber
+    };
+    
+    // Flatten all earthquakes with region labels
+    const allEarthquakes = [];
+    Object.entries(regions).forEach(([regionName, earthquakes]) => {
+        earthquakes.forEach(eq => {
+            allEarthquakes.push({
+                ...eq,
+                region: regionName,
+                color: regionColors[regionName] || regionColors.Other
+            });
+        });
+    });
+    
+    // Scales
+    const xScale = d3.scaleLinear()
+        .domain(d3.extent(allEarthquakes, d => d.longitude))
+        .range([0, width])
+        .nice();
+    
+    const yScale = d3.scaleLinear()
+        .domain(d3.extent(allEarthquakes, d => d.latitude))
+        .range([height, 0])
+        .nice();
+    
+    const sizeScale = d3.scaleLinear()
+        .domain([0, d3.max(allEarthquakes, d => d.magnitude)])
+        .range([4, 14]);
+    
+    // Title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', -30)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '20px')
+        .style('font-weight', 'bold')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text(`Geographic Earthquake Clusters: ${allEarthquakes.length} Events`);
+    
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', -10)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('fill', VIZ_COLORS.textSecondary)
+        .text('Large Earthquakes (Magnitude > 5.0) by Tectonic Region');
+    
+    // Grid lines
+    svg.append('g')
+        .attr('class', 'grid')
+        .attr('opacity', 0.1)
+        .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''))
+        .selectAll('line')
+        .style('stroke', VIZ_COLORS.gridLines);
+    
+    svg.append('g')
+        .attr('class', 'grid')
+        .attr('opacity', 0.1)
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''))
+        .selectAll('line')
+        .style('stroke', VIZ_COLORS.gridLines);
+    
+    // Tooltip
+    const tooltip = d3.select('body').append('div')
+        .attr('class', 'viz-tooltip')
+        .style('position', 'absolute')
+        .style('background', VIZ_COLORS.backgroundSecondary)
+        .style('color', VIZ_COLORS.textPrimary)
+        .style('padding', '10px')
+        .style('border-radius', '5px')
+        .style('border', `1px solid ${VIZ_COLORS.borders}`)
+        .style('pointer-events', 'none')
+        .style('opacity', 0)
+        .style('font-size', '12px')
+        .style('z-index', '1000');
+    
+    // Draw scatter points
+    svg.selectAll('.cluster-point')
+        .data(allEarthquakes)
+        .enter()
+        .append('circle')
+        .attr('class', 'cluster-point')
+        .attr('cx', d => xScale(d.longitude))
+        .attr('cy', d => yScale(d.latitude))
+        .attr('r', 0)
+        .attr('fill', d => d.color)
+        .attr('opacity', 0.7)
+        .attr('stroke', VIZ_COLORS.textPrimary)
+        .attr('stroke-width', 1)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .attr('opacity', 1)
+                .attr('stroke-width', 2);
+            
+            tooltip.style('opacity', 1)
+                .html(`
+                    <strong>${d.region}</strong><br/>
+                    Magnitude: ${d.magnitude.toFixed(1)}<br/>
+                    Lat: ${d.latitude.toFixed(3)}°<br/>
+                    Lng: ${d.longitude.toFixed(3)}°<br/>
+                    ${d.place || 'Unknown location'}
+                `);
+        })
+        .on('mousemove', function(event) {
+            tooltip.style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY - 15) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .attr('opacity', 0.7)
+                .attr('stroke-width', 1);
+            tooltip.style('opacity', 0);
+        })
+        .transition()
+        .duration(750)
+        .delay((d, i) => i * 2)
+        .attr('r', d => sizeScale(d.magnitude));
+    
+    // Axes
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(xScale).ticks(8))
+        .selectAll('text')
+        .style('fill', VIZ_COLORS.textSecondary)
+        .style('font-size', '12px');
+    
+    svg.append('g')
+        .call(d3.axisLeft(yScale).ticks(8))
+        .selectAll('text')
+        .style('fill', VIZ_COLORS.textSecondary)
+        .style('font-size', '12px');
+    
+    // Axis labels
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height + 45)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text('Longitude (°)');
+    
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', -55)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text('Latitude (°)');
+    
+    // Legend
+    const legend = svg.append('g')
+        .attr('transform', `translate(${width + 20}, 0)`);
+    
+    legend.append('text')
+        .attr('x', 0)
+        .attr('y', -5)
+        .style('font-size', '14px')
+        .style('font-weight', 'bold')
+        .style('fill', VIZ_COLORS.textPrimary)
+        .text('Regions');
+    
+    Object.entries(regions).forEach(([ regionName, earthquakes], i) => {
+        const g = legend.append('g')
+            .attr('transform', `translate(0, ${i * 25 + 15})`);
+        
+        g.append('circle')
+            .attr('cx', 8)
+            .attr('cy', 0)
+            .attr('r', 6)
+            .attr('fill', regionColors[regionName] || regionColors.Other)
+            .attr('opacity', 0.7)
+            .attr('stroke', VIZ_COLORS.textPrimary)
+            .attr('stroke-width', 1);
+        
+        g.append('text')
+            .attr('x', 20)
+            .attr('y', 4)
+            .style('font-size', '12px')
+            .style('fill', VIZ_COLORS.textSecondary)
+            .text(`${regionName} (${earthquakes.length})`);
+    });
+}
+
 // Export functions for use in other scripts
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         createMagnitudeHistogram,
         createMagnitudeRangeChart,
         createLocationMap,
+        createClusterScatterPlot,
         createTimePatternChart,
         createWeekendChart,
         createEarlyMorningChart,
