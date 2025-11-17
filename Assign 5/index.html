@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earthquake Data Visualizations</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌍 Earthquake Data Visualizations</h1>
+            <p class="subtitle">Explore seismic activity through interactive data and charts</p>
+        </header>
+
+        <nav class="nav-bar">
+            <button class="nav-btn active" onclick="showSection('data')">View Earthquake Data</button>
+            <button class="nav-btn" onclick="showSection('visualizations')">Data Visualizations</button>
+        </nav>
+
+        <!-- DATA TABLE SECTION -->
+        <section id="data-section" class="section">
+            <div class="section-header">
+                <h2>Earthquake Data Records</h2>
+                <p class="section-description">Browse through earthquake records with key information</p>
+            </div>
+            
+            <div id="data-table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Location</th>
+                            <th>Magnitude</th>
+                            <th>Depth (km)</th>
+                            <th>Coordinates</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body">
+                        <!-- Data will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <button id="prev-btn" onclick="previousPage()" disabled>← Previous</button>
+                <span id="page-info">Page 1</span>
+                <button id="next-btn" onclick="nextPage()">Next →</button>
+            </div>
+        </section>
+
+        <!-- VISUALIZATIONS SECTION -->
+        <section id="visualizations-section" class="section" style="display: none;">
+            <div class="section-header">
+                <h2>Data Visualizations</h2>
+                <p class="section-description">Select a visualization to explore earthquake patterns</p>
+            </div>
+
+            <div class="visualization-controls">
+                <label for="viz-select">Choose Visualization:</label>
+                <select id="viz-select" onchange="loadVisualization()">
+                    <option value="">-- Select a visualization --</option>
+                    <option value="regional">Regional Distribution (Pie Chart)</option>
+                    <option value="magnitude">Earthquake Intensity (Bar Chart)</option>
+                    <option value="depth">Depth Distribution (Horizontal Bar Chart)</option>
+                    <option value="geographic">Geographic Map (Scatter Plot)</option>
+                </select>
+            </div>
+
+            <div id="visualization-container" class="visualization-box">
+                <div class="empty-state">
+                    <p>👆 Select a visualization from the dropdown menu above</p>
+                </div>
+            </div>
+
+            <button id="close-viz-btn" class="close-btn" onclick="closeVisualization()" style="display: none;">
+                ✕ Close Visualization
+            </button>
+        </section>
+
+        <footer>
+            <p>Data source: Earthquake records from seismic monitoring networks | 9,964 total records</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
