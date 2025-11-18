@@ -1,0 +1,132 @@
+PLAN TO ADAPT WEBPAGE FROM EARTHQUAKES TO FRUIT DATA
+=====================================================
+
+QUIZ REQUIREMENTS ANALYSIS:
+---------------------------
+- Question 10: Pie chart with amount range filter (e.g., 5-20), different colors per slice, 
+  percent labels inside, food names outside, 80-90% screen width
+- Question 11: Vertical bar chart with amount range filter, green bars, largest at top, 
+  food names inside bars (right side), amounts outside (left), 70-90% screen width
+- Question 12: Scatter plot with X,Y,C input (up to 10 points), color=1(Green), 2(Black), 3(Red)
+- Need input boxes for amount ranges and X,Y,C coordinates
+
+DATA STRUCTURE CHANGE:
+----------------------
+OLD: time, latitude, longitude, depth, mag, magType, place, type
+NEW: Amount, Food, Category (F=Fruit, V=Vegetable)
+
+IMPLEMENTATION STEPS:
+=====================
+
+✅ 1. UPDATE app.js - DATA LOADING (Line 8)
+   - Change: d3.csv('earthquakes copy.csv')
+   - To: d3.csv('fruit.csv')
+
+✅ 2. UPDATE app.js - DATA MAPPING (Lines 9-13)
+   - Change from earthquake fields to:
+     {
+       amount: +d.Amount,
+       food: d.Food,
+       category: d.Category
+     }
+
+✅ 3. UPDATE index.html - PAGE TITLE AND HEADERS
+   - Change "Earthquake Data Visualizations" to "Food Data Visualizations"
+   - Update subtitle accordingly
+   - Change nav button text to match new context
+
+✅ 4. UPDATE index.html - TABLE SECTION (Lines 32-38)
+   - Change table headers from:
+     Time, Location, Magnitude, Depth, Coordinates
+   - To:
+     Food, Amount, Category
+
+✅ 5. UPDATE app.js - TABLE DISPLAY FUNCTION (Lines 38-72)
+   - Remove: time, place, mag, depth, coordinates display
+   - Add: food name, amount, category display
+   - Remove magnitude color coding
+   - Keep pagination logic
+
+✅ 6. ADD INPUT BOXES FOR FILTERS (index.html lines 51-91, app.js lines 87-164)
+   - Add amount range inputs (min/max) above visualizations section
+   - Add X,Y,C input fields for scatter plot (10 rows with 3 inputs each)
+   - Add filter/submit buttons
+
+✅ 7. UPDATE VISUALIZATION 1 - PIE CHART (app.js lines 168-270)
+   - Remove: extractRegion() function - not needed
+   - Add: Amount range filter logic
+   - Change data aggregation to: group by Food name where Amount is in range
+   - Update chart title to "Food Distribution by Amount Range"
+   - Change to show food names outside slices, percentages inside
+   - Adjust size to 80-90% screen width
+
+8. UPDATE VISUALIZATION 2 - BAR CHART (app.js lines 272-367)
+   - Change from horizontal magnitude ranges to vertical food items
+   - Add: Amount range filter logic
+   - Filter data: only foods where Amount is in specified range
+   - Sort: Largest amount at top, smallest at bottom
+   - Change color: All bars to green (#28a745 or similar)
+   - Position labels: Food names inside bars (right side), amounts outside (left)
+   - Adjust size to 70-90% screen width
+   - This requires switching from horizontal to vertical orientation
+
+9. UPDATE VISUALIZATION 3 - SCATTER PLOT (app.js lines 468+)
+   - Replace automatic data loading with manual X,Y,C input
+   - Read up to 10 {X,Y,C} values from input fields
+   - Plot points at coordinates (X,Y) where X,Y are 0-499
+   - Color mapping: C=1 -> Green, C=2 -> Black, C=3 -> Red
+   - Add proper axis labels with tick marks
+   - Remove depth-based coloring and magnitude-based sizing
+
+10. REMOVE VISUALIZATION 4 (Depth Distribution - app.js lines 369-466)
+    - This was earthquake-specific, not needed for food data
+    - Can be removed or repurposed
+
+✅ 11. UPDATE index.html - VISUALIZATION DROPDOWN (Lines 69-75)
+    - Remove "Regional Distribution" and "Depth Distribution" options
+    - Change "Earthquake Intensity" to "Food by Amount Range (Pie Chart)"
+    - Change "Geographic Map" to "Food by Amount Range (Bar Chart)"
+    - Add "Custom Scatter Plot" option
+
+✅ 12. UPDATE index.html - FOOTER (Line 103)
+    - Change from "9,964 total records" to actual count (9 records)
+    - Update data source description
+
+✅ 13. UPDATE FILTER LOGIC (app.js lines 110-125)
+    - Implement getFilteredData() function that reads min/max amount inputs
+    - Apply filter before generating pie and bar charts
+    - Validate input ranges
+
+✅ 14. UPDATE SCATTER PLOT INPUT SECTION (index.html lines 77-91, app.js lines 87-102)
+    - Create form with 10 rows of inputs (X, Y, C)
+    - Add validation (X,Y: 0-499, C: 1-3)
+    - Add "Plot Points" button to trigger visualization
+
+15. TESTING CHECKLIST
+    - Test amount range filter with example: 5 to 20 (should show: Apples, Fig, Celery)
+    - Verify pie chart: different colors, percentages inside, names outside, 80-90% width
+    - Verify bar chart: green bars, largest top, food names inside right, amounts outside left, 70-90% width
+    - Test scatter plot with sample X,Y,C values
+    - Verify all three color options work (green, black, red)
+
+REMAINING TASKS:
+================
+- Step 8: Update bar chart visualization
+- Step 9: Update scatter plot visualization  
+- Step 10: Remove or repurpose old depth distribution visualization
+- Step 15: Complete testing
+
+SPECIFIC QUIZ REQUIREMENTS TO VERIFY:
+======================================
+✓ Question 10: Pie chart filtered by amount range, correct sizing and labels
+○ Question 11: Vertical bar chart filtered by amount range, green bars, sorted, correct label positions
+○ Question 12: Scatter plot with manual X,Y,C input, three color options
+✓ All functionality on GitHub Pages (Azure requirement satisfied by cloud hosting)
+✓ Input boxes functional for all requirements
+
+DEPLOYMENT:
+===========
+- Commit all changes to git
+- Push to GitHub
+- Verify GitHub Pages deployment works
+- Test all three visualizations with quiz parameters

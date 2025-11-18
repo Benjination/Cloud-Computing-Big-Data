@@ -2,6 +2,8 @@
 
 An interactive web application that visualizes earthquake data using D3.js. This project displays earthquake information through three different chart types: pie charts, bar charts, and scatter plots.
 
+**Live Demo:** https://benjination.github.io/Cloud-Computing-Big-Data/Quiz5
+
 ## Features
 
 ### 📊 Three Visualization Types

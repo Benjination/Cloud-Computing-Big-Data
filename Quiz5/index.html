@@ -3,38 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Earthquake Data Visualizations</title>
+    <title>Fruit Data Visualizations</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🌍 Earthquake Data Visualizations</h1>
-            <p class="subtitle">Explore seismic activity through interactive data and charts</p>
+            <h1>🍎 Fruit Data Visualizations</h1>
+            <p class="subtitle">Explore fruit data through interactive data and charts</p>
         </header>
 
         <nav class="nav-bar">
-            <button class="nav-btn active" onclick="showSection('data')">View Earthquake Data</button>
+            <button class="nav-btn active" onclick="showSection('data')">View Fruit Data</button>
             <button class="nav-btn" onclick="showSection('visualizations')">Data Visualizations</button>
         </nav>
 
         <!-- DATA TABLE SECTION -->
         <section id="data-section" class="section">
             <div class="section-header">
-                <h2>Earthquake Data Records</h2>
-                <p class="section-description">Browse through earthquake records with key information</p>
+                <h2>Fruit Data Records</h2>
+                <p class="section-description">Browse through fruit records with key information</p>
             </div>
             
             <div id="data-table-container">
                 <table id="data-table">
                     <thead>
                         <tr>
-                            <th>Time</th>
-                            <th>Location</th>
-                            <th>Magnitude</th>
-                            <th>Depth (km)</th>
-                            <th>Coordinates</th>
+                            <th>Food</th>
+                            <th>Amount</th>
+                            <th>Category</th>
                         </tr>
                     </thead>
                     <tbody id="data-table-body">
@@ -54,18 +52,43 @@
         <section id="visualizations-section" class="section" style="display: none;">
             <div class="section-header">
                 <h2>Data Visualizations</h2>
-                <p class="section-description">Select a visualization to explore earthquake patterns</p>
+                <p class="section-description">Select a visualization to explore fruit patterns</p>
+            </div>
+
+            <!-- AMOUNT RANGE FILTER -->
+            <div class="visualization-controls">
+                <label for="min-amount">Min Amount:</label>
+                <input type="number" id="min-amount" min="0" value="0" style="width: 80px; margin-right: 20px;">
+                
+                <label for="max-amount">Max Amount:</label>
+                <input type="number" id="max-amount" min="0" value="100" style="width: 80px; margin-right: 20px;">
+                
+                <button onclick="applyFilter()" style="padding: 5px 15px;">Apply Filter</button>
             </div>
 
             <div class="visualization-controls">
                 <label for="viz-select">Choose Visualization:</label>
                 <select id="viz-select" onchange="loadVisualization()">
                     <option value="">-- Select a visualization --</option>
-                    <option value="regional">Regional Distribution (Pie Chart)</option>
-                    <option value="magnitude">Earthquake Intensity (Bar Chart)</option>
-                    <option value="depth">Depth Distribution (Horizontal Bar Chart)</option>
-                    <option value="geographic">Geographic Map (Scatter Plot)</option>
+                    <option value="pie">Food by Amount Range (Pie Chart)</option>
+                    <option value="bar">Food by Amount Range (Bar Chart)</option>
+                    <option value="scatter">Custom Scatter Plot</option>
                 </select>
+            </div>
+
+            <!-- SCATTER PLOT INPUT SECTION -->
+            <div id="scatter-inputs" style="display: none; margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                <h3 style="margin-top: 0;">Enter Point Coordinates (up to 10 points)</h3>
+                <p style="color: #666; font-size: 0.9em;">X and Y must be between 0-499. Color: 1=Green, 2=Black, 3=Red</p>
+                <div id="scatter-input-rows">
+                    <div style="display: grid; grid-template-columns: 100px 100px 100px 150px; gap: 10px; margin-bottom: 10px; font-weight: bold;">
+                        <span>X</span>
+                        <span>Y</span>
+                        <span>Color (1-3)</span>
+                        <span></span>
+                    </div>
+                </div>
+                <button onclick="plotScatterPoints()" style="padding: 8px 20px; margin-top: 10px;">Plot Points</button>
             </div>
 
             <div id="visualization-container" class="visualization-box">
@@ -80,7 +103,7 @@
         </section>
 
         <footer>
-            <p>Data source: Earthquake records from seismic monitoring networks | 9,964 total records</p>
+            <p>Data source: Fruit records from agricultural databases | 9 total records</p>
         </footer>
     </div>
 
